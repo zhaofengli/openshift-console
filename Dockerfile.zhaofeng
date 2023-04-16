@@ -1,0 +1,25 @@
+FROM quay.io/coreos/tectonic-console-builder:v24 AS gobuilder
+RUN mkdir -p /go/src/github.com/openshift/console/
+ADD . /go/src/github.com/openshift/console/
+WORKDIR /go/src/github.com/openshift/console/
+RUN ./build-backend.sh
+
+FROM quay.io/coreos/tectonic-console-builder:v24 AS nodebuilder
+RUN mkdir -p /app
+WORKDIR /app
+ADD . .
+# prevent download of chromedriver, geckodriver, and the cypress binary as part of module installs
+ENV CHROMEDRIVER_SKIP_DOWNLOAD=true \
+    GECKODRIVER_SKIP_DOWNLOAD=true \
+    CYPRESS_INSTALL_BINARY=0
+RUN ./build-frontend.sh
+
+FROM openshift/origin-base:v3.11.0
+RUN mkdir -p /opt/bridge/bin
+COPY --from=gobuilder /go/src/github.com/openshift/console/bin/bridge /opt/bridge/bin/bridge
+COPY --from=nodebuilder /app/frontend/public/dist /opt/bridge/static
+COPY --from=gobuilder /go/src/github.com/openshift/console/pkg/graphql/schema.graphql /pkg/graphql/schema.graphql
+
+WORKDIR /
+USER 1001
+CMD [ "/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static" ]
