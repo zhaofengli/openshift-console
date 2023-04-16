@@ -548,11 +548,7 @@ class MastheadToolbarContents_ extends React.Component {
     );
     const launchActions = this._launchActions();
 
-    if (
-      flagPending(flags[FLAGS.OPENSHIFT]) ||
-      flagPending(flags[FLAGS.AUTH_ENABLED]) ||
-      !username
-    ) {
+    if (flagPending(flags[FLAGS.OPENSHIFT]) || flagPending(flags[FLAGS.AUTH_ENABLED])) {
       return null;
     }
 
@@ -640,7 +636,7 @@ class MastheadToolbarContents_ extends React.Component {
     const userToggle = (
       <span className="pf-c-dropdown__toggle">
         <span className="co-username" data-test="username">
-          {username}
+          {username || t('public~User')}
         </span>
         <CaretDownIcon className="pf-c-dropdown__toggle-icon" />
       </span>
