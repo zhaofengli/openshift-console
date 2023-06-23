@@ -30,6 +30,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           file: Dockerfile.zhaofeng
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
           push: true
