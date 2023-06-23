@@ -20,6 +20,10 @@ export const operator = {
     cy.log('go to operator overview panel');
     cy.byTestID(operatorHubCardTestID).click();
     cy.log('go to the install form');
+    cy.log('verify the channel selection is displayed');
+    cy.get('.co-operator-channel__select').should('exist');
+    cy.log('verify the version selection is displayed');
+    cy.get('.co-operator-version__select').should('exist');
     cy.byLegacyTestID('operator-install-btn').click({ force: true });
     /*  Installation mode
      *    () All namespaces        // default: 'openshift-operators'
@@ -121,9 +125,7 @@ export const operator = {
     }
     cy.url().should('contain', '~new');
     cy.log('create a new operand');
-    cy.get('[id="root_metadata_name"]')
-      .should('not.be.disabled')
-      .clear();
+    cy.get('[id="root_metadata_name"]').should('not.be.disabled').clear();
     cy.get('[id="root_metadata_name"]').type(exampleName);
     cy.get(submitButton).click();
   },

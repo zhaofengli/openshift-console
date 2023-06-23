@@ -48,6 +48,7 @@ import { LimitsData } from '@console/shared/src/types';
 import { getRandomChars, getResourceLimitsData } from '@console/shared/src/utils';
 import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
 import { CREATE_APPLICATION_KEY } from '@console/topology/src/const';
+import { RUNTIME_LABEL } from '../../const';
 import {
   getAppLabels,
   getPodLabels,
@@ -72,6 +73,7 @@ import {
   ServerlessData,
   DeploymentData,
 } from './import-types';
+import { createResourceName } from './import-validation-utils';
 
 export const generateSecret = () => {
   // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
@@ -331,7 +333,14 @@ export const createOrUpdateDeployment = (
   } = formData;
 
   const imageStreamName = imageStream && imageStream.metadata.name;
-  const defaultLabels = getAppLabels({ name, applicationName, imageStreamName, selectedTag });
+  const runtimeIcon = imageStream && imageStream.metadata.labels?.[RUNTIME_LABEL];
+  const defaultLabels = getAppLabels({
+    name,
+    applicationName,
+    imageStreamName,
+    selectedTag,
+    runtimeIcon,
+  });
   const imageName = name;
   const defaultAnnotations = {
     ...getCommonAnnotations(),
@@ -366,7 +375,7 @@ export const createOrUpdateDeployment = (
         spec: {
           containers: [
             {
-              name,
+              name: createResourceName(name),
               image: `${name}:latest`,
               ports,
               env,
@@ -433,7 +442,7 @@ export const createOrUpdateDeploymentConfig = (
         spec: {
           containers: [
             {
-              name,
+              name: createResourceName(name),
               image: `${name}:latest`,
               ports,
               env,
@@ -472,8 +481,7 @@ export const managePipelineResources = async (
 ): Promise<K8sResourceKind[]> => {
   const pipelineResources = [];
   if (!formData) return Promise.resolve([]);
-
-  const { name, git, pipeline, project, docker, image, build } = formData;
+  const { name, git, pipeline, project, docker, image, build, labels } = formData;
   let managedPipeline: PipelineKind;
   const pipelineName = pipelineData?.metadata?.name;
 
@@ -489,6 +497,7 @@ export const managePipelineResources = async (
       docker.dockerfilePath,
       image.tag,
       build.env,
+      labels,
     );
   } else if (pipeline.template) {
     managedPipeline = await createPipelineForImportFlow(
@@ -501,6 +510,7 @@ export const managePipelineResources = async (
       docker.dockerfilePath,
       image.tag,
       build.env,
+      labels,
     );
     pipelineResources.push(managedPipeline);
     try {
@@ -559,7 +569,7 @@ export const createDevfileResources = async (
   const {
     name,
     project: { name: namespace },
-    devfile: { devfileSuggestedResources },
+    devfile: { devfileSuggestedResources, devfileProjectType },
   } = formData;
 
   const devfileResourceObjects: DevfileSuggestedResources = Object.keys(
@@ -583,6 +593,7 @@ export const createDevfileResources = async (
           namespace,
           labels: {
             ...resource.metadata?.labels,
+            ...(devfileProjectType ? { [RUNTIME_LABEL]: devfileProjectType } : {}),
           },
         },
       },
@@ -702,7 +713,8 @@ export const createOrUpdateResources = async (
 
   if (pipeline.type === PipelineType.PAC) {
     const pacRepository = formData?.pac?.repository;
-    const repo = await createRepositoryResources(pacRepository, namespace, dryRun);
+    const labels = formData?.labels;
+    const repo = await createRepositoryResources(pacRepository, namespace, labels, dryRun);
     responses.push(repo);
   }
 

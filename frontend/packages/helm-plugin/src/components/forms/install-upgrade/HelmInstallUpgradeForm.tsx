@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { TextInputTypes, Grid, GridItem, Button, Alert } from '@patternfly/react-core';
-import { FormikProps, FormikValues } from 'formik';
+import { FormikProps } from 'formik';
+import { JSONSchema7 } from 'json-schema';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
 import FormSection from '@console/dev-console/src/components/import/section/FormSection';
@@ -8,17 +9,33 @@ import {
   InputField,
   FormFooter,
   FormBody,
-  YAMLEditorField,
+  CodeEditorField,
   DynamicFormField,
   SyncedEditorField,
   FormHeader,
   FlexForm,
 } from '@console/shared';
 import { getJSONSchemaOrder, prune } from '@console/shared/src/components/dynamic-form/utils';
+import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
 import { HelmActionType, HelmChart, HelmActionConfigType } from '../../../types/helm-types';
 import { helmActionString } from '../../../utils/helm-utils';
 import HelmChartVersionDropdown from './HelmChartVersionDropdown';
 import { helmReadmeModalLauncher } from './HelmReadmeModal';
+
+export type HelmInstallUpgradeFormData = {
+  releaseName: string;
+  chartURL?: string;
+  chartName: string;
+  chartIndexEntry?: string;
+  chartRepoName: string;
+  chartVersion: string;
+  chartReadme: string;
+  appVersion: string;
+  yamlData: string;
+  formData: any;
+  formSchema: JSONSchema7;
+  editorType: EditorType;
+};
 
 export interface HelmInstallUpgradeFormProps {
   chartHasValues: boolean;
@@ -30,7 +47,9 @@ export interface HelmInstallUpgradeFormProps {
   chartIndexEntry?: string;
 }
 
-const HelmInstallUpgradeForm: React.FC<FormikProps<FormikValues> & HelmInstallUpgradeFormProps> = ({
+const HelmInstallUpgradeForm: React.FC<
+  FormikProps<HelmInstallUpgradeFormData> & HelmInstallUpgradeFormProps
+> = ({
   chartHasValues,
   errors,
   handleSubmit,
@@ -70,7 +89,7 @@ const HelmInstallUpgradeForm: React.FC<FormikProps<FormikValues> & HelmInstallUp
   );
 
   const yamlEditor = chartHasValues && (
-    <YAMLEditorField
+    <CodeEditorField
       name="yamlData"
       label={t('helm-plugin~Helm Release')}
       schema={formSchema}
@@ -143,16 +162,25 @@ const HelmInstallUpgradeForm: React.FC<FormikProps<FormikValues> & HelmInstallUp
             </GridItem>
           </Grid>
         </FormSection>
-        {!chartError && (
-          <SyncedEditorField
-            name="editorType"
-            formContext={{ name: 'formData', editor: formEditor, isDisabled: !formSchema }}
-            yamlContext={{ name: 'yamlData', editor: yamlEditor }}
-            lastViewUserSettingKey={LAST_VIEWED_EDITOR_TYPE_USERSETTING_KEY}
-            prune={prune}
-            noMargin
-          />
-        )}
+        {!chartError &&
+          (!formSchema && !chartHasValues ? (
+            <Alert
+              variant="info"
+              title={t(
+                "helm-plugin~Helm release is not configurable since the Helm Chart doesn't define any values.",
+              )}
+              isInline
+            />
+          ) : (
+            <SyncedEditorField
+              name="editorType"
+              formContext={{ name: 'formData', editor: formEditor, isDisabled: !formSchema }}
+              yamlContext={{ name: 'yamlData', editor: yamlEditor }}
+              lastViewUserSettingKey={LAST_VIEWED_EDITOR_TYPE_USERSETTING_KEY}
+              prune={prune}
+              noMargin
+            />
+          ))}
       </FormBody>
       <FormFooter
         handleReset={handleReset}

@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import {
   Action,
   Alert,
   AlertSeverity,
   AlertStates,
   BlueInfoCircleIcon,
+  FormatSeriesTitle,
   GreenCheckCircleIcon,
   K8sKind,
   PrometheusAlert,
@@ -38,8 +40,10 @@ import {
 import { consoleFetchJSON } from '@console/dynamic-plugin-sdk/src/utils/fetch';
 import { useExtensions } from '@console/plugin-sdk';
 import { withFallback } from '@console/shared/src/components/error';
+import { QueryBrowser } from '@console/shared/src/components/query-browser';
 import { useActiveNamespace } from '@console/shared/src/hooks/useActiveNamespace';
 import { formatPrometheusDuration } from '@openshift-console/plugin-shared/src/datetime/prometheus';
+import { useExactSearch } from '@console/app/src/components/user-preferences/search';
 import {
   Alert as PFAlert,
   Breadcrumb,
@@ -77,7 +81,7 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, Redirect, Route, Switch } from 'react-router-dom';
@@ -112,7 +116,6 @@ import { useBoolean } from './hooks/useBoolean';
 import KebabDropdown from './kebab-dropdown';
 import { Labels } from './labels';
 import { QueryBrowserPage, ToggleGraph } from './metrics';
-import { FormatSeriesTitle, QueryBrowser } from './query-browser';
 import { CreateSilence, EditSilence } from './silence-form';
 import { TargetsUI } from './targets';
 import { Alerts, AlertSource, MonitoringResource, Silences } from './types';
@@ -123,7 +126,6 @@ import {
   alertSeverityOrder,
   alertState,
   alertURL,
-  fuzzyCaseInsensitive,
   getAlertsAndRules,
   labelsToParams,
   RuleResource,
@@ -131,6 +133,7 @@ import {
   SilenceResource,
   silenceState,
 } from './utils';
+import { exactMatch, fuzzyCaseInsensitive } from '../factory/table-filters';
 
 const ruleURL = (rule: Rule) => `${RuleResource.plural}/${_.get(rule, 'id')}`;
 
@@ -1632,10 +1635,11 @@ const AlertsPage_: React.FC<Alerts> = () => {
   const silencesLoadError = useSelector(
     ({ observe }: RootState) => observe.get('silences')?.loadError,
   );
+  const [isExactSearch] = useExactSearch();
+  const matchFn: Function = isExactSearch ? exactMatch : fuzzyCaseInsensitive;
 
   const nameFilter: RowFilter = {
-    filter: (filter, alert: Alert) =>
-      fuzzyCaseInsensitive(filter.selected?.[0], alert.labels?.alertname),
+    filter: (filter, alert: Alert) => matchFn(filter.selected?.[0], alert.labels?.alertname),
     items: [],
     type: 'name',
   } as RowFilter;
@@ -1810,6 +1814,8 @@ const RuleTableRow: React.FC<RowProps<Rule>> = ({ obj }) => {
 
 const RulesPage_: React.FC<{}> = () => {
   const { t } = useTranslation();
+  const [isExactSearch] = useExactSearch();
+  const matchFn: Function = isExactSearch ? exactMatch : fuzzyCaseInsensitive;
 
   const data: Rule[] = useSelector(({ observe }: RootState) => observe.get('rules'));
   const { loaded = false, loadError }: Alerts = useSelector(
@@ -1820,7 +1826,7 @@ const RulesPage_: React.FC<{}> = () => {
   );
 
   const nameFilter: RowFilter = {
-    filter: (filter, rule: Rule) => fuzzyCaseInsensitive(filter.selected?.[0], rule.name),
+    filter: (filter, rule: Rule) => matchFn(filter.selected?.[0], rule.name),
     items: [],
     type: 'name',
   } as RowFilter;
@@ -1952,13 +1958,15 @@ const silenceStateOrder = (silence: Silence) => [
 
 const SilencesPage_: React.FC<Silences> = () => {
   const { t } = useTranslation();
+  const [isExactSearch] = useExactSearch();
+  const matchFn: Function = isExactSearch ? exactMatch : fuzzyCaseInsensitive;
 
   const { data, loaded = false, loadError }: Silences = useSelector(
     ({ observe }: RootState) => observe.get('silences') || {},
   );
 
   const nameFilter: RowFilter = {
-    filter: (filter, silence: Silence) => fuzzyCaseInsensitive(filter.selected?.[0], silence.name),
+    filter: (filter, silence: Silence) => matchFn(filter.selected?.[0], silence.name),
     items: [],
     type: 'name',
   } as RowFilter;

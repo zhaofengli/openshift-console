@@ -2,13 +2,13 @@ import * as React from 'react';
 import { Card, CardBody, CardHeader, CardTitle, CardActions } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { dashboardsSetEndTime, dashboardsSetTimespan } from '@console/internal/actions/observe';
-import { QueryBrowser } from '@console/internal/components/monitoring/query-browser';
 import { Humanize } from '@console/internal/components/utils';
+import { QueryBrowser } from '@console/shared/src/components/query-browser';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import './MonitoringDashboardGraph.scss';
 

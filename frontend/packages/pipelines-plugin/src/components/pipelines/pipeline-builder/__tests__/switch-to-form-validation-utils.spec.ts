@@ -14,9 +14,7 @@ const requiredMessage = 'Required';
 
 describe('Pipeline Builder YAML to Form switch validation schema', () => {
   it('should pass initial values', async () => {
-    await withFormData(formDataBasicPassState, '', {})
-      .then(hasResults)
-      .catch(shouldHavePassed);
+    await withFormData(formDataBasicPassState, '', {}).then(hasResults).catch(shouldHavePassed);
   });
 
   it('should pass if there is an invalid name', async () => {
@@ -208,7 +206,7 @@ describe('Tasks validation', () => {
       .catch(
         hasError(
           'spec.tasks[0].name',
-          'Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
+          'Name must consist of lower case alphanumeric characters, hyphens or dots, and must start and end with an alphanumeric character.',
         ),
       );
   });

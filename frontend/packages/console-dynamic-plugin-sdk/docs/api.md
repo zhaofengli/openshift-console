@@ -53,7 +53,7 @@
 51.  [`InventoryItemStatus`](#inventoryitemstatus)
 52.  [`InventoryItemLoading`](#inventoryitemloading)
 53.  [`useFlag`](#useflag)
-54.  [`YAMLEditor`](#yamleditor)
+54.  [`CodeEditor`](#codeeditor)
 55.  [`ResourceYAMLEditor`](#resourceyamleditor)
 56.  [`ResourceEventStream`](#resourceeventstream)
 57.  [`usePrometheusPoll`](#useprometheuspoll)
@@ -62,9 +62,11 @@
 60.  [`ActionServiceProvider`](#actionserviceprovider)
 61.  [`NamespaceBar`](#namespacebar)
 62.  [`ErrorBoundaryFallbackPage`](#errorboundaryfallbackpage)
-63. [DEPRECATED] [`PerspectiveContext`](#perspectivecontext)
-64. [DEPRECATED] [`useAccessReviewAllowed`](#useaccessreviewallowed)
-65. [DEPRECATED] [`useSafetyFirst`](#usesafetyfirst)
+63.  [`QueryBrowser`](#querybrowser)
+64. [DEPRECATED] [`PerspectiveContext`](#perspectivecontext)
+65. [DEPRECATED] [`useAccessReviewAllowed`](#useaccessreviewallowed)
+66. [DEPRECATED] [`useSafetyFirst`](#usesafetyfirst)
+67. [DEPRECATED] [`YAMLEditor`](#yamleditor)
 
 ---
 
@@ -1874,11 +1876,11 @@ the boolean value of the requested feature flag or undefined
 
 ---
 
-## `YAMLEditor`
+## `CodeEditor`
 
 ### Summary 
 
-A basic lazy loaded YAML editor with hover help and completion.
+A basic lazy loaded Code editor with hover help and completion.
 
 
 
@@ -1887,8 +1889,9 @@ A basic lazy loaded YAML editor with hover help and completion.
 
 ```tsx
 <React.Suspense fallback={<LoadingBox />}>
-  <YAMLEditor
+  <CodeEditor
     value={code}
+    language="yaml"
   />
 </React.Suspense>
 ```
@@ -1902,6 +1905,7 @@ A basic lazy loaded YAML editor with hover help and completion.
 | Parameter Name | Description |
 | -------------- | ----------- |
 | `value` | String representing the yaml code to render. |
+| `language` | String representing the language of the editor. |
 | `options` | Monaco editor options. For more details, please, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneEditorConstructionOptions.html. |
 | `minHeight` | Minimum editor height in valid CSS height values. |
 | `showShortcuts` | Boolean to show shortcuts on top of the editor. |
@@ -2183,6 +2187,63 @@ Creates full page ErrorBoundaryFallbackPage component to display the "Oh no! Som
 
 ---
 
+## `QueryBrowser`
+
+### Summary 
+
+A component that renders a graph of the results from a Prometheus PromQL query along with controls for interacting with the graph.
+
+
+
+### Example
+
+
+```tsx
+<QueryBrowser
+  defaultTimespan={15 * 60 * 1000}
+  namespace={namespace}
+  pollInterval={30 * 1000}
+  queries={[
+    'process_resident_memory_bytes{job="console"}',
+    'sum(irate(container_network_receive_bytes_total[6h:5m])) by (pod)',
+  ]}
+/>
+```
+
+
+
+
+
+### Parameters
+
+| Parameter Name | Description |
+| -------------- | ----------- |
+| `customDataSource` | (optional) Base URL of an API endpoint that handles PromQL queries. If provided, this is used instead of the default API for fetching data. |
+| `defaultSamples` | (optional) The default number of data samples plotted for each data series. If there are many data series, QueryBrowser might automatically pick a lower number of data samples than specified here. |
+| `defaultTimespan` | (optional) The default timespan for the graph in milliseconds - defaults to 1,800,000 (30 minutes). |
+| `disabledSeries` | (optional) Disable (don't display) data series with these exact label / value pairs. |
+| `disableZoom` | (optional) Flag to disable the graph zoom controls. |
+| `filterLabels` | (optional) Optionally filter the returned data series to only those that match these label / value pairs. |
+| `fixedEndTime` | (optional) Set the end time for the displayed time range rather than showing data up to the current time. |
+| `formatSeriesTitle` | (optional) Function that returns a string to use as the title for a single data series. |
+| `GraphLink` | (optional) Component for rendering a link to another page (for example getting more information about this query). |
+| `hideControls` | (optional) Flag to hide the graph controls for changing the graph timespan, and so on. |
+| `isStack` | (optional) Flag to display a stacked graph instead of a line graph. If showStackedControl is set, it will still be possible for the user to switch to a line graph. |
+| `namespace` | (optional) If provided, data is only returned for this namespace (only series that have this namespace label). |
+| `onZoom` | (optional) Callback called when the graph is zoomed. |
+| `pollInterval` | (optional) If set, determines how often the graph is updated to show the latest data (in milliseconds). |
+| `queries` | Array of PromQL queries to run and display the results in the graph. |
+| `showLegend` | (optional) Flag to enable displaying a legend below the graph. |
+| `showStackedControl` | Flag to enable displaying a graph control for switching between stacked graph mode and line graph mode. |
+| `timespan` | (optional) The timespan that should be covered by the graph in milliseconds. |
+| `units` | (optional) Units to display on the Y-axis and in the tooltip.
+
+ |
+
+
+
+---
+
 ## `PerspectiveContext`
 
 ### Summary [DEPRECATED]
@@ -2252,5 +2313,46 @@ The isAllowed boolean value.
 ### Returns
 
 An array with a pair of state value and it's set function.
+
+
+---
+
+## `YAMLEditor`
+
+### Summary [DEPRECATED]
+
+@deprecated Use {@link CodeEditor} instead.<br/>A basic lazy loaded YAML editor with hover help and completion.
+
+
+
+### Example
+
+
+```tsx
+<React.Suspense fallback={<LoadingBox />}>
+  <YAMLEditor
+    value={code}
+  />
+</React.Suspense>
+```
+
+
+
+
+
+### Parameters
+
+| Parameter Name | Description |
+| -------------- | ----------- |
+| `value` | String representing the yaml code to render. |
+| `language` | String representing the language of the editor. |
+| `options` | Monaco editor options. For more details, please, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneEditorConstructionOptions.html. |
+| `minHeight` | Minimum editor height in valid CSS height values. |
+| `showShortcuts` | Boolean to show shortcuts on top of the editor. |
+| `toolbarLinks` | Array of ReactNode rendered on the toolbar links section on top of the editor. |
+| `onChange` | Callback for on code change event. |
+| `onSave` | Callback called when the command CTRL / CMD + S is triggered. |
+| `ref` | React reference to `{ editor?: IStandaloneCodeEditor }`. Using the 'editor' property, you are able to access to all methods to control the editor. For more information, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneCodeEditor.html. |
+
 
 

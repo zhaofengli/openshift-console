@@ -8,6 +8,7 @@ import {
 } from '@console/dynamic-plugin-sdk';
 import {
   ActionGroup,
+  Alert,
   Button,
   Dropdown,
   DropdownItem,
@@ -39,11 +40,12 @@ import {
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch, useSelector } from 'react-redux';
 
 import { withFallback } from '@console/shared/src/components/error';
+import { QueryBrowser, queryBrowserTheme } from '@console/shared/src/components/query-browser';
 
 import {
   queryBrowserAddQuery,
@@ -66,7 +68,6 @@ import { setAllQueryArguments } from '../utils/router';
 import { useBoolean } from './hooks/useBoolean';
 import KebabDropdown from './kebab-dropdown';
 import IntervalDropdown from './poll-interval-dropdown';
-import { colors, Error, QueryBrowser } from './query-browser';
 import TablePagination from './table-pagination';
 import { PrometheusAPIError } from './types';
 
@@ -162,6 +163,8 @@ const ExpandButton = ({ isExpanded, onClick }) => {
 
 const SeriesButton: React.FC<SeriesButtonProps> = ({ index, labels }) => {
   const { t } = useTranslation();
+
+  const colors = queryBrowserTheme.line.colorScale;
 
   const [colorIndex, isDisabled, isSeriesEmpty] = useSelector(({ observe }: RootState) => {
     const disabledSeries = observe.getIn(['queryBrowser', 'queries', index, 'disabledSeries']);
@@ -308,6 +311,7 @@ export const QueryTable: React.FC<QueryTableProps> = ({ index, namespace }) => {
     _.isEmpty(observe.getIn(['queryBrowser', 'queries', index, 'disabledSeries'])),
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const safeFetch = React.useCallback(useSafeFetch(), []);
 
   const tick = () => {
@@ -342,7 +346,14 @@ export const QueryTable: React.FC<QueryTableProps> = ({ index, namespace }) => {
   if (error) {
     return (
       <div className="query-browser__table-message">
-        <Error error={error} title={t('public~Error loading values')} />
+        <Alert
+          className="co-alert"
+          isInline
+          title={t('public~Error loading values')}
+          variant="danger"
+        >
+          {_.get(error, 'json.error', error.message)}
+        </Alert>
       </div>
     );
   }

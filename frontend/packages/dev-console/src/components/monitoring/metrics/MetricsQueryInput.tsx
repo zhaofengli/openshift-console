@@ -4,7 +4,7 @@ import * as fuzzy from 'fuzzysearch';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 // FIXME upgrading redux types is causing many errors at this time
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -14,7 +14,6 @@ import {
 } from '@console/internal/actions/observe';
 import { PROMETHEUS_BASE_PATH } from '@console/internal/components/graphs';
 import { getPrometheusURL, PrometheusEndpoint } from '@console/internal/components/graphs/helpers';
-import { QueryObj } from '@console/internal/components/monitoring/query-browser';
 import {
   Dropdown,
   removeQueryArgument,
@@ -26,6 +25,7 @@ import { RootState } from '@console/internal/redux';
 import { metricsQuery, getTopMetricsQueries } from '../queries';
 import { QueryInput } from './QueryInput';
 import './MetricsQueryInput.scss';
+import { QueryObj } from './types';
 
 const ADD_NEW_QUERY = '#ADD_NEW_QUERY#';
 
@@ -55,6 +55,7 @@ const MetricsQueryInput: React.FC = () => {
   const [metric, setMetric] = React.useState('');
   const [showPromQl, setShowPromQl] = React.useState(false);
   const [isPromQlDisabled, setIsPromQlDisabled] = React.useState(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const safeFetch = React.useCallback(useSafeFetch(), []);
   React.useEffect(() => {
     const runQueries = () => dispatch(queryBrowserRunQueries());

@@ -1,14 +1,14 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
 import * as redux from 'react-redux';
-import { QueryBrowser } from '@console/internal/components/monitoring/query-browser';
+import { QueryBrowser } from '@console/shared/src/components/query-browser';
 import { t } from '../../../../../../../__mocks__/i18next';
 import { monitoringDashboardQueries } from '../../queries';
 import { MonitoringDashboardGraph, GraphTypes } from '../MonitoringDashboardGraph';
 
 describe('Monitoring Dashboard graph', () => {
   // FIXME upgrading redux types is causing many errors at this time
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const spyDispatch = jest.spyOn(redux, 'useDispatch');
   spyDispatch.mockReturnValue(() => {});

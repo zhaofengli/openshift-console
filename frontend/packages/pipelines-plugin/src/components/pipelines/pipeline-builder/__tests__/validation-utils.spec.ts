@@ -49,9 +49,7 @@ describe('Pipeline Build validation schema', () => {
 
   describe('Base form validation', () => {
     it('should pass if there is at least one Task', async () => {
-      await withFormData(formDataBasicPassState)
-        .then(hasResults)
-        .catch(shouldHavePassed);
+      await withFormData(formDataBasicPassState).then(hasResults).catch(shouldHavePassed);
     });
 
     it('should fail if there is an invalid name', async () => {
@@ -64,7 +62,7 @@ describe('Pipeline Build validation schema', () => {
         .catch(
           hasError(
             'formData.name',
-            'Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
+            'Name must consist of lower case alphanumeric characters, hyphens or dots, and must start and end with an alphanumeric character.',
           ),
         );
     });

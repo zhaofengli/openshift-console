@@ -185,7 +185,7 @@ export type WatchK8sResource = {
   fieldSelector?: string;
   optional?: boolean;
   partialMetadata?: boolean;
-  cluster?: string;
+  cluster?: string; // TODO remove multicluster
 };
 
 export type ResourcesObject = { [key: string]: K8sResourceCommon | K8sResourceCommon[] };
@@ -256,7 +256,7 @@ export type ConsoleFetch = (
   url: string,
   options?: RequestInit,
   timeout?: number,
-  cluster?: string,
+  cluster?: string, // TODO remove multicluster
 ) => Promise<Response>;
 
 export type ConsoleFetchJSON<T = any> = {
@@ -265,35 +265,35 @@ export type ConsoleFetchJSON<T = any> = {
     method?: string,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string,
+    cluster?: string, // TODO remove multicluster
   ): Promise<T>;
   delete(
     url: string,
     json?: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string,
+    cluster?: string, // TODO remove multicluster
   ): Promise<T>;
   post(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string,
+    cluster?: string, // TODO remove multicluster
   ): Promise<T>;
   put(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string,
+    cluster?: string, // TODO remove multicluster
   ): Promise<T>;
   patch(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string,
+    cluster?: string, // TODO remove multicluster
   ): Promise<T>;
 };
 
@@ -626,18 +626,19 @@ export type SelfSubjectAccessReviewKind = {
   };
 };
 
-export type YAMLEditorProps = {
+export type CodeEditorProps = {
   value?: string;
   language?: string;
   options?: object;
   minHeight?: string | number;
   showShortcuts?: boolean;
+  showMiniMap?: boolean;
   toolbarLinks?: React.ReactNodeArray;
   onChange?: (newValue, event) => void;
   onSave?: () => void;
 };
 
-export type YAMLEditorRef = {
+export type CodeEditorRef = {
   editor?: MonacoEditor['editor'];
 };
 
@@ -669,4 +670,28 @@ export type ErrorBoundaryFallbackProps = {
   componentStack: string;
   stack: string;
   title: string;
+};
+
+export type FormatSeriesTitle = (labels: PrometheusLabels, i?: number) => string;
+
+export type QueryBrowserProps = {
+  customDataSource?: CustomDataSource;
+  defaultSamples?: number;
+  defaultTimespan?: number;
+  disabledSeries?: PrometheusLabels[][];
+  disableZoom?: boolean;
+  filterLabels?: PrometheusLabels;
+  fixedEndTime?: number;
+  formatSeriesTitle?: FormatSeriesTitle;
+  GraphLink?: React.ComponentType<{}>;
+  hideControls?: boolean;
+  isStack?: boolean;
+  namespace?: string;
+  onZoom?: (from: number, to: number) => void;
+  pollInterval?: number;
+  queries: string[];
+  showLegend?: boolean;
+  showStackedControl?: boolean;
+  timespan?: number;
+  units?: string;
 };

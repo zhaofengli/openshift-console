@@ -2,7 +2,8 @@ import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import * as yup from 'yup';
 import { GitProvider } from '@console/git-service/src';
-import { nameValidationSchema, nameRegex } from '@console/shared';
+import { importFlowRepositoryValidationSchema } from '@console/pipelines-plugin/src/components/repository/repository-form-utils';
+import { nameValidationSchema, nameRegex, resourceNameRegex } from '@console/shared';
 import { healthChecksProbesValidationSchema } from '../health-checks/health-checks-probe-validation-utils';
 import {
   projectNameValidationSchema,
@@ -36,6 +37,7 @@ export const validationSchema = (t: TFunction) =>
     build: buildValidationSchema,
     resources: resourcesValidationSchema,
     healthChecks: healthChecksProbesValidationSchema(t),
+    pac: importFlowRepositoryValidationSchema(t),
   });
 
 const hasDomain = (url: string, domain: string): boolean => {
@@ -75,13 +77,21 @@ export const createComponentName = (nameString: string): string => {
     : kebabCaseStr;
 };
 
+export const createResourceName = (nameString: string): string => {
+  if (resourceNameRegex.test(nameString)) {
+    return nameString;
+  }
+
+  const kebabCaseStr = _.kebabCase(nameString);
+  return nameString.match(/^\d/) || kebabCaseStr.match(/^\d/)
+    ? `ocp-${kebabCaseStr}`
+    : kebabCaseStr;
+};
+
 export const detectGitRepoName = (url: string): string | undefined => {
   if (!gitUrlRegex.test(url)) {
     return undefined;
   }
-  const name = url
-    .replace(/\/$/, '')
-    .split('/')
-    .pop();
+  const name = url.replace(/\/$/, '').split('/').pop();
   return createComponentName(name);
 };

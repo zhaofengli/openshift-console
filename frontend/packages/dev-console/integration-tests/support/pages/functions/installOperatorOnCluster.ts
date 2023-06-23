@@ -92,16 +92,13 @@ export const waitForCRDs = (operator: operators) => {
     case operators.PipelinesOperator:
       cy.log(`Verify the CRD's for the "${operator}"`);
       operatorsPage.navigateToCustomResourceDefinitions();
-      cy.byTestID('name-filter-input')
-        .clear()
-        .type('Pipeline');
+      cy.byTestID('name-filter-input').clear().type('Pipeline');
       cy.get('tr[data-test-rows="resource-row"]', { timeout: 300000 }).should(
         'have.length.within',
         4,
         6,
       );
       cy.get('[data-test-id="TektonPipeline"]', { timeout: 80000 }).should('be.visible');
-      cy.get('[data-test-id="PipelineResource"]', { timeout: 80000 }).should('be.visible');
       cy.get('[data-test-id="PipelineRun"]', { timeout: 80000 }).should('be.visible');
       cy.get('[data-test-id="Pipeline"]', { timeout: 80000 }).should('be.visible');
       break;
@@ -109,9 +106,7 @@ export const waitForCRDs = (operator: operators) => {
     case operators.WebTerminalOperator:
       cy.log(`Verify the CRD's for the "${operator}"`);
       operatorsPage.navigateToCustomResourceDefinitions();
-      cy.byTestID('name-filter-input')
-        .clear()
-        .type('DevWorkspace');
+      cy.byTestID('name-filter-input').clear().type('DevWorkspace');
       cy.get('tr[data-test-rows="resource-row"]', { timeout: 300000 }).should(
         'have.length.within',
         4,
@@ -150,9 +145,7 @@ const createShipwrightBuild = () => {
   projectNameSpace.selectProject(Cypress.env('NAMESPACE'));
   cy.get('body').then(($body) => {
     if ($body.find(operatorsPO.installOperators.search)) {
-      cy.get(operatorsPO.installOperators.search)
-        .clear()
-        .type(operators.ShipwrightOperator);
+      cy.get(operatorsPO.installOperators.search).clear().type(operators.ShipwrightOperator);
     }
   });
   cy.get(operatorsPO.installOperators.shipwrightBuildLink).click({ force: true });

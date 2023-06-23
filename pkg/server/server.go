@@ -23,9 +23,11 @@ import (
 	"k8s.io/klog"
 
 	"github.com/openshift/console/pkg/auth"
+	devconsoleProxy "github.com/openshift/console/pkg/devconsole/proxy"
 	"github.com/openshift/console/pkg/devfile"
 	"github.com/openshift/console/pkg/graphql/resolver"
 	helmhandlerspkg "github.com/openshift/console/pkg/helm/handlers"
+	"github.com/openshift/console/pkg/knative"
 	"github.com/openshift/console/pkg/metrics"
 	"github.com/openshift/console/pkg/plugins"
 	"github.com/openshift/console/pkg/proxy"
@@ -56,7 +58,7 @@ const (
 	alertmanagerUserWorkloadProxyEndpoint = "/api/alertmanager-user-workload"
 	authLoginEndpoint                     = "/auth/login"
 	authLogoutEndpoint                    = "/auth/logout"
-	authLogoutMulticlusterEndpoint        = "/api/logout/multicluster"
+	authLogoutMulticlusterEndpoint        = "/api/logout/multicluster" // TODO remove multicluster.
 	customLogoEndpoint                    = "/custom-logo"
 	deleteOpenshiftTokenEndpoint          = "/api/openshift/delete-token"
 	devfileEndpoint                       = "/api/devfile/"
@@ -66,8 +68,10 @@ const (
 	helmChartRepoProxyEndpoint            = "/api/helm/charts/"
 	indexPageTemplateName                 = "index.html"
 	k8sProxyEndpoint                      = "/api/kubernetes/"
+	knativeProxyEndpoint                  = "/api/console/knative/"
+	devConsoleEndpoint                    = "/api/dev-console/"
 	localesEndpoint                       = "/locales/resource.json"
-	multiclusterLogoutPageTemplateName    = "multicluster-logout.html"
+	multiclusterLogoutPageTemplateName    = "multicluster-logout.html" // TODO remove multicluster
 	operandsListEndpoint                  = "/api/list-operands/"
 	pluginAssetsEndpoint                  = "/api/plugins/"
 	pluginProxyEndpoint                   = "/api/proxy/"
@@ -75,9 +79,9 @@ const (
 	prometheusTenancyProxyEndpoint        = "/api/prometheus-tenancy"
 	requestTokenEndpoint                  = "/api/request-token"
 	sha256Prefix                          = "sha256~"
-	thanosServiceProxyPath                = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9091/proxy-service/api"
-	thanosTenancyForRulesServiceProxyPath = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9093/proxy-service/api"
-	thanosTenancyServiceProxyPath         = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9092/proxy-service/api"
+	thanosServiceProxyPath                = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9091/proxy-service/api" // TODO remove multicluster
+	thanosTenancyForRulesServiceProxyPath = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9093/proxy-service/api" // TODO remove multicluster
+	thanosTenancyServiceProxyPath         = "/api/v1/namespaces/openshift-monitoring/services/https:thanos-querier:9092/proxy-service/api" // TODO remove multicluster
 	tokenizerPageTemplateName             = "tokener.html"
 	updatesEndpoint                       = "/api/check-updates"
 )
@@ -90,11 +94,11 @@ type jsGlobals struct {
 	AuthDisabled                    bool                       `json:"authDisabled"`
 	BasePath                        string                     `json:"basePath"`
 	Branding                        string                     `json:"branding"`
-	Clusters                        []string                   `json:"clusters"`
+	Clusters                        []string                   `json:"clusters"` // TODO remove multicluster
 	ConsolePlugins                  []string                   `json:"consolePlugins"`
 	ConsoleVersion                  string                     `json:"consoleVersion"`
 	ControlPlaneTopology            string                     `json:"controlPlaneTopology"`
-	CopiedCSVsDisabled              map[string]bool            `json:"copiedCSVsDisabled"`
+	CopiedCSVsDisabled              map[string]bool            `json:"copiedCSVsDisabled"` // TODO remove multicluster
 	CustomLogoURL                   string                     `json:"customLogoURL"`
 	CustomProductName               string                     `json:"customProductName"`
 	DevCatalogCategories            string                     `json:"developerCatalogCategories"`
@@ -104,7 +108,7 @@ type jsGlobals struct {
 	GOOS                            string                     `json:"GOOS"`
 	GrafanaPublicURL                string                     `json:"grafanaPublicURL"`
 	GraphQLBaseURL                  string                     `json:"graphqlBaseURL"`
-	HubConsoleURL                   string                     `json:"hubConsoleURL"`
+	HubConsoleURL                   string                     `json:"hubConsoleURL"` // TODO remove multicluster
 	I18nNamespaces                  []string                   `json:"i18nNamespaces"`
 	InactivityTimeout               int                        `json:"inactivityTimeout"`
 	KubeAdminLogoutURL              string                     `json:"kubeAdminLogoutURL"`
@@ -116,8 +120,9 @@ type jsGlobals struct {
 	LoginURL                        string                     `json:"loginURL"`
 	LogoutRedirect                  string                     `json:"logoutRedirect"`
 	LogoutURL                       string                     `json:"logoutURL"`
-	MulticlusterLogoutRedirect      string                     `json:"multiclusterLogoutRedirect"`
+	MulticlusterLogoutRedirect      string                     `json:"multiclusterLogoutRedirect"` // TODO remove multicluster
 	NodeArchitectures               []string                   `json:"nodeArchitectures"`
+	NodeOperatingSystems            []string                   `json:"nodeOperatingSystems"`
 	Perspectives                    string                     `json:"perspectives"`
 	ProjectAccessClusterRoles       string                     `json:"projectAccessClusterRoles"`
 	PrometheusBaseURL               string                     `json:"prometheusBaseURL"`
@@ -130,6 +135,7 @@ type jsGlobals struct {
 	Telemetry                       serverconfig.MultiKeyValue `json:"telemetry"`
 	ThanosPublicURL                 string                     `json:"thanosPublicURL"`
 	UserSettingsLocation            string                     `json:"userSettingsLocation"`
+	K8sMode                         string                     `json:"k8sMode"`
 }
 
 type Server struct {
@@ -140,13 +146,13 @@ type Server struct {
 	AlertManagerTenancyProxyConfig      *proxy.Config
 	AlertManagerUserWorkloadHost        string
 	AlertManagerUserWorkloadProxyConfig *proxy.Config
-	Authers                             map[string]*auth.Authenticator
-	AuthMetrics                         *auth.Metrics // TODO: only needed because handleLogoutMulticluster is part of the server type
+	Authers                             map[string]*auth.Authenticator // TODO remove multicluster
+	AuthMetrics                         *auth.Metrics                  // TODO remove multicluster
 	BaseURL                             *url.URL
 	Branding                            string
 	ClusterManagementProxyConfig        *proxy.Config
 	ControlPlaneTopology                string
-	CopiedCSVsDisabled                  map[string]bool
+	CopiedCSVsDisabled                  map[string]bool // TODO remove multicluster
 	CustomLogoFile                      string
 	CustomProductName                   string
 	DevCatalogCategories                string
@@ -157,10 +163,11 @@ type Server struct {
 	GOARCH                              string
 	GOOS                                string
 	GrafanaPublicURL                    *url.URL
-	HubConsoleURL                       *url.URL
+	HubConsoleURL                       *url.URL // TODO remove multicluster
 	I18nNamespaces                      []string
 	InactivityTimeout                   int
 	K8sClient                           *http.Client
+	K8sMode                             string
 	K8sProxyConfig                      *proxy.Config
 	KnativeChannelCRDLister             ResourceLister
 	KnativeEventSourceCRDLister         ResourceLister
@@ -169,9 +176,10 @@ type Server struct {
 	KubeVersion                         string
 	LoadTestFactor                      int
 	LogoutRedirect                      *url.URL
-	ManagedClusterProxyConfig           *proxy.Config
+	ManagedClusterProxyConfig           *proxy.Config // TODO remove multicluster
 	MonitoringDashboardConfigMapLister  ResourceLister
 	NodeArchitectures                   []string
+	NodeOperatingSystems                []string
 	Perspectives                        string
 	PluginProxy                         string
 	PluginsProxyTLSConfig               *tls.Config
@@ -194,6 +202,7 @@ type Server struct {
 	UserSettingsLocation                string
 }
 
+// TODO remove multicluster
 func (s *Server) getLocalAuther() *auth.Authenticator {
 	return s.Authers[serverutils.LocalClusterName]
 }
@@ -201,6 +210,7 @@ func (s *Server) getLocalAuther() *auth.Authenticator {
 func (s *Server) authDisabled() bool {
 	return s.getLocalAuther() == nil
 }
+
 func (s *Server) prometheusProxyEnabled() bool {
 	return s.ThanosProxyConfig != nil && s.ThanosTenancyProxyConfig != nil && s.ThanosTenancyProxyForRulesConfig != nil
 }
@@ -213,6 +223,7 @@ func (s *Server) gitopsProxyEnabled() bool {
 	return s.GitOpsProxyConfig != nil
 }
 
+// TODO remove multicluster
 func (s *Server) getManagedClusterList() []string {
 	clusters := make([]string, 0, len(s.Authers))
 	for cluster := range s.Authers {
@@ -223,12 +234,15 @@ func (s *Server) getManagedClusterList() []string {
 
 func (s *Server) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
+
+	// TODO remove multicluster
 	localAuther := s.getLocalAuther()
 	localK8sProxy := proxy.NewProxy(s.K8sProxyConfig)
 	var managedClusterProxy *proxy.Proxy
 	if s.ManagedClusterProxyConfig != nil {
 		managedClusterProxy = proxy.NewProxy(s.ManagedClusterProxyConfig)
 	}
+
 	handle := func(path string, handler http.Handler) {
 		mux.Handle(proxy.SingleJoiningSlash(s.BaseURL.Path, path), handler)
 	}
@@ -283,16 +297,19 @@ func (s *Server) HTTPHandler() http.Handler {
 	if !s.authDisabled() {
 		handleFunc(authLoginEndpoint, localAuther.LoginFunc)
 		handleFunc(authLogoutEndpoint, localAuther.LogoutFunc)
-		handleFunc(authLogoutMulticlusterEndpoint, s.handleLogoutMulticluster)
 		handleFunc(AuthLoginCallbackEndpoint, localAuther.CallbackFunc(fn))
+		handleFunc(authLogoutMulticlusterEndpoint, s.handleLogoutMulticluster) // TODO remove multicluster
 		handle(requestTokenEndpoint, authHandler(s.handleClusterTokenURL))
 		handle(deleteOpenshiftTokenEndpoint, authHandlerWithUser(s.handleOpenShiftTokenDeletion))
+
+		// TODO remove multicluster
 		for clusterName, clusterAuther := range s.Authers {
 			if clusterAuther != nil {
 				handleFunc(proxy.SingleJoiningSlash(authLoginEndpoint, clusterName), clusterAuther.LoginFunc)
 				handleFunc(proxy.SingleJoiningSlash(AuthLoginCallbackEndpoint, clusterName), clusterAuther.CallbackFunc(fn))
 			}
 		}
+
 	}
 
 	handleFunc("/api/", notFoundHandler)
@@ -317,6 +334,8 @@ func (s *Server) HTTPHandler() http.Handler {
 
 	handle(k8sProxyEndpoint, http.StripPrefix(
 		proxy.SingleJoiningSlash(s.BaseURL.Path, k8sProxyEndpoint),
+
+		// TODO remove multicluster.
 		authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
 			cluster := serverutils.GetCluster(r)
 			k8sProxy := localK8sProxy
@@ -382,6 +401,8 @@ func (s *Server) HTTPHandler() http.Handler {
 		localThanosProxy := proxy.NewProxy(s.ThanosProxyConfig)
 		handleThanosRequest := http.StripPrefix(
 			proxy.SingleJoiningSlash(s.BaseURL.Path, targetAPIPath),
+
+			// TODO remove multicluster
 			authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
 				cluster := serverutils.GetCluster(r)
 				r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
@@ -398,6 +419,8 @@ func (s *Server) HTTPHandler() http.Handler {
 		localThanosTenancyProxy := proxy.NewProxy(s.ThanosTenancyProxyConfig)
 		handleThanosTenancyRequest := http.StripPrefix(
 			proxy.SingleJoiningSlash(s.BaseURL.Path, tenancyTargetAPIPath),
+
+			// TODO remove multicluster
 			authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
 				cluster := serverutils.GetCluster(r)
 				r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
@@ -414,6 +437,8 @@ func (s *Server) HTTPHandler() http.Handler {
 		localThanosTenancyForRulesProxy := proxy.NewProxy(s.ThanosTenancyProxyForRulesConfig)
 		handleThanosTenancyForRulesRequest := http.StripPrefix(
 			proxy.SingleJoiningSlash(s.BaseURL.Path, tenancyTargetAPIPath),
+
+			// TODO remove multicluster
 			authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
 				cluster := serverutils.GetCluster(r)
 				r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
@@ -506,9 +531,23 @@ func (s *Server) HTTPHandler() http.Handler {
 	))
 
 	handle("/api/console/monitoring-dashboard-config", authHandler(s.handleMonitoringDashboardConfigmaps))
+	// Knative
+	trimURLPrefix := proxy.SingleJoiningSlash(s.BaseURL.Path, knativeProxyEndpoint)
+	knativeHandler := knative.NewKnativeHandler(trimURLPrefix,
+		s.K8sClient,
+		s.K8sProxyConfig.Endpoint.String())
+	handle(knativeProxyEndpoint, authHandlerWithUser(knativeHandler.Handle))
+	// TODO: move the knative-event-sources and knative-channels handler into the knative module.
 	handle("/api/console/knative-event-sources", authHandler(s.handleKnativeEventSourceCRDs))
 	handle("/api/console/knative-channels", authHandler(s.handleKnativeChannelCRDs))
-	handle("/api/console/version", authHandler(s.versionHandler))
+
+	// Dev-Console Proxy
+	handle(devConsoleEndpoint, http.StripPrefix(
+		proxy.SingleJoiningSlash(s.BaseURL.Path, devConsoleEndpoint),
+		authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
+			devconsoleProxy.Handler(w, r)
+		})),
+	)
 
 	// User settings
 	userSettingHandler := usersettings.UserSettingsHandler{
@@ -595,11 +634,11 @@ func (s *Server) HTTPHandler() http.Handler {
 		}
 		serverutils.SendResponse(w, http.StatusOK, struct {
 			ConsoleCommit   string   `json:"consoleCommit"`
-			ManagedClusters []string `json:"managedClusters"`
+			ManagedClusters []string `json:"managedClusters"` // TODO remove multicluster
 			Plugins         []string `json:"plugins"`
 		}{
 			ConsoleCommit:   os.Getenv("SOURCE_GIT_COMMIT"),
-			ManagedClusters: s.getManagedClusterList(),
+			ManagedClusters: s.getManagedClusterList(), // TODO remove multicluster
 			Plugins:         pluginsHandler.GetPluginsList(),
 		})
 	}))
@@ -629,7 +668,7 @@ func (s *Server) HTTPHandler() http.Handler {
 		s.K8sProxyConfig.Endpoint.String(),
 		s.ServiceAccountToken,
 	)
-	prometheus.MustRegister(s.AuthMetrics.GetCollectors()...)
+	prometheus.MustRegister(s.AuthMetrics.GetCollectors()...) // TODO remove multicluster
 	prometheus.MustRegister(serverconfigMetrics.GetCollectors()...)
 	prometheus.MustRegister(usageMetrics.GetCollectors()...)
 	handle("/metrics", metrics.AddHeaderAsCookieMiddleware(
@@ -691,6 +730,8 @@ func (s *Server) HTTPHandler() http.Handler {
 		)
 	}
 
+	handle("/api/console/version", authHandler(s.versionHandler))
+
 	mux.HandleFunc(s.BaseURL.Path, s.indexHandler)
 
 	return securityHeadersMiddleware(http.Handler(mux))
@@ -729,7 +770,7 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 		LoginErrorURL:              proxy.SingleJoiningSlash(s.BaseURL.String(), AuthLoginErrorEndpoint),
 		LogoutURL:                  proxy.SingleJoiningSlash(s.BaseURL.String(), authLogoutEndpoint),
 		LogoutRedirect:             s.LogoutRedirect.String(),
-		MulticlusterLogoutRedirect: proxy.SingleJoiningSlash(s.BaseURL.String(), authLogoutMulticlusterEndpoint),
+		MulticlusterLogoutRedirect: proxy.SingleJoiningSlash(s.BaseURL.String(), authLogoutMulticlusterEndpoint), // TODO remove multicluster
 		KubeAPIServerURL:           s.KubeAPIServerURL,
 		Branding:                   s.Branding,
 		CustomProductName:          s.CustomProductName,
@@ -754,15 +795,17 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 		AddPage:                    s.AddPage,
 		ProjectAccessClusterRoles:  s.ProjectAccessClusterRoles,
 		Perspectives:               s.Perspectives,
-		Clusters:                   s.getManagedClusterList(),
+		Clusters:                   s.getManagedClusterList(), // TODO remove multicluster
 		Telemetry:                  s.Telemetry,
 		ReleaseVersion:             s.ReleaseVersion,
 		NodeArchitectures:          s.NodeArchitectures,
+		NodeOperatingSystems:       s.NodeOperatingSystems,
 		CopiedCSVsDisabled:         s.CopiedCSVsDisabled,
-		HubConsoleURL:              s.HubConsoleURL.String(),
+		HubConsoleURL:              s.HubConsoleURL.String(), // TODO remove multicluster
+		K8sMode:                    s.K8sMode,
 	}
 
-	localAuther := s.getLocalAuther()
+	localAuther := s.getLocalAuther() // TODO remove multicluster
 
 	if !s.authDisabled() {
 		specialAuthURLs := localAuther.GetSpecialURLs()
@@ -819,6 +862,8 @@ func (s *Server) handleClusterTokenURL(w http.ResponseWriter, r *http.Request) {
 		serverutils.SendResponse(w, http.StatusMethodNotAllowed, serverutils.ApiError{Err: "Invalid method: only GET is allowed"})
 		return
 	}
+
+	// TODO remove multicluster
 	cluster := serverutils.GetCluster(r)
 	auther, ok := s.Authers[cluster]
 	if !ok {
@@ -848,6 +893,7 @@ func (s *Server) handleOpenShiftTokenDeletion(user *auth.User, w http.ResponseWr
 	}
 
 	// Proxy request to correct cluster
+	// TODO remove multicluster
 	cluster := serverutils.GetCluster(r)
 	client := s.K8sClient
 	proxyConfig := s.K8sProxyConfig
@@ -879,6 +925,7 @@ func (s *Server) handleOpenShiftTokenDeletion(user *auth.User, w http.ResponseWr
 }
 
 // TODO: Move this function into the auth module
+// TODO remove multicluster
 func (s *Server) handleLogoutMulticluster(w http.ResponseWriter, r *http.Request) {
 	if s.AuthMetrics != nil {
 		s.AuthMetrics.LogoutRequested(auth.UnknownLogoutReason)
@@ -925,6 +972,7 @@ func (s *Server) handleLogoutMulticluster(w http.ResponseWriter, r *http.Request
 
 // tokenToObjectName returns the oauthaccesstokens object name for the given raw token,
 // i.e. the sha256 hash prefixed with "sha256~".
+// TODO this should be a member function of the User type
 func tokenToObjectName(token string) string {
 	name := strings.TrimPrefix(token, sha256Prefix)
 	h := sha256.Sum256([]byte(name))

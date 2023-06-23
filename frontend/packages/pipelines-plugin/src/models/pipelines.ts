@@ -1,10 +1,27 @@
 import { chart_color_green_400 as tektonGroupColor } from '@patternfly/react-tokens/dist/js/chart_color_green_400';
 import { K8sKind } from '@console/internal/module/k8s';
-import { BadgeType } from '@console/shared/src/components/badges/badge-factory';
 
 const color = tektonGroupColor.value;
 
 export const PipelineModel: K8sKind = {
+  apiGroup: 'tekton.dev',
+  apiVersion: 'v1',
+  label: 'Pipeline',
+  // t('pipelines-plugin~Pipeline')
+  labelKey: 'pipelines-plugin~Pipeline',
+  // t('pipelines-plugin~Pipelines')
+  labelPluralKey: 'pipelines-plugin~Pipelines',
+  plural: 'pipelines',
+  abbr: 'PL',
+  namespaced: true,
+  kind: 'Pipeline',
+  id: 'pipeline',
+  labelPlural: 'Pipelines',
+  crd: true,
+  color,
+};
+
+export const PipelineModelV1Beta1: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'Pipeline',
@@ -24,6 +41,24 @@ export const PipelineModel: K8sKind = {
 
 export const PipelineRunModel: K8sKind = {
   apiGroup: 'tekton.dev',
+  apiVersion: 'v1',
+  label: 'PipelineRun',
+  // t('pipelines-plugin~PipelineRun')
+  labelKey: 'pipelines-plugin~PipelineRun',
+  // t('pipelines-plugin~PipelineRuns')
+  labelPluralKey: 'pipelines-plugin~PipelineRuns',
+  plural: 'pipelineruns',
+  abbr: 'PLR',
+  namespaced: true,
+  kind: 'PipelineRun',
+  id: 'pipelinerun',
+  labelPlural: 'PipelineRuns',
+  crd: true,
+  color,
+};
+
+export const PipelineRunModelV1Beta1: K8sKind = {
+  apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'PipelineRun',
   // t('pipelines-plugin~PipelineRun')
@@ -42,6 +77,24 @@ export const PipelineRunModel: K8sKind = {
 
 export const TaskModel: K8sKind = {
   apiGroup: 'tekton.dev',
+  apiVersion: 'v1',
+  label: 'Task',
+  // t('pipelines-plugin~Task')
+  labelKey: 'pipelines-plugin~Task',
+  // t('pipelines-plugin~Tasks')
+  labelPluralKey: 'pipelines-plugin~Tasks',
+  plural: 'tasks',
+  abbr: 'T',
+  namespaced: true,
+  kind: 'Task',
+  id: 'task',
+  labelPlural: 'Tasks',
+  crd: true,
+  color,
+};
+
+export const TaskModelV1Beta1: K8sKind = {
+  apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'Task',
   // t('pipelines-plugin~Task')
@@ -59,6 +112,24 @@ export const TaskModel: K8sKind = {
 };
 
 export const TaskRunModel: K8sKind = {
+  apiGroup: 'tekton.dev',
+  apiVersion: 'v1',
+  label: 'TaskRun',
+  // t('pipelines-plugin~TaskRun')
+  labelKey: 'pipelines-plugin~TaskRun',
+  // t('pipelines-plugin~TaskRuns')
+  labelPluralKey: 'pipelines-plugin~TaskRuns',
+  plural: 'taskruns',
+  abbr: 'TR',
+  namespaced: true,
+  kind: 'TaskRun',
+  id: 'taskrun',
+  labelPlural: 'TaskRuns',
+  crd: true,
+  color,
+};
+
+export const TaskRunModelV1Beta1: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'TaskRun',
@@ -217,7 +288,6 @@ export const RepositoryModel: K8sKind = {
   id: 'repository',
   labelPlural: 'Repositories',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 

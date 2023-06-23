@@ -131,9 +131,11 @@ const LazyRoute = (props) => (
   />
 );
 
-const LazyDynamicRoute: React.FC<Omit<React.ComponentProps<typeof Route>, 'component'> & {
-  component: LoadedExtension<DynamicRoutePage>['properties']['component'];
-}> = ({ component, ...props }) => {
+const LazyDynamicRoute: React.FC<
+  Omit<React.ComponentProps<typeof Route>, 'component'> & {
+    component: LoadedExtension<DynamicRoutePage>['properties']['component'];
+  }
+> = ({ component, ...props }) => {
   const LazyComponent = React.useMemo(
     () =>
       React.lazy(async () => {
@@ -174,9 +176,7 @@ const getPluginPageRoutes = (
   const inactiveRoutes = [...routePages, ...dynamicRoutePages]
     .filter((r) => r.properties.perspective && r.properties.perspective !== activePerspective)
     .map((r) => {
-      const key = Array.from(r.properties.path)
-        .concat([r.properties.perspective])
-        .join(',');
+      const key = Array.from(r.properties.path).concat([r.properties.perspective]).join(',');
 
       return (
         <Route
@@ -533,33 +533,6 @@ const AppContents: React.FC<{}> = () => {
       />
 
       <LazyRoute
-        path="/monitoring/alerts"
-        exact
-        loader={() =>
-          import('./monitoring/alerting' /* webpackChunkName: "alerting" */).then(
-            (m) => m.MonitoringUI,
-          )
-        }
-      />
-      <LazyRoute
-        path="/monitoring/alertrules"
-        exact
-        loader={() =>
-          import('./monitoring/alerting' /* webpackChunkName: "alerting" */).then(
-            (m) => m.MonitoringUI,
-          )
-        }
-      />
-      <LazyRoute
-        path="/monitoring/silences"
-        exact
-        loader={() =>
-          import('./monitoring/alerting' /* webpackChunkName: "alerting" */).then(
-            (m) => m.MonitoringUI,
-          )
-        }
-      />
-      <LazyRoute
         path="/monitoring/alertmanageryaml"
         exact
         loader={() =>
@@ -593,14 +566,6 @@ const AppContents: React.FC<{}> = () => {
           import(
             './monitoring/receiver-forms/alert-manager-receiver-forms' /* webpackChunkName: "receiver-forms" */
           ).then((m) => m.EditReceiver)
-        }
-      />
-      <LazyRoute
-        path="/monitoring"
-        loader={() =>
-          import('./monitoring/alerting' /* webpackChunkName: "alerting" */).then(
-            (m) => m.MonitoringUI,
-          )
         }
       />
 

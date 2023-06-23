@@ -33,6 +33,7 @@ import {
   RedExclamationCircleIcon,
   YellowExclamationTriangleIcon,
 } from '@console/shared/src/components/status/icons';
+import { RouteParams } from '@console/shared/src/types';
 import {
   ClusterServiceVersionModel,
   InstallPlanModel,
@@ -292,9 +293,13 @@ const InstallingMessage: React.FC<InstallingMessageProps> = ({ namespace, obj })
   );
 };
 
+type OperatorInstallStatusPageRouteParams = RouteParams<
+  'pkg' | 'catalogNamespace' | 'currentCSV' | 'targetNamespace'
+>;
+
 const OperatorInstallStatus: React.FC<OperatorInstallPageProps> = ({ resources }) => {
   const { t } = useTranslation();
-  const { currentCSV, targetNamespace } = useParams();
+  const { currentCSV, targetNamespace } = useParams<OperatorInstallStatusPageRouteParams>();
   let loading = true;
   let status = '';
   let installObj: ClusterServiceVersionKind | InstallPlanKind =
@@ -364,14 +369,14 @@ const OperatorInstallStatus: React.FC<OperatorInstallPageProps> = ({ resources }
   const channels = pkgManifest.status?.channels || [];
   const channel = channels.find((ch) => ch.currentCSV === currentCSV) || channels[0];
   const displayName = channel?.currentCSVDesc?.displayName || '';
-  const logoVersion = channel?.currentCSVDesc?.version || '';
+  const startingCSV = resources.subscription.data?.spec?.startingCSV;
 
   const CSVLogo = (
     <ClusterServiceVersionLogo
       displayName={displayName}
       icon={iconFor(pkgManifest)}
       provider={pkgManifest.status?.provider?.name || ''}
-      version={logoVersion}
+      version={startingCSV}
     />
   );
 
@@ -419,7 +424,10 @@ const OperatorInstallStatus: React.FC<OperatorInstallPageProps> = ({ resources }
 };
 
 export const OperatorInstallStatusPage: React.FC<OperatorInstallPageProps> = () => {
-  const { pkg, catalogNamespace, currentCSV, targetNamespace } = useParams();
+  const { pkg, catalogNamespace, currentCSV, targetNamespace } = useParams<
+    OperatorInstallStatusPageRouteParams
+  >();
+
   const installPageResources = [
     {
       kind: referenceForModel(ClusterServiceVersionModel),

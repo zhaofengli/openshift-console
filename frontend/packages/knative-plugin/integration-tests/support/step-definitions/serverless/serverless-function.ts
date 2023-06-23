@@ -26,12 +26,8 @@ When('user is able to see the runtime details', () => {
 
 Then('user is able to see Type as Function', () => {
   cy.byTestID('serverless-function-type').should('be.visible');
-  cy.byTestID('serverless-function-type')
-    .find('dt')
-    .should('have.text', 'Type');
-  cy.byTestID('serverless-function-type')
-    .find('dd')
-    .should('have.text', 'Function');
+  cy.byTestID('serverless-function-type').find('dt').should('have.text', 'Type');
+  cy.byTestID('serverless-function-type').find('dd').should('have.text', 'Function');
 });
 
 Then('user clicks on the Knative Service workload {string}', (nodeName: string) => {
@@ -63,7 +59,15 @@ Given('user created Serverless Function node Pipeline', () => {
   const yamlFileName = `support/testData/serverless-function-node-pipeline.yaml`;
   cy.exec(`oc apply -f ${yamlFileName}`, {
     failOnNonZeroExit: false,
-  }).then(function(result) {
+  }).then(function (result) {
     cy.log(result.stdout);
   });
+});
+
+Then('user will be able to see VSCode extension card', () => {
+  cy.byTestID('odc-serverless-vscode-extension-card').should('be.visible');
+});
+
+Then('user will be able to see IntelliJ extension card', () => {
+  cy.byTestID('odc-serverless-intellij-extension-card').should('be.visible');
 });

@@ -12,7 +12,7 @@ import * as classNames from 'classnames';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ExternalLink } from '@console/internal/components/utils';
+import { ExternalLink, getQueryArgument } from '@console/internal/components/utils';
 import { history } from '@console/internal/components/utils/router';
 import { TileViewPage } from '@console/internal/components/utils/tile-view-page';
 import i18n from '@console/internal/i18n';
@@ -22,8 +22,8 @@ import {
   GreenCheckCircleIcon,
   Modal,
   useUserSettingsCompatibility,
-  useActiveCluster,
-  HUB_CLUSTER_NAME,
+  useActiveCluster, // TODO remove multicluster
+  HUB_CLUSTER_NAME, // TODO remove multicluster
 } from '@console/shared';
 import { getURLWithParams } from '@console/shared/src/components/catalog/utils';
 import { isModifiedEvent } from '@console/shared/src/utils';
@@ -40,8 +40,11 @@ import {
 } from './index';
 
 const osBaseLabel = 'operatorframework.io/os.';
-const targetGOOSLabel = window.SERVER_FLAGS.GOOS ? `${osBaseLabel}${window.SERVER_FLAGS.GOOS}` : '';
 const archBaseLabel = 'operatorframework.io/arch.';
+const targetNodeOperatingSystems = window.SERVER_FLAGS.nodeOperatingSystems ?? [];
+const targetNodeOperatingSystemsLabels = targetNodeOperatingSystems.map(
+  (os) => `${osBaseLabel}${os}`,
+);
 const targetNodeArchitectures = window.SERVER_FLAGS.nodeArchitectures ?? [];
 const targetNodeArchitecturesLabels = targetNodeArchitectures.map(
   (arch) => `${archBaseLabel}${arch}`,
@@ -50,7 +53,7 @@ const targetNodeArchitecturesLabels = targetNodeArchitectures.map(
 const archDefaultAMD64Label = 'operatorframework.io/arch.amd64';
 const osDefaultLinuxLabel = 'operatorframework.io/os.linux';
 const filterByArchAndOS = (items: OperatorHubItem[]): OperatorHubItem[] => {
-  if (_.isEmpty(targetNodeArchitectures) || !window.SERVER_FLAGS.GOOS) {
+  if (_.isEmpty(targetNodeArchitectures) && _.isEmpty(targetNodeOperatingSystems)) {
     return items;
   }
   return items.filter((item: OperatorHubItem) => {
@@ -82,7 +85,7 @@ const filterByArchAndOS = (items: OperatorHubItem[]): OperatorHubItem[] => {
     }
 
     return (
-      _.includes(relevantLabels.os, targetGOOSLabel) &&
+      _.some(relevantLabels.os, (os) => _.includes(targetNodeOperatingSystemsLabels, os)) &&
       _.some(relevantLabels.arch, (arch) => _.includes(targetNodeArchitecturesLabels, arch))
     );
   });
@@ -338,9 +341,7 @@ export const keywordCompare = (filterString, item) => {
 
   return (
     item.name.toLowerCase().includes(filterString) ||
-    _.get(item, 'obj.metadata.name', '')
-      .toLowerCase()
-      .includes(filterString) ||
+    _.get(item, 'obj.metadata.name', '').toLowerCase().includes(filterString) ||
     (item.description && item.description.toLowerCase().includes(filterString)) ||
     (item.tags && item.tags.includes(filterString)) ||
     keywords.includes(filterString)
@@ -359,7 +360,6 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
   if (!item) {
     return null;
   }
-
   const { uid, name, imgUrl, provider, description, installed } = item;
   const vendor = provider ? t('olm~provided by {{provider}}', { provider }) : null;
   const badges = item?.catalogSourceDisplayName
@@ -396,18 +396,23 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
 
 export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) => {
   const { t } = useTranslation();
-  const [activeCluster] = useActiveCluster();
+  const [activeCluster] = useActiveCluster(); // TODO remove multicluster
   const [detailsItem, setDetailsItem] = React.useState(null);
   const [showDetails, setShowDetails] = React.useState(false);
   const [ignoreOperatorWarning, setIgnoreOperatorWarning, loaded] = useUserSettingsCompatibility<
     boolean
   >(userSettingsKey, storeKey, false);
+  const [updateChannel, setUpdateChannel] = React.useState('');
+  const [updateVersion, setUpdateVersion] = React.useState('');
+  const installVersion = getQueryArgument('version');
   const filteredItems =
-    activeCluster === HUB_CLUSTER_NAME ? filterByArchAndOS(props.items) : props.items;
+    activeCluster === HUB_CLUSTER_NAME ? filterByArchAndOS(props.items) : props.items; // TODO remove multicluster
 
   React.useEffect(() => {
     const detailsItemID = new URLSearchParams(window.location.search).get('details-item');
-    const currentItem = _.find(filteredItems, { uid: detailsItemID });
+    const currentItem = _.find(filteredItems, {
+      uid: detailsItemID,
+    });
     setDetailsItem(currentItem);
     setShowDetails(!_.isNil(currentItem));
   }, [filteredItems]);
@@ -427,9 +432,14 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
   const closeOverlay = () => {
     const params = new URLSearchParams(window.location.search);
     params.delete('details-item');
+    params.delete('channel');
+    params.delete('version');
     setURLParams(params);
     setDetailsItem(null);
     setShowDetails(false);
+    // reset version and channel state so that switching between operator cards does not carry over previous selections
+    setUpdateChannel('');
+    setUpdateVersion('');
   };
 
   const openOverlay = (item: OperatorHubItem) => {
@@ -447,12 +457,12 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
   };
 
   const renderTile = (item: OperatorHubItem) => (
-    <OperatorHubTile item={item} onClick={openOverlay} />
+    <OperatorHubTile updateChannel={updateChannel} item={item} onClick={openOverlay} />
   );
 
   const createLink =
     detailsItem &&
-    `/operatorhub/subscribe?pkg=${detailsItem.obj.metadata.name}&catalog=${detailsItem.catalogSource}&catalogNamespace=${detailsItem.catalogSourceNamespace}&targetNamespace=${props.namespace}`;
+    `/operatorhub/subscribe?pkg=${detailsItem.obj.metadata.name}&catalog=${detailsItem.catalogSource}&catalogNamespace=${detailsItem.catalogSourceNamespace}&targetNamespace=${props.namespace}&channel=${updateChannel}&version=${updateVersion}`;
 
   const uninstallLink = () =>
     detailsItem &&
@@ -533,12 +543,13 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
                 iconImg={detailsItem.imgUrl}
                 title={detailsItem.name}
                 vendor={t('olm~{{version}} provided by {{provider}}', {
-                  version: detailsItem.version,
+                  version: updateVersion || installVersion || detailsItem.version,
                   provider: detailsItem.provider,
                 })}
                 data-test-id="operator-modal-header"
                 id="catalog-item-header"
               />
+
               <div className="co-catalog-page__overlay-actions">
                 {remoteWorkflowUrl && (
                   <ExternalLink
@@ -558,9 +569,15 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
                   <Link
                     className={classNames(
                       'pf-c-button',
-                      { 'pf-m-secondary': remoteWorkflowUrl },
-                      { 'pf-m-primary': !remoteWorkflowUrl },
-                      { 'pf-m-disabled': detailsItem.isInstalling },
+                      {
+                        'pf-m-secondary': remoteWorkflowUrl,
+                      },
+                      {
+                        'pf-m-primary': !remoteWorkflowUrl,
+                      },
+                      {
+                        'pf-m-disabled': detailsItem.isInstalling,
+                      },
                       'co-catalog-page__overlay-action',
                     )}
                     data-test-id="operator-install-btn"
@@ -586,7 +603,13 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
           onClose={closeOverlay}
           title={detailsItem.name}
         >
-          <OperatorHubItemDetails item={detailsItem} />
+          <OperatorHubItemDetails
+            item={detailsItem}
+            updateChannel={updateChannel}
+            setUpdateChannel={setUpdateChannel}
+            updateVersion={updateVersion}
+            setUpdateVersion={setUpdateVersion}
+          />
         </Modal>
       )}
     </>
@@ -596,6 +619,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
 type OperatorHubTileProps = {
   item: OperatorHubItem;
   onClick: (item: OperatorHubItem) => void;
+  updateChannel: string;
 };
 
 export type OperatorHubTileViewProps = {
