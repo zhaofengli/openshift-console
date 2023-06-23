@@ -1,10 +1,10 @@
-FROM quay.io/coreos/tectonic-console-builder:v24 AS gobuilder
+FROM quay.io/coreos/tectonic-console-builder:v25 AS gobuilder
 RUN mkdir -p /go/src/github.com/openshift/console/
 ADD . /go/src/github.com/openshift/console/
 WORKDIR /go/src/github.com/openshift/console/
 RUN ./build-backend.sh
 
-FROM quay.io/coreos/tectonic-console-builder:v24 AS nodebuilder
+FROM quay.io/coreos/tectonic-console-builder:v25 AS nodebuilder
 RUN mkdir -p /app
 WORKDIR /app
 ADD . .
