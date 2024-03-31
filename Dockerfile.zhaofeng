@@ -1,10 +1,10 @@
-FROM quay.io/coreos/tectonic-console-builder:v25 AS gobuilder
+FROM quay.io/coreos/tectonic-console-builder:v26 AS gobuilder
 RUN mkdir -p /go/src/github.com/openshift/console/
 ADD . /go/src/github.com/openshift/console/
 WORKDIR /go/src/github.com/openshift/console/
 RUN ./build-backend.sh
 
-FROM quay.io/coreos/tectonic-console-builder:v25 AS nodebuilder
+FROM quay.io/coreos/tectonic-console-builder:v26 AS nodebuilder
 RUN mkdir -p /app
 WORKDIR /app
 ADD . .
@@ -14,7 +14,7 @@ ENV CHROMEDRIVER_SKIP_DOWNLOAD=true \
     CYPRESS_INSTALL_BINARY=0
 RUN ./build-frontend.sh
 
-FROM openshift/origin-base:v3.11.0
+FROM quay.io/openshift/origin-base:4.9.0
 RUN mkdir -p /opt/bridge/bin
 COPY --from=gobuilder /go/src/github.com/openshift/console/bin/bridge /opt/bridge/bin/bridge
 COPY --from=nodebuilder /app/frontend/public/dist /opt/bridge/static
