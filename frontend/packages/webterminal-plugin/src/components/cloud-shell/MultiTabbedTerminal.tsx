@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Button, Tab, TabTitleText, TabTitleIcon } from '@patternfly/react-core';
-import { CloseIcon, PlusIcon } from '@patternfly/react-icons';
+import { CloseIcon } from '@patternfly/react-icons/dist/esm/icons/close-icon';
+import { PlusIcon } from '@patternfly/react-icons/dist/esm/icons/plus-icon';
 import { useTranslation } from 'react-i18next';
 import { Tabs } from '@console/app/src/components/tabs';
 import { useTelemetry } from '@console/shared/src/hooks/useTelemetry';
@@ -78,7 +79,6 @@ export const MultiTabbedTerminal: React.FC<MultiTabbedTerminalProps> = ({ onClos
     <Tabs activeKey={activeTabKey} isBox data-test="multi-tab-terminal">
       {terminalTabs.map((terminalNumber, tabIndex) => (
         <Tab
-          translate="no"
           className="co-multi-tabbed-terminal__tab"
           data-test="multi-tab-terminal-tab"
           eventKey={terminalNumber}
@@ -123,7 +123,6 @@ export const MultiTabbedTerminal: React.FC<MultiTabbedTerminalProps> = ({ onClos
       ))}
       {terminalTabs.length < MAX_TERMINAL_TABS && (
         <Tab
-          translate="no"
           eventKey="add-tab"
           onClick={addNewTerminal}
           title={

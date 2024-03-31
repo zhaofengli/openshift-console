@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Tooltip, TooltipPosition } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { impersonateStateToProps } from '@console/dynamic-plugin-sdk';
 import { resourcePathFromModel, useAccessReview } from '@console/internal/components/utils';
 import { AccessReviewResourceAttributes } from '@console/internal/module/k8s';
@@ -11,7 +11,7 @@ import { getLatestPipelineRunStatus } from '@console/pipelines-plugin/src/utils/
 import { Status } from '@console/shared';
 import { BuildDecoratorBubble } from '@console/topology/src/components/graph-view';
 import { startPipelineModal } from '../../components/pipelines/modals';
-import { useTaskRuns } from '../../components/taskruns/useTaskRuns';
+import { getTaskRunsOfPipelineRun, useTaskRuns } from '../../components/taskruns/useTaskRuns';
 import { PipelineRunModel } from '../../models';
 import { PipelineKind, PipelineRunKind } from '../../types';
 
@@ -39,12 +39,11 @@ export const ConnectedPipelineRunDecorator: React.FC<PipelineRunDecoratorProps &
   y,
   impersonate,
 }) => {
+  const ref = React.useRef();
   const { t } = useTranslation();
   const { latestPipelineRun, status } = getLatestPipelineRunStatus(pipelineRuns);
-  const [taskRuns, taskRunsLoaded] = useTaskRuns(
-    latestPipelineRun?.metadata?.namespace,
-    latestPipelineRun?.metadata?.name,
-  );
+  const [taskRuns, taskRunsLoaded] = useTaskRuns(latestPipelineRun?.metadata?.namespace);
+  const PLRTaskRuns = getTaskRunsOfPipelineRun(taskRuns, latestPipelineRun?.metadata?.namespace);
   const statusIcon = <Status status={status} iconOnly noTooltip />;
 
   const defaultAccessReview: AccessReviewResourceAttributes = {
@@ -64,7 +63,7 @@ export const ConnectedPipelineRunDecorator: React.FC<PipelineRunDecoratorProps &
       <PipelineBuildDecoratorTooltip
         pipelineRun={latestPipelineRun}
         status={status}
-        taskRuns={taskRuns}
+        taskRuns={PLRTaskRuns}
       />
     );
     const link = `${resourcePathFromModel(
@@ -101,8 +100,8 @@ export const ConnectedPipelineRunDecorator: React.FC<PipelineRunDecoratorProps &
   }
 
   return (
-    <Tooltip content={tooltipContent} position={TooltipPosition.left}>
-      {decoratorContent}
+    <Tooltip triggerRef={ref} content={tooltipContent} position={TooltipPosition.left}>
+      <g ref={ref}>{decoratorContent}</g>
     </Tooltip>
   );
 };

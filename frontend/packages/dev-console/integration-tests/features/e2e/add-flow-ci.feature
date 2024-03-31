@@ -123,7 +123,7 @@ Feature: Create the different workloads from Add page
               And Application Name, Name fields displayed in General section
               And Advanced options sections are displayed
               And Create button is in disabled state
-              
+
         Scenario Outline: Create Sample Application from Add page: GS-03-TC05
             Given user is at Add page
              When user clicks on the Samples card

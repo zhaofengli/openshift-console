@@ -15,7 +15,7 @@ The console is a more friendly `kubectl` in the form of a single page webapp. It
 
 ### Dependencies:
 
-1. [node.js](https://nodejs.org/) >= 14 & [yarn](https://yarnpkg.com/en/docs/install) >= 1.20
+1. [node.js](https://nodejs.org/) >= 18 & [yarn](https://yarnpkg.com/en/docs/install) >= 1.20
 2. [go](https://golang.org/) >= 1.18+
 3. [oc](https://mirror.openshift.com/pub/openshift-v4/clients/oc/4.4/) or [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) and an OpenShift or Kubernetes cluster
 4. [jq](https://stedolan.github.io/jq/download/) (for `contrib/environment.sh`)
@@ -93,6 +93,39 @@ Finally run the console and visit [localhost:9000](http://localhost:9000):
 ```
 ./examples/run-bridge.sh
 ```
+
+#### Enabling Monitoring Locally
+In order to enable the monitoring UI and see the "Observe" navigation item while running locally, you'll need to run the OpenShift Monitoring dynamic plugin alongside Bridge. To do so, follow these steps:
+
+1. Clone the monitoring-plugin repo: https://github.com/openshift/monitoring-plugin
+2. `cd` to the monitoring-plugin root dir
+3. Run
+  ```
+  yarn && yarn start
+  ```
+4. Run Bridge in another terminal following the steps above, but set the following environment variable before starting Bridge:
+  ```
+  export BRIDGE_PLUGINS="monitoring-plugin=http://localhost:9001"
+  ```
+
+#### Updating `tectonic-console-builder` image
+Updating `tectonic-console-builder` image is needed whenever there is a change in the build-time dependencies and/or go versions.
+
+In order to update the `tectonic-console-builder` to a new version i.e. v27, follow these steps:
+
+1. Update the `tectonic-console-builder` image tag in files listed below:
+   - .ci-operator.yaml
+   - Dockerfile.dev
+   - Dockerfile.plugins.demo
+   For example, `tectonic-console-builder:27`
+2. Update the dependencies in Dockerfile.builder file i.e. v18.0.0.
+3. Run `./push-builder.sh` script build and push the updated builder image to quay.io.
+   Note: You can test the image using `./builder-run.sh ./build-backend.sh`.
+   To update the image on quay.io, you need edit permission to the quay.io/coreos/  tectonic-console-builder repo. 
+4. Lastly, update the mapping of `tectonic-console-builder` image tag in 
+   [openshift/release](https:// github.com/openshift/release/blob/master/core-services/image-mirroring/supplemental-ci-images/mapping_supplemental_ci_images_ci) repository. 
+   Note: There could be scenario were you would have to add the new image reference in the "mapping_supplemental_ci_images_ci" file, i.e. to avoid CI downtime for upcoming release cycle. 
+   Optional: Request for the [rhel-8-base-nodejs-openshift-4.15](https://github.com/openshift-eng/ocp-build-data/pull/3775/files) nodebuilder update if it doesn't match the node version in `tectonic-console-builder`.
 
 #### CodeReady Containers
 
@@ -213,9 +246,14 @@ Run frontend tests:
 
 ### Integration Tests
 
-#### Cypress
-
 Cypress integration tests are implemented in [Cypress.io](https://www.cypress.io/).
+
+To install Cypress:
+
+```
+cd frontend
+yarn run cypress install
+```
 
 Launch Cypress test runner:
 
@@ -225,10 +263,11 @@ oc login ...
 yarn run test-cypress-console
 ```
 
-This will launch the Cypress Test Runner UI in the `console` package, where you can run one or all cypress tests.
-By default, it will look for Chrome in the system and use it, but if you want to use Firefox instead, set `BRIDGE_E2E_BROWSER_NAME` environment variable in your shell with the value `firefox`.
+This will launch the Cypress Test Runner UI in the `console` package, where you can run one or all Cypress tests.
 
-##### Execute Cypress in different packages
+**Important:**  when testing with authentication, set `BRIDGE_KUBEADMIN_PASSWORD` environment variable in your shell.
+
+#### Execute Cypress in different packages
 
 An alternate way to execute cypress tests is via [test-cypress.sh](test-cypress.sh) which takes a `-p <package>` parameter to allow execution in different packages. It also can run Cypress tests in the Test Runner UI or in `-- headless` mode:
 
@@ -248,86 +287,11 @@ Examples:
   test-cypress.sh -p console -s 'tests/crud/*' -h true  // runs console CRUD tests in headless mode
 ```
 
+When running in headless mode, Cypress will test using its integrated Electron browser, but if you want to use Chrome or Firefox instead, set `BRIDGE_E2E_BROWSER_NAME` environment variable in your shell with the value `chrome` or `firefox`.
+
 [**_More information on Console's Cypress usage_**](frontend/packages/integration-tests-cypress/README.md)
 
 [**_More information on DevConsole's Cypress usage_**](frontend/packages/dev-console/integration-tests/README.md)
-
-#### Protractor
-
-Integration tests are run in a headless browser driven by [protractor](http://www.protractortest.org/#/).
-Requirements include Chrome or Firefox, a working cluster, kubectl, and bridge itself (see building above).
-By default, it will look for Chrome in the system and use it, but if you want to use Firefox instead, set `BRIDGE_E2E_BROWSER_NAME` environment variable in your shell with the value `firefox`.
-
-Setup (or any time you change node_modules - `yarn add` or `yarn install`)
-
-```
-cd frontend && yarn run webdriver-update
-```
-
-Run integration tests:
-
-```
-yarn run test-protractor
-```
-
-Run integration tests on an OpenShift cluster:
-
-```
-yarn run test-protractor-openshift
-```
-
-This will include the normal k8s CRUD tests and CRUD tests for OpenShift
-resources.
-
-If you get Jasmine spec timeout errors during runs perhaps against a busy cluster or over slow network, you can try setting a bigger timeout in milliseconds to `BRIDGE_JASMINE_TIMEOUT` environment variable in your shell before running the tests. Default 120000 (2 minutes).
-
-If your local Chrome version doesn't match the Chromedriver version from the console dependencies, override the version with:
-
-```
-yarn run webdriver-update --versions.chrome=77.0.3865.120
-```
-
-For Fedora, you can use:
-
-```
-yarn run webdriver-update-fedora
-```
-
-For macOS, you can use:
-
-```
-yarn run webdriver-update-macos
-```
-
-##### Hacking Protractor Tests
-
-To see what the tests are actually doing, it is possible to run in non-`headless` mode by setting the `NO_HEADLESS` environment variable:
-
-```
-$ NO_HEADLESS=true ./test-protractor.sh <suite>
-```
-
-To use a specific binary version of chrome, it is possible to set the `CHROME_BINARY_PATH` environment variable:
-
-```
-$ CHROME_BINARY_PATH="/usr/bin/chromium-browser" ./test-protractor.sh <suite>
-```
-
-To avoid skipping remaining portion of tests upon encountering the first failure, `NO_FAILFAST` environment variable can be used:
-
-```
-$ NO_FAILFAST=true ./test-protractor.sh <suite>
-```
-
-##### Debugging Protractor Tests
-
-1. `cd frontend; yarn run build`
-2. Add `debugger;` statements to any e2e test
-3. `yarn run debug-protractor-suite --suite <suite-to-debug>`
-4. Chrome browser URL: 'chrome://inspect/#devices', click on the 'inspect' link in **Target (v10...)** section.
-5. Launches chrome-dev tools, click Resume button to continue
-6. Will break on any `debugger;` statements
-7. Pauses browser when not using `--headless` argument!
 
 #### How the Integration Tests Run in CI
 
@@ -335,34 +299,13 @@ The end-to-end tests run against pull requests using [ci-operator](https://githu
 The tests are defined in [this manifest](https://github.com/openshift/release/blob/master/ci-operator/jobs/openshift/console/openshift-console-master-presubmits.yaml)
 in the [openshift/release](https://github.com/openshift/release) repo and were generated with [ci-operator-prowgen](https://github.com/openshift/ci-operator-prowgen).
 
-CI runs the [test-prow-e2e.sh](test-prow-e2e.sh) script, which runs [test-cypress.sh](test-cypress.sh) and ['test-protractor.sh e2e'](test-protractor.sh), which runs the protractor `e2e` test suite.
+CI runs the [test-prow-e2e.sh](test-prow-e2e.sh) script, which runs [test-cypress.sh](test-cypress.sh).
 
-##### Cypress in CI
-
-The CI executes [test-cypress.sh](test-cypress.sh) to run all Cypress tests, in all 'packages' (console, olm, and devconsole), in `-- headless` mode via:
+[test-cypress.sh](test-cypress.sh) runs all Cypress tests, in all 'packages' (console, olm, and devconsole), in `-- headless` mode via:
 
 `test-cypress.sh -h true`
 
 For more information on `test-cypress.sh` usage please see [Execute Cypress in different packages](#execute-cypress-in-different-packages)
-
-##### Protractor in CI
-
-['test-protractor.sh e2e'](test-protractor.sh) runs the protractor `e2e` test suite defined in [protractor.conf.ts](frontend/integration-tests/protractor.conf.ts)
-You can simulate an e2e run against an existing cluster with the following commands (replace `/path/to/install-dir` with your OpenShift install directory):
-
-```
-$ oc apply -f ./frontend/integration-tests/data/htpasswd-secret.yaml
-$ oc patch oauths cluster --patch "$(cat ./frontend/integration-tests/data/patch-htpasswd.yaml)" --type=merge
-$ export BRIDGE_BASE_ADDRESS="$(oc get consoles.config.openshift.io cluster -o jsonpath='{.status.consoleURL}')"
-$ export BRIDGE_KUBEADMIN_PASSWORD=$(cat "/path/to/install-dir/auth/kubeadmin-password")
-$ ./test-protractor.sh e2e
-```
-
-If you don't want to run the entire e2e tests, you can use a different suite from [protractor.conf.ts](frontend/integration-tests/protractor.conf.ts). For instance,
-
-```
-$ ./test-protractor.sh <suite>
-```
 
 ### Internationalization
 
@@ -459,6 +402,14 @@ To upgrade yarn itself, download a new yarn release from
 `frontend/.yarn/releases` with the new version, and update `yarn-path` in
 `frontend/.yarnrc`.
 
+##### @patternfly
+
+Note that when upgrading @patternfly packages, we've seen in the past that it can cause the JavaScript heap to run out of memory, or the bundle being too large if multiple versions of the same @patternfly package is pulled in. To increase efficiency, run the following after updating packages:
+
+```
+npx yarn-deduplicate --scopes @patternfly
+```
+
 #### Supported Browsers
 
 We support the latest versions of the following browsers:
@@ -471,8 +422,6 @@ We support the latest versions of the following browsers:
 IE 11 and earlier is not supported.
 
 ## Frontend Packages
-- [ceph-storage-plugin](./frontend/packages/ceph-storage-plugin/README.md)
-
 - [console-dynamic-plugin-sdk](./frontend/packages/console-dynamic-plugin-sdk/README.md)
 [[API]](./frontend/packages/console-dynamic-plugin-sdk/docs/api.md)
 [[Console Extensions]](./frontend/packages/console-dynamic-plugin-sdk/docs/console-extensions.md)

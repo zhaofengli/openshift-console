@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button } from '@patternfly/react-core';
-import { PencilAltIcon } from '@patternfly/react-icons';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,19 +14,23 @@ import {
   Timestamp,
 } from '@console/internal/components/utils';
 import { DetailsItem } from '@console/internal/components/utils/details-item';
-import { editLabelsModal } from '@console/internal/components/utils/details-page';
 import { NodeModel, MachineModel } from '@console/internal/models';
 import { NodeKind, referenceForModel } from '@console/internal/module/k8s';
-import { getNodeMachineNameAndNamespace, getNodeAddresses } from '@console/shared';
+import { useLabelsModal } from '@console/shared/src/hooks/useLabelsModal';
+import {
+  getNodeMachineNameAndNamespace,
+  getNodeAddresses,
+} from '@console/shared/src/selectors/node';
+import NodeUptime from './node-dashboard/NodeUptime';
 import NodeIPList from './NodeIPList';
 import NodeStatus from './NodeStatus';
-import MarkAsSchedulablePopover from './popovers/MarkAsSchedulablePopover';
 
 type NodeDetailsOverviewProps = {
   node: NodeKind;
 };
 
 const NodeDetailsOverview: React.FC<NodeDetailsOverviewProps> = ({ node }) => {
+  const launchLabelsModal = useLabelsModal(node);
   const machine = getNodeMachineNameAndNamespace(node);
   const canUpdate = useAccessReview({
     group: NodeModel.apiGroup,
@@ -47,14 +51,14 @@ const NodeDetailsOverview: React.FC<NodeDetailsOverviewProps> = ({ node }) => {
             <dd>{node.metadata.name || '-'}</dd>
             <dt>{t('console-app~Status')}</dt>
             <dd>
-              {!node.spec.unschedulable ? (
-                <NodeStatus node={node} showPopovers />
-              ) : (
-                <MarkAsSchedulablePopover node={node} />
-              )}
+              <NodeStatus node={node} />
             </dd>
             <dt>{t('console-app~External ID')}</dt>
             <dd>{_.get(node, 'spec.externalID', '-')}</dd>
+            <dt>{t('console-app~Uptime')}</dt>
+            <dd>
+              <NodeUptime obj={node} />
+            </dd>
             <dt>{t('console-app~Node addresses')}</dt>
             <dd>
               <NodeIPList ips={getNodeAddresses(node)} expand />
@@ -64,7 +68,7 @@ const NodeDetailsOverview: React.FC<NodeDetailsOverviewProps> = ({ node }) => {
               obj={node}
               path="metadata.labels"
               valueClassName="details-item__value--labels"
-              onEdit={(e) => editLabelsModal(e, { resource: node, kind: NodeModel })}
+              onEdit={launchLabelsModal}
               canEdit={canUpdate}
               editAsGroup
             >
@@ -81,7 +85,7 @@ const NodeDetailsOverview: React.FC<NodeDetailsOverviewProps> = ({ node }) => {
                 >
                   {_.size(node.spec.taints)}{' '}
                   {t('console-app~Taint', { count: _.size(node.spec.taints) })}
-                  <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+                  <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
                 </Button>
               ) : (
                 <span>
@@ -101,7 +105,7 @@ const NodeDetailsOverview: React.FC<NodeDetailsOverviewProps> = ({ node }) => {
                 >
                   {_.size(node.metadata.annotations)}{' '}
                   {t('console-app~Annotation', { count: _.size(node.metadata.annotations) })}
-                  <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+                  <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
                 </Button>
               ) : (
                 <span>

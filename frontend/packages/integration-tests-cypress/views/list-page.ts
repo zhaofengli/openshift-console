@@ -13,6 +13,9 @@ export const listPage = {
         }
       });
   },
+  isCreateButtonVisible: () => {
+    cy.byTestID('item-create').should('be.visible');
+  },
   clickCreateYAMLbutton: () => {
     cy.byTestID('item-create').click({ force: true });
   },
@@ -27,11 +30,8 @@ export const listPage = {
     byName: (name: string) => {
       cy.byTestID('name-filter-input').clear().type(name);
     },
-    numberOfActiveFiltersShouldBe: (numFilters: number) => {
-      cy.get("[class='pf-c-toolbar__item pf-m-chip-group']").should('have.length', numFilters);
-    },
     clickSearchByDropdown: () => {
-      cy.get('.pf-c-toolbar__content-section').within(() => {
+      cy.byTestID('filter-toolbar').within(() => {
         cy.byLegacyTestID('dropdown-button').click();
       });
     },
@@ -40,14 +40,8 @@ export const listPage = {
         cy.get('button').click();
       });
     },
-    clearAllFilters: () => {
-      cy.log('Clearing all filters');
-      cy.get('.pf-c-toolbar__content').within(() => {
-        cy.get('button').last().click();
-      });
-    },
     by: (rowFilter: string) => {
-      cy.get('.pf-c-toolbar__content-section').within(() => {
+      cy.byTestID('filter-toolbar').within(() => {
         cy.byLegacyTestID('filter-dropdown-toggle')
           .find('button')
           .as('filterDropdownToggleButton')
@@ -55,11 +49,8 @@ export const listPage = {
         /* PF Filter dropdown menu items are:
            <li id="cluster">
              <a data-test-row-filter="cluster">
-           Tried cy.get(`[data-test-row-filter="${rowFilter}"]`).click() which found the <a /> but said not clickable due to
-           it's css having 'pointer-events: none'.  Tried ...click({force: true}) which did the click but page not reloaded with
-           '?rowFilter=...'.
          */
-        cy.get(`#${rowFilter}`).click(); // clicking on the <li /> works!
+        cy.get(`#${rowFilter}`).click({ force: true }); // clicking on the <li /> works!
         cy.url().should('include', '?rowFilter');
         cy.get('@filterDropdownToggleButton').click();
       });
@@ -67,19 +58,19 @@ export const listPage = {
   },
   rows: {
     shouldBeLoaded: () => {
-      cy.get(`[data-test-rows="resource-row"`).should('be.visible');
+      cy.get('[data-test-rows="resource-row"]').should('be.visible');
     },
     countShouldBe: (count: number) => {
-      cy.get(`[data-test-rows="resource-row"`).should('have.length', count);
+      cy.get('[data-test-rows="resource-row"]').should('have.length', count);
     },
     countShouldBeWithin: (min: number, max: number) => {
-      cy.get(`[data-test-rows="resource-row"`).should('have.length.within', min, max);
+      cy.get('[data-test-rows="resource-row"]').should('have.length.within', min, max);
     },
     clickFirstLinkInFirstRow: () => {
-      cy.get(`[data-test-rows="resource-row"]`).first().find('a').first().click({ force: true }); // after applying row filter, resource rows detached from DOM according to cypress, need to force the click
+      cy.get('[data-test-rows="resource-row"]').first().find('a').first().click({ force: true }); // after applying row filter, resource rows detached from DOM according to cypress, need to force the click
     },
     clickKebabAction: (resourceName: string, actionName: string) => {
-      cy.get(`[data-test-rows="resource-row"]`)
+      cy.get('[data-test-rows="resource-row"]')
         .contains(resourceName)
         .parents('tr')
         .within(() => {
@@ -88,7 +79,7 @@ export const listPage = {
       cy.byTestActionID(actionName).click();
     },
     clickStatusButton: (resourceName: string) => {
-      cy.get(`[data-test-rows="resource-row"]`)
+      cy.get('[data-test-rows="resource-row"]')
         .contains(resourceName)
         .parents('tr')
         .within(() => {
@@ -96,13 +87,13 @@ export const listPage = {
         });
     },
     hasLabel: (resourceName: string, label: string) => {
-      cy.get(`[data-test-rows="resource-row"]`)
+      cy.get('[data-test-rows="resource-row"]')
         .contains(resourceName)
         .byTestID('label-list')
         .contains(label);
     },
     shouldExist: (resourceName: string) =>
-      cy.get(`[data-test-rows="resource-row"]`).contains(resourceName),
+      cy.get('[data-test-rows="resource-row"]').contains(resourceName),
     clickRowByName: (resourceName: string) =>
       cy.get(`a[data-test-id="${resourceName}"]`).click({ force: true }), // after applying row filter, resource rows detached from DOM according to cypress, need to force the click
     shouldNotExist: (resourceName: string) =>
@@ -111,5 +102,5 @@ export const listPage = {
 };
 
 export namespace ListPageSelector {
-  export const tableColumnHeaders = 'th .pf-c-table__text';
+  export const tableColumnHeaders = '.co-m-list th';
 }

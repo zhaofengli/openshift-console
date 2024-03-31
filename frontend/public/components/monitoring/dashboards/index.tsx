@@ -1,27 +1,33 @@
 import classNames from 'classnames';
 import * as _ from 'lodash-es';
-import { PrometheusEndpoint, RedExclamationCircleIcon } from '@console/dynamic-plugin-sdk';
+import {
+  PrometheusEndpoint,
+  RedExclamationCircleIcon,
+  useResolvedExtensions,
+} from '@console/dynamic-plugin-sdk';
 import {
   Button,
   Label,
-  Select,
-  SelectOption,
   Card as PFCard,
   CardBody,
   CardHeader,
   CardTitle,
-  CardActions,
   Tooltip,
 } from '@patternfly/react-core';
-import { AngleDownIcon, AngleRightIcon } from '@patternfly/react-icons';
+import {
+  Select as SelectDeprecated,
+  SelectOption as SelectOptionDeprecated,
+} from '@patternfly/react-core/deprecated';
+import { AngleDownIcon } from '@patternfly/react-icons/dist/esm/icons/angle-down-icon';
+import { AngleRightIcon } from '@patternfly/react-icons/dist/esm/icons/angle-right-icon';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
+import { useParams, Link, useNavigate } from 'react-router-dom-v5-compat';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch, useSelector } from 'react-redux';
 import { Map as ImmutableMap } from 'immutable';
-import { Link } from 'react-router-dom';
 
 import { ErrorBoundaryFallbackPage, withFallback } from '@console/shared/src/components/error';
 import ErrorAlert from '@console/shared/src/components/alerts/error';
@@ -41,7 +47,6 @@ import { RootState } from '../../../redux';
 import { getPrometheusURL } from '../../graphs/helpers';
 import {
   getQueryArgument,
-  history,
   LoadingInline,
   removeQueryArgument,
   setQueryArgument,
@@ -70,7 +75,6 @@ import {
   getAllVariables,
 } from './monitoring-dashboard-utils';
 
-import { useExtensions } from '@console/plugin-sdk/src';
 import {
   isDataSource,
   DataSource as DataSourceExtension,
@@ -147,7 +151,7 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
     setFilterText(undefined);
   };
 
-  const onToggle = (isExpanded: boolean) => {
+  const onToggle = (_event, isExpanded: boolean) => {
     if (isExpanded) {
       open();
     } else {
@@ -162,7 +166,7 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
     : items;
 
   return (
-    <Select
+    <SelectDeprecated
       className="monitoring-dashboards__variable-dropdown"
       hasInlineFilter={_.size(items) > 1}
       inlineFilterPlaceholderText={t('public~Filter options')}
@@ -188,25 +192,26 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
       {_.map(filteredItems, (v, k) => (
         <OptionComponent key={k} itemKey={k} />
       ))}
-    </Select>
+    </SelectDeprecated>
   );
 };
 
 const VariableOption = ({ itemKey }) =>
   isIntervalVariable(itemKey) ? (
     <Tooltip content={itemKey}>
-      <SelectOption key={itemKey} value={itemKey}>
+      <SelectOptionDeprecated key={itemKey} value={itemKey}>
         Auto interval
-      </SelectOption>
+      </SelectOptionDeprecated>
     </Tooltip>
   ) : (
-    <SelectOption key={itemKey} value={itemKey}>
+    <SelectOptionDeprecated key={itemKey} value={itemKey}>
       {itemKey === MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY ? 'All' : itemKey}
-    </SelectOption>
+    </SelectOptionDeprecated>
   );
 
 const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace }) => {
   const { t } = useTranslation();
+
   const activePerspective = getActivePerspective(namespace);
 
   const timespan = useSelector(({ observe }: RootState) =>
@@ -227,7 +232,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace
   const [isError, setIsError] = React.useState(false);
 
   const customDataSourceName = variable?.datasource?.name;
-  const extensions = useExtensions<DataSourceExtension>(isDataSource);
+  const [extensions] = useResolvedExtensions<DataSourceExtension>(isDataSource);
   const hasExtensions = !_.isEmpty(extensions);
 
   const getURL = React.useCallback(
@@ -239,7 +244,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace
           const extension = extensions.find(
             (ext) => ext?.properties?.contextId === 'monitoring-dashboards',
           );
-          const getDataSource = await extension?.properties?.getDataSource();
+          const getDataSource = extension?.properties?.getDataSource;
           const dataSource = await getDataSource(customDataSourceName);
           return getPrometheusURL(prometheusProps, dataSource?.basePath);
         }
@@ -327,7 +332,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace
         {name}
       </label>
       {isError ? (
-        <Select
+        <SelectDeprecated
           isDisabled={true}
           onToggle={() => {}}
           placeholderText={
@@ -380,7 +385,10 @@ const DashboardDropdown: React.FC<DashboardDropdownProps> = React.memo(
     const uniqueTags = _.uniq(allTags);
 
     const OptionComponent = ({ itemKey }) => (
-      <SelectOption className="monitoring-dashboards__dashboard_dropdown_item" value={itemKey}>
+      <SelectOptionDeprecated
+        className="monitoring-dashboards__dashboard_dropdown_item"
+        value={itemKey}
+      >
         {items[itemKey]?.title}
         {items[itemKey]?.tags?.map((tag, i) => (
           <Tag
@@ -389,7 +397,7 @@ const DashboardDropdown: React.FC<DashboardDropdownProps> = React.memo(
             text={tag}
           />
         ))}
-      </SelectOption>
+      </SelectOptionDeprecated>
     );
 
     const selectItems = _.mapValues(items, 'title');
@@ -418,6 +426,7 @@ const DashboardDropdown: React.FC<DashboardDropdownProps> = React.memo(
 
 export const PollIntervalDropdown: React.FC<TimeDropdownsProps> = ({ namespace }) => {
   const { t } = useTranslation();
+
   const refreshIntervalFromParams = getQueryArgument('refreshInterval');
   const activePerspective = getActivePerspective(namespace);
   const interval = useSelector(({ observe }: RootState) =>
@@ -476,6 +485,7 @@ const HeaderTop: React.FC<{}> = React.memo(() => {
 
 const QueryBrowserLink = ({ queries }) => {
   const { t } = useTranslation();
+
   const params = new URLSearchParams();
   queries.forEach((q, i) => params.set(`query${i}`, q));
   const namespace = React.useContext(NamespaceContext);
@@ -547,7 +557,7 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
   const [dataSourceInfoLoading, setDataSourceInfoLoading] = React.useState<boolean>(true);
   const [customDataSource, setCustomDataSource] = React.useState<CustomDataSource>(undefined);
   const customDataSourceName = panel.datasource?.name;
-  const extensions = useExtensions<DataSourceExtension>(isDataSource);
+  const [extensions] = useResolvedExtensions<DataSourceExtension>(isDataSource);
   const hasExtensions = !_.isEmpty(extensions);
 
   React.useEffect(() => {
@@ -560,7 +570,7 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
         const extension = extensions.find(
           (ext) => ext?.properties?.contextId === 'monitoring-dashboards',
         );
-        const getDataSource = await extension?.properties?.getDataSource();
+        const getDataSource = extension?.properties?.getDataSource;
         const dataSource = await getDataSource(customDataSourceName);
         setCustomDataSource(dataSource);
         setDataSourceInfoLoading(false);
@@ -631,12 +641,19 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
           'co-overview-card--gradient': panel.type === 'grafana-piechart-panel',
         })}
         data-test={`${panel.title.toLowerCase().replace(/\s+/g, '-')}-chart`}
+        isClickable
+        isSelectable
+        data-test-id={panel.id ? `chart-${panel.id}` : undefined}
       >
-        <CardHeader className="monitoring-dashboards__card-header">
+        <CardHeader
+          actions={{
+            actions: <>{!isLoading && <QueryBrowserLink queries={queries} />}</>,
+            hasNoOffset: false,
+            className: 'co-overview-card__actions',
+          }}
+          className="monitoring-dashboards__card-header"
+        >
           <CardTitle>{panel.title}</CardTitle>
-          <CardActions className="co-overview-card__actions">
-            {!isLoading && <QueryBrowserLink queries={queries} />}
-          </CardActions>
         </CardHeader>
         <CardBody className="co-dashboard-card__body--dashboard">
           {isError ? (
@@ -742,11 +759,13 @@ const Board: React.FC<BoardProps> = ({ rows }) => (
   </>
 );
 
-const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ match }) => {
+const MonitoringDashboardsPage: React.FC = () => {
   const { t } = useTranslation();
+  const params = useParams();
+  const navigate = useNavigate();
 
   const dispatch = useDispatch();
-  const namespace = match.params?.ns;
+  const namespace = params?.ns;
   const activePerspective = getActivePerspective(namespace);
   const [board, setBoard] = React.useState<string>();
   const [boards, isLoading, error] = useFetchDashboards(namespace);
@@ -788,8 +807,8 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
         endTime = null;
         // persist only the refresh Interval when dashboard is changed
         if (refreshInterval) {
-          const params = new URLSearchParams({ refreshInterval });
-          url = `${url}?${params.toString()}`;
+          const urlParams = new URLSearchParams({ refreshInterval });
+          url = `${url}?${urlParams.toString()}`;
         }
       } else {
         timeSpan = getQueryArgument('timeRange');
@@ -801,7 +820,7 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
       }
       if (newBoard !== board) {
         if (getQueryArgument('dashboard') !== newBoard) {
-          history.replace(url);
+          navigate(url, { replace: true });
         }
 
         const allVariables = getAllVariables(boards, newBoard, namespace);
@@ -823,16 +842,16 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
         setBoard(newBoard);
       }
     },
-    [activePerspective, board, boards, dispatch, namespace],
+    [activePerspective, board, boards, dispatch, namespace, navigate],
   );
 
   // Display dashboard present in the params or show the first board
   React.useEffect(() => {
     if (!board && !_.isEmpty(boards)) {
       const boardName = getQueryArgument('dashboard');
-      changeBoard((namespace ? boardName : match.params.board) || boards?.[0]?.name);
+      changeBoard((namespace ? boardName : params.board) || boards?.[0]?.name);
     }
-  }, [board, boards, changeBoard, match.params.board, namespace]);
+  }, [board, boards, changeBoard, params.board, namespace]);
 
   React.useEffect(() => {
     const newBoard = getQueryArgument('dashboard');
@@ -931,12 +950,6 @@ type BoardProps = {
 
 type CardProps = {
   panel: Panel;
-};
-
-type MonitoringDashboardsPageProps = {
-  match: {
-    params: { board: string; ns?: string };
-  };
 };
 
 export default withFallback(MonitoringDashboardsPage, ErrorBoundaryFallbackPage);

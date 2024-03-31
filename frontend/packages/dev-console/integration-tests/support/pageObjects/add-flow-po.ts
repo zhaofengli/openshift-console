@@ -11,6 +11,7 @@ export const addPagePO = {
   buildWithGuidedDocumentation: '[data-test="card quick-start"]',
   buildWithGuidedDocumentationItems: '[data-test="card quick-start"] [data-test~="item"]',
   viewAllQuickStarts: '[data-test="item all-quick-starts"]',
+  viewAllSamples: '[data-test="item all-samples"]',
   helmChartRepositoriesCard: '[data-test="card helm-chart-repositories"]',
 };
 
@@ -88,14 +89,11 @@ export const gitPO = {
       replicaCount: 'input#form-number-spinner-deployment-replicas-field',
     },
     resourceLimit: {
-      cpuRequest: 'input[name="limits.cpu.requestValue"]',
-      cpuLimit: 'input[name="limits.cpu.limitValue"]',
-      memoryRequest: 'input[name="limits.memory.requestValue"]',
-      memoryLimit: 'input[name="limits.memory.limitValue"]',
-      cpuRequestHelperText: 'div#form-resource-limit-limits-cpu-request-field-helper',
-      cpuLimitHelperText: 'div#form-resource-limit-limits-cpu-limit-field-helper',
-      memoryRequestHelperText: 'div#form-resource-limit-limits-memory-request-field-helper',
-      memoryLimitHelperText: 'div#form-resource-limit-limits-memory-limit-field-helper',
+      cpuRequest: 'input[aria-describedby="form-resource-limit-limits-cpu-request-field-helper"]',
+      cpuLimit: 'input[aria-describedby="form-resource-limit-limits-cpu-limit-field-helper"]',
+      memoryRequest:
+        'input[aria-describedby="form-resource-limit-limits-memory-request-field-helper"]',
+      memoryLimit: 'input[aria-describedby="form-resource-limit-limits-memory-limit-field-helper"]',
     },
     labels: 'input[data-test="labels"]',
   },
@@ -103,31 +101,32 @@ export const gitPO = {
     devFileStrategy: '[data-test=import-strategy-Devfile]',
     editImportStrategyBtn: '[data-test=import-strategy-button]',
     devFilePathInput: '[data-test=git-form-devfile-path-input]',
-    devFileHelperText: '.pf-c-form__helper-text',
+    devFileHelperText: '.pf-v5-c-form__helper-text',
   },
+  resourceCreationAlert: '[data-test="Resource added alert"]',
 };
 
 export const catalogPO = {
   search: 'input[placeholder="Filter by keyword..."]',
-  filterKeyword: 'input.pf-c-search-input__text-input',
+  filterKeyword: 'input.pf-v5-c-search-input__text-input',
   templateTitle: '.catalog-tile-pf-title',
-  card: '.pf-c-card',
-  cardBadge: 'span.pf-c-badge',
+  card: '.pf-v5-c-card',
+  cardBadge: 'span.pf-v5-c-badge',
   groupBy: '[data-test-id="dropdown-button"]',
   aToz: '[data-test-dropdown-menu="desc"]',
   zToA: '[data-test-dropdown-menu="asc"]',
-  cardType: 'span.pf-c-badge',
+  cardType: 'span.pf-v5-c-badge',
   create: 'button[type="submit"]',
   cancel: '[data-test-id="reset-button"]',
   cardList: '[role="grid"]',
-  cardHeader: '.pf-c-badge.pf-m-read',
-  groupByMenu: 'pf-c-dropdown__menu',
+  cardHeader: '.pf-v5-c-badge.pf-m-read',
+  groupByMenu: 'pf-v5-c-dropdown__menu',
   catalogBatch: '.odc-catalog-badges',
   batchLabel: '.odc-catalog-badges__label',
   bindingFilterBindable: '[data-test="bindable-bindable"]',
   filterInfoTip: '.co-field-level-help__icon',
-  filterInfoTipContent: '.pf-c-popover__content',
-  filterCheckBox: '[class="pf-c-check__input"]',
+  filterInfoTipContent: '.pf-v5-c-popover__content',
+  filterCheckBox: '[class="pf-v5-c-check__input"]',
   chartRepositoryGroup: '[data-test-group-name="chartRepositoryTitle"]',
   catalogTypeLink: 'li.vertical-tabs-pf-tab.shown.text-capitalize.co-catalog-tab__empty',
   catalogTypes: {
@@ -148,16 +147,15 @@ export const catalogPO = {
     Other: '[data-test="tab other"]',
   },
   cards: {
-    mariaDBTemplate: 'a[data-test="Template-MariaDB"] .catalog-tile-pf-title',
-    phpCakeTemplate: '[data-test="Template-CakePHP + MySQL"] .catalog-tile-pf-title',
-    nodeJsBuilderImage: 'a[data-test="BuilderImage-Node.js"] .catalog-tile-pf-title',
-    nodejsPostgreSQL:
-      'a[data-test="Template-Node.js + PostgreSQL (Ephemeral)"] .catalog-tile-pf-title',
-    apacheHTTPServer: 'a[data-test="Template-Apache HTTP Server"] .catalog-tile-pf-title',
-    nginxHTTPServer:
-      'a[data-test="Template-Nginx HTTP server and a reverse proxy"] .catalog-tile-pf-title',
+    mariaDBTemplate: 'a[data-test="Template-MariaDB"]',
+    phpCakeTemplate: '[data-test="Template-CakePHP + MySQL"]',
+    nodeJsBuilderImage: 'a[data-test="BuilderImage-Node.js"]',
+    nodejsPostgreSQL: 'a[data-test="Template-Node.js + PostgreSQL (Ephemeral)"]',
+    apacheHTTPServer: 'a[data-test="Template-Apache HTTP Server"]',
+    nginxHTTPServer: 'a[data-test="Template-Nginx HTTP server and a reverse proxy"]',
     knativeKafka: '[data-test="OperatorBackedService-Knative Kafka"]',
     helmNodejs: '[data-test="HelmChart-Nodejs"]',
+    jenkinsTemplate: '[data-test="Template-Jenkins"]',
   },
   sidePane: {
     dialog: '[role="dialog"]',
@@ -225,8 +223,14 @@ export const catalogPO = {
 export const samplesPO = {
   search: 'input[placeholder="Filter by keyword..."]',
   cards: {
-    httpdTemplate: 'a[data-test="BuilderImage-Httpd"] .catalog-tile-pf-title',
-    basicgoTemplate: 'a[data-test="Devfile-Basic Go"] .catalog-tile-pf-title',
+    httpdTemplate: 'a[data-test="BuilderImage-Httpd"]',
+    basicgoTemplate: 'a[data-test="Devfile-Basic Go"]',
+    basicnodeTemplate: '[data-test="Devfile-Basic Node.js"]',
+    goTemplate: '[data-test="BuilderImage-Go"]',
+  },
+  form: {
+    name: '[data-test-id="application-form-app-name"]',
+    header: '[data-test-id="resource-title"]',
   },
 };
 
@@ -285,7 +289,7 @@ export const eventSourcePO = {
     name: '[data-test-id="application-form-app-name"]',
     appName: '[data-test-id="application-form-app-input"]',
     notifierHeader: 'div[aria-label="Default Alert"] h4',
-    notifierMessage: 'div[aria-label="Default Alert"] div.pf-c-alert__description',
+    notifierMessage: 'div[aria-label="Default Alert"] div.pf-v5-c-alert__description',
   },
   pingSource: {
     data: '[id$="PingSource-data-field"]',

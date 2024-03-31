@@ -2,25 +2,25 @@ import * as React from 'react';
 import * as _ from 'lodash-es';
 import { connect } from 'react-redux';
 import { useTranslation, withTranslation } from 'react-i18next';
+import { BellIcon } from '@patternfly/react-icons/dist/esm/icons/bell-icon';
+import { CaretDownIcon } from '@patternfly/react-icons/dist/esm/icons/caret-down-icon';
+import { EllipsisVIcon } from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
+import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon';
+import { QuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/question-circle-icon';
 import {
-  BellIcon,
-  CaretDownIcon,
-  EllipsisVIcon,
-  PlusCircleIcon,
-  QuestionCircleIcon,
-} from '@patternfly/react-icons';
-import {
-  ApplicationLauncher,
-  ApplicationLauncherGroup,
-  ApplicationLauncherItem,
-  ApplicationLauncherSeparator,
   NotificationBadge,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
-import { Link } from 'react-router-dom';
+import {
+  ApplicationLauncher,
+  ApplicationLauncherGroup,
+  ApplicationLauncherItem,
+  ApplicationLauncherSeparator,
+} from '@patternfly/react-core/deprecated';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   ACM_LINK_ID,
   FLAGS,
@@ -30,7 +30,6 @@ import {
 import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
 import CloudShellMastheadButton from '@console/webterminal-plugin/src/components/cloud-shell/CloudShellMastheadButton';
 import CloudShellMastheadAction from '@console/webterminal-plugin/src/components/cloud-shell/CloudShellMastheadAction';
-import isMultiClusterEnabled from '@console/app/src/utils/isMultiClusterEnabled'; // TODO remove multicluster
 import { getUser } from '@console/dynamic-plugin-sdk';
 import * as UIActions from '../actions/ui';
 import { connectToFlags } from '../reducers/connectToFlags';
@@ -49,6 +48,7 @@ import ClusterMenu from '@console/app/src/components/nav/ClusterMenu';
 import { ACM_PERSPECTIVE_ID } from '@console/app/src/consts';
 import { FeedbackModal } from '@patternfly/react-user-feedback';
 import { useFeedbackLocal } from './feedback-local';
+import feedbackImage from '@patternfly/react-user-feedback/dist/esm/images/rh_feedback.svg';
 
 const defaultHelpLinks = [
   {
@@ -66,11 +66,9 @@ const defaultHelpLinks = [
 ];
 
 const MultiClusterToolbarGroup = () => {
-  const showMultiClusterToolbarGroup =
-    usePerspectiveExtension(ACM_PERSPECTIVE_ID) || isMultiClusterEnabled(); // TODO remove multicluster
-
+  const acmPerspectiveExtension = usePerspectiveExtension(ACM_PERSPECTIVE_ID);
   return (
-    showMultiClusterToolbarGroup && (
+    !!acmPerspectiveExtension && (
       <ToolbarGroup spacer={{ default: 'spacerNone' }}>
         <ClusterMenu />
       </ToolbarGroup>
@@ -86,6 +84,7 @@ const FeedbackModalLocalized = ({ isOpen, onClose, reportBugLink }) => {
       onOpenSupportCase={reportBugLink.href}
       feedbackLocale={feedbackLocales}
       onJoinMailingList="https://console.redhat.com/self-managed-research-form?source=openshift"
+      feedbackImg={feedbackImage}
       isOpen={isOpen}
       onClose={onClose}
     />
@@ -96,7 +95,7 @@ const SystemStatusButton = ({ statuspageData }) => {
   const { t } = useTranslation();
   return !_.isEmpty(_.get(statuspageData, 'incidents')) ? (
     <a
-      className="pf-c-button pf-m-plain"
+      className="pf-v5-c-button pf-m-plain"
       aria-label={t('public~System status')}
       href={statuspageData.page.url}
       target="_blank"
@@ -179,10 +178,7 @@ class MastheadToolbarContents_ extends React.Component {
     const { flags, user } = this.props;
     clearTimeout(this.userInactivityTimeout);
     this.userInactivityTimeout = setTimeout(() => {
-      // TODO remove multicluster
-      if (isMultiClusterEnabled()) {
-        authSvc.logoutMulticluster();
-      } else if (flags[FLAGS.OPENSHIFT]) {
+      if (flags[FLAGS.OPENSHIFT]) {
         authSvc.logoutOpenShift(user?.metadata?.name === 'kube:admin');
       } else {
         authSvc.logout();
@@ -208,12 +204,12 @@ class MastheadToolbarContents_ extends React.Component {
       this.setState({ username: authSvc.name() });
     }
     this.setState({
-      username: _.get(user, 'fullName') || _.get(user, 'metadata.name', ''),
+      username: _.get(user, 'username') || _.get(user, 'metadata.name', ''),
       isKubeAdmin: _.get(user, 'metadata.name') === 'kube:admin',
     });
   }
 
-  _onUserDropdownToggle(isUserDropdownOpen) {
+  _onUserDropdownToggle(event, isUserDropdownOpen) {
     this.setState({
       isUserDropdownOpen,
     });
@@ -225,7 +221,7 @@ class MastheadToolbarContents_ extends React.Component {
     });
   }
 
-  _onKebabDropdownToggle(isKebabDropdownOpen) {
+  _onKebabDropdownToggle(event, isKebabDropdownOpen) {
     this.setState({
       isKebabDropdownOpen,
     });
@@ -243,7 +239,7 @@ class MastheadToolbarContents_ extends React.Component {
     });
   }
 
-  _onApplicationLauncherDropdownToggle(isApplicationLauncherDropdownOpen) {
+  _onApplicationLauncherDropdownToggle(event, isApplicationLauncherDropdownOpen) {
     this.setState({
       isApplicationLauncherDropdownOpen,
     });
@@ -255,7 +251,7 @@ class MastheadToolbarContents_ extends React.Component {
     });
   }
 
-  _onHelpDropdownToggle(isHelpDropdownOpen) {
+  _onHelpDropdownToggle(event, isHelpDropdownOpen) {
     this.setState({
       isHelpDropdownOpen,
     });
@@ -388,9 +384,13 @@ class MastheadToolbarContents_ extends React.Component {
       name: '',
       isSection: true,
       actions: [
-        {
-          component: <Link to="/quickstart">{t('public~Quick Starts')}</Link>,
-        },
+        ...(flags[FLAGS.CONSOLE_QUICKSTART]
+          ? [
+              {
+                component: <Link to="/quickstart">{t('public~Quick Starts')}</Link>,
+              },
+            ]
+          : []),
         {
           label: t('public~Documentation'),
           externalLink: true,
@@ -399,21 +399,6 @@ class MastheadToolbarContents_ extends React.Component {
             fireTelemetryEvent('Documentation Clicked');
           },
         },
-        // TODO remove multicluster
-        ...(isMultiClusterEnabled()
-          ? [
-              {
-                label: t('public~ACM Documentation'),
-                externalLink: true,
-                // TODO:  add version number to end of URL
-                href:
-                  'https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes',
-                callback: () => {
-                  fireTelemetryEvent('ACM Documentation Clicked');
-                },
-              },
-            ]
-          : []),
         ...(flags[FLAGS.CONSOLE_CLI_DOWNLOAD]
           ? [
               {
@@ -424,7 +409,7 @@ class MastheadToolbarContents_ extends React.Component {
                     }}
                     to="/command-line-tools"
                   >
-                    {t('public~Command line tools')}
+                    {t('public~Command Line Tools')}
                   </Link>
                 ),
               },
@@ -565,10 +550,7 @@ class MastheadToolbarContents_ extends React.Component {
     if (flags[FLAGS.AUTH_ENABLED]) {
       const logout = (e) => {
         e.preventDefault();
-        // TODO remove multicluster
-        if (isMultiClusterEnabled()) {
-          authSvc.logoutMulticluster();
-        } else if (flags[FLAGS.OPENSHIFT]) {
+        if (flags[FLAGS.OPENSHIFT]) {
           authSvc.logoutOpenShift(this.state.isKubeAdmin);
         } else {
           authSvc.logout();
@@ -580,6 +562,7 @@ class MastheadToolbarContents_ extends React.Component {
           label: t('public~Copy login command'),
           href: requestTokenURL,
           externalLink: true,
+          dataTest: 'copy-login-command',
         });
       }
 
@@ -638,7 +621,7 @@ class MastheadToolbarContents_ extends React.Component {
     }
 
     const userToggle = (
-      <span className="pf-c-dropdown__toggle">
+      <span className="pf-v5-c-dropdown__toggle">
         <span className="co-username" data-test="username">
           {username || t('public~User')}
         </span>
@@ -687,7 +670,7 @@ class MastheadToolbarContents_ extends React.Component {
           <ToolbarContent>
             <MultiClusterToolbarGroup />
             <ToolbarGroup
-              alignment={{ default: 'alignRight' }}
+              align={{ default: 'alignRight' }}
               spacer={{ default: 'spacerNone' }}
               visibility={{ default: isMastheadStacked ? 'hidden' : 'visible' }}
             >
@@ -720,7 +703,7 @@ class MastheadToolbarContents_ extends React.Component {
                 )}
                 <Link
                   to={this._getImportYAMLPath()}
-                  className="pf-c-button pf-m-plain"
+                  className="pf-v5-c-button pf-m-plain"
                   aria-label={t('public~Import YAML')}
                   data-quickstart-id="qs-masthead-import"
                   data-test="import-yaml"
@@ -752,7 +735,7 @@ class MastheadToolbarContents_ extends React.Component {
               <ToolbarItem>{this._renderMenu(false)}</ToolbarItem>
             </ToolbarGroup>
             <ToolbarGroup
-              alignment={{ default: 'alignRight' }}
+              align={{ default: 'alignRight' }}
               spacer={{ default: 'spacerNone' }}
               visibility={{ default: isMastheadStacked ? 'visible' : 'hidden' }}
             >
@@ -801,6 +784,7 @@ const MastheadToolbarContents = connect(mastheadToolbarStateToProps, {
 })(
   connectToFlags(
     FLAGS.AUTH_ENABLED,
+    FLAGS.CONSOLE_QUICKSTART,
     FLAGS.CONSOLE_CLI_DOWNLOAD,
     FLAGS.OPENSHIFT,
   )(MastheadToolbarContentsWithTranslation),

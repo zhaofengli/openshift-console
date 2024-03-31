@@ -160,19 +160,12 @@ func (p *PluginsHandler) proxyPluginRequest(requestURL *url.URL, pluginName stri
 
 	resp, err := p.Client.Do(newRequest)
 	if err != nil {
-		errMsg := fmt.Sprintf("GET request for %q plugin failed: %v", pluginName, err)
+		errMsg := fmt.Sprintf("failed to send GET request for %q plugin: %v", pluginName, err)
 		klog.Error(errMsg)
-		serverutils.SendResponse(w, resp.StatusCode, serverutils.ApiError{Err: errMsg})
+		serverutils.SendResponse(w, http.StatusBadGateway, serverutils.ApiError{Err: errMsg})
 		return
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		errMsg := fmt.Sprintf("GET request for %q plugin failed with %d status code", pluginName, resp.StatusCode)
-		klog.Error(errMsg)
-		serverutils.SendResponse(w, resp.StatusCode, serverutils.ApiError{Err: errMsg})
-		return
-	}
 
 	// filter unwanted headers from the response
 	proxy.FilterHeaders(resp)
@@ -182,6 +175,9 @@ func (p *PluginsHandler) proxyPluginRequest(requestURL *url.URL, pluginName stri
 			w.Header().Add(key, v)
 		}
 	}
+
+	// Make sure to copy status code from the plugin service response
+	w.WriteHeader(resp.StatusCode)
 
 	_, err = io.Copy(w, resp.Body)
 	if err != nil {

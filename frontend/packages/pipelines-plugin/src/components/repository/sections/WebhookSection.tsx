@@ -8,7 +8,13 @@ import {
   ExpandableSection,
   TextVariants,
   Button,
+  Tooltip,
+  InputGroupItem,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
+import { HelpIcon } from '@patternfly/react-icons/dist/esm/icons/help-icon';
 import { FormikValues, useFormikContext } from 'formik';
 import * as fuzzy from 'fuzzysearch';
 import { Base64 } from 'js-base64';
@@ -67,19 +73,19 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
   const getPermssionSectionHeading = (git: GitProvider) => {
     switch (git) {
       case GitProvider.GITHUB:
-        return t('pipelines-plugin~See GitHub permissions');
+        return t('pipelines-plugin~See GitHub events');
       case GitProvider.GITLAB:
-        return t('pipelines-plugin~See Gitlab permissions');
+        return t('pipelines-plugin~See Gitlab events');
       case GitProvider.BITBUCKET:
-        return t('pipelines-plugin~See BitBucket permissions');
+        return t('pipelines-plugin~See BitBucket events');
       default:
-        return t('pipelines-plugin~See Git permissions');
+        return t('pipelines-plugin~See Git events');
     }
   };
 
   const HelpText = (): React.ReactElement => {
     let helpText: React.ReactNode;
-    switch (values.gitProvider) {
+    switch (gitProvider) {
       case GitProvider.GITHUB:
         helpText = (
           <Trans t={t} ns="pipelines-plugin">
@@ -91,8 +97,8 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
             >
               link
             </a>{' '}
-            to create a token with repo, public_repo & admin:repo_hook scopes and give your token an
-            expiration, i.e 30d.
+            to create a <b>classic</b> token with <b>repo</b> & <b>admin:repo_hook</b> scopes and
+            give your token an expiration, i.e 30d.
           </Trans>
         );
         break;
@@ -100,7 +106,7 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
       case GitProvider.GITLAB:
         helpText = (
           <Trans t={t} ns="pipelines-plugin">
-            use your Gitlab Personal access token. Use this{' '}
+            Use your Gitlab Personal access token. Use this{' '}
             <a
               href={AccessTokenDocLinks[GitProvider.GITLAB]}
               target="_blank"
@@ -108,7 +114,8 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
             >
               link
             </a>{' '}
-            to create a token with api scope and give your token an expiration i.e 30d.
+            to create a token with <b>api</b> scope. Select the role as <b>Maintainer/Owner</b>.
+            Give your token an expiration i.e 30d.
           </Trans>
         );
         break;
@@ -116,7 +123,7 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
       case GitProvider.BITBUCKET:
         helpText = (
           <Trans t={t} ns="pipelines-plugin">
-            use your Bitbucket App password. Use this{' '}
+            Use your Bitbucket App password. Use this{' '}
             <a
               href={AccessTokenDocLinks[GitProvider.BITBUCKET]}
               target="_blank"
@@ -124,8 +131,8 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
             >
               link
             </a>{' '}
-            to create a token with Read and Write scopes in Account, Workspace membership, Projects,
-            Issues, Pull requests and give your token an expiration i.e 30d.
+            to create a token with <b>Read and Write </b>scopes in{' '}
+            <b>Account, Workspace membership, Projects, Issues, Pull requests and Webhooks</b>.
           </Trans>
         );
         break;
@@ -155,6 +162,20 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
       <RadioGroupField
         name={`${fieldPrefix}webhook.method`}
         label={t('pipelines-plugin~Secret')}
+        labelIcon={
+          <Tooltip
+            position="right"
+            content={
+              <p>
+                {t(
+                  'pipelines-plugin~The secret is required to set the Build status and to attach the webhook to the Git repository.',
+                )}
+              </p>
+            }
+          >
+            <HelpIcon />
+          </Tooltip>
+        }
         required
         options={[
           {
@@ -200,13 +221,7 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
         ]}
       />
       {webhook?.url && (
-        <FormGroup
-          fieldId="test"
-          label={t('pipelines-plugin~Webhook URL')}
-          helperText={t(
-            'pipelines-plugin~We have detected a URL that can be used to configure the webhook.',
-          )}
-        >
+        <FormGroup fieldId="test" label={t('pipelines-plugin~Webhook URL')}>
           <ClipboardCopy
             isReadOnly
             name={`${fieldPrefix}webhook.url`}
@@ -216,6 +231,16 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
           >
             {controllerUrl}
           </ClipboardCopy>
+
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                {t(
+                  'pipelines-plugin~We have detected a URL that can be used to configure the webhook. It will be created and attached to the Git repository.',
+                )}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
       )}
 
@@ -225,20 +250,24 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
           label={t('pipelines-plugin~Webhook secret')}
         >
           <InputGroup style={{ display: 'flex' }}>
-            <ClipboardCopy
-              name={`${fieldPrefix}webhook.secret`}
-              hoverTip="Copy"
-              clickTip="Copied"
-              style={{ flex: '1' }}
-              onChange={(v) => {
-                setFieldValue(`${fieldPrefix}webhook.secret`, v);
-              }}
-            >
-              {webhookSecret}
-            </ClipboardCopy>
-            <Button data-test="generate-secret" variant="control" onClick={generateWebhookSecret}>
-              {t('pipelines-plugin~Generate')}
-            </Button>
+            <InputGroupItem>
+              <ClipboardCopy
+                name={`${fieldPrefix}webhook.secret`}
+                hoverTip="Copy"
+                clickTip="Copied"
+                style={{ flex: '1' }}
+                onChange={(_event, v) => {
+                  setFieldValue(`${fieldPrefix}webhook.secret`, v);
+                }}
+              >
+                {webhookSecret}
+              </ClipboardCopy>
+            </InputGroupItem>
+            <InputGroupItem>
+              <Button data-test="generate-secret" variant="control" onClick={generateWebhookSecret}>
+                {t('pipelines-plugin~Generate')}
+              </Button>
+            </InputGroupItem>
           </InputGroup>
         </FormGroup>
       ) : null}
@@ -247,7 +276,7 @@ const WebhookSection: React.FC<WebhoookSectionProps> = ({ pac, formContextField 
         <>
           <ExpandableSection toggleText={getPermssionSectionHeading(gitProvider)}>
             <FormGroup
-              label={t('pipelines-plugin~Repository Permissions:')}
+              label={t('pipelines-plugin~Events triggering the webhook: ')}
               fieldId="repo-permissions"
             >
               <Text component={TextVariants.small}>

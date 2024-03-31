@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { match as RMatch } from 'react-router';
+import { useParams } from 'react-router-dom-v5-compat';
 import { useK8sWatchResource } from '@console/dynamic-plugin-sdk/src/utils/k8s/hooks/useK8sWatchResource';
 import { getGroupVersionKindForModel } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-ref';
 import { LoadingBox } from '@console/internal/components/utils';
@@ -9,23 +9,19 @@ import TaskRunLog from '@console/pipelines-plugin/src/components/taskruns/TaskRu
 import { TaskRunModel } from '@console/pipelines-plugin/src/models/pipelines';
 import { TaskRunKind } from '@console/pipelines-plugin/src/types';
 import { BuildRun } from '../../types';
+import { isV1Alpha1Resource } from '../../utils';
 
 type BuildRunLogsTabProps = {
   obj: BuildRun;
-  match: RMatch<{
-    ns?: string;
-  }>;
 };
 
-const BuildRunLogsTab: React.FC<BuildRunLogsTabProps> = ({
-  obj: buildRun,
-  match: {
-    params: { ns: namespace },
-  },
-}) => {
+const BuildRunLogsTab: React.FC<BuildRunLogsTabProps> = ({ obj: buildRun }) => {
   const { t } = useTranslation();
+  const { ns: namespace } = useParams();
 
-  const taskRunRef = buildRun.status?.latestTaskRunRef;
+  const taskRunRef = isV1Alpha1Resource(buildRun)
+    ? buildRun.status?.latestTaskRunRef
+    : buildRun.status?.taskRunName;
   const [taskRun, taskRunLoaded, taskRunLoadError] = useK8sWatchResource<TaskRunKind>(
     taskRunRef
       ? {

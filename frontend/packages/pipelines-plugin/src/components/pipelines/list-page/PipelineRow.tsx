@@ -3,13 +3,14 @@ import { RowFunctionArgs, TableData } from '@console/internal/components/factory
 import { ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { PipelineModel, PipelineRunModel } from '../../../models';
-import { PipelineWithLatest } from '../../../types';
+import { PipelineWithLatest, TaskRunKind } from '../../../types';
 import {
   pipelineFilterReducer,
   pipelineTitleFilterReducer,
 } from '../../../utils/pipeline-filter-reducer';
 import LinkedPipelineRunTaskStatus from '../../pipelineruns/status/LinkedPipelineRunTaskStatus';
 import PipelineRunStatus from '../../pipelineruns/status/PipelineRunStatus';
+import { getTaskRunsOfPipelineRun } from '../../taskruns/useTaskRuns';
 import { tableColumnClasses } from './pipeline-table';
 import PipelineRowKebabActions from './PipelineRowKebabActions';
 
@@ -18,19 +19,25 @@ const pipelinerunReference = referenceForModel(PipelineRunModel);
 
 type PipelineStatusProps = {
   obj: PipelineWithLatest;
+  taskRuns: TaskRunKind[];
+  taskRunsLoaded?: boolean;
 };
 
-const PipelineStatus: React.FC<PipelineStatusProps> = ({ obj }) => {
+const PipelineStatus: React.FC<PipelineStatusProps> = ({ obj, taskRuns, taskRunsLoaded }) => {
   return (
     <PipelineRunStatus
       status={pipelineFilterReducer(obj)}
       title={pipelineTitleFilterReducer(obj)}
       pipelineRun={obj.latestRun}
+      taskRuns={taskRuns}
+      taskRunsLoaded={taskRunsLoaded}
     />
   );
 };
 
-const PipelineRow: React.FC<RowFunctionArgs<PipelineWithLatest>> = ({ obj }) => {
+const PipelineRow: React.FC<RowFunctionArgs<PipelineWithLatest>> = ({ obj, customData }) => {
+  const { taskRuns, taskRunsLoaded } = customData;
+  const PLRTaskRuns = getTaskRunsOfPipelineRun(taskRuns, obj?.latestRun?.metadata?.name);
   return (
     <>
       <TableData className={tableColumnClasses[0]}>
@@ -55,10 +62,18 @@ const PipelineRow: React.FC<RowFunctionArgs<PipelineWithLatest>> = ({ obj }) => 
         )}
       </TableData>
       <TableData className={tableColumnClasses[3]}>
-        {obj.latestRun ? <LinkedPipelineRunTaskStatus pipelineRun={obj.latestRun} /> : '-'}
+        {obj.latestRun ? (
+          <LinkedPipelineRunTaskStatus
+            pipelineRun={obj.latestRun}
+            taskRuns={PLRTaskRuns}
+            taskRunsLoaded={taskRunsLoaded}
+          />
+        ) : (
+          '-'
+        )}
       </TableData>
       <TableData className={tableColumnClasses[4]}>
-        <PipelineStatus obj={obj} />
+        <PipelineStatus obj={obj} taskRuns={PLRTaskRuns} taskRunsLoaded={taskRunsLoaded} />
       </TableData>
       <TableData className={tableColumnClasses[5]}>
         {(obj.latestRun?.status?.startTime && (

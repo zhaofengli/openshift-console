@@ -1,4 +1,4 @@
-@knative-serverless
+@knative-serverless @knative
 Feature: side bar details
               As a user, I want to see the details of the revision and service in side bar
 
@@ -23,8 +23,8 @@ Feature: side bar details
               And user is able to see Knative Revision
 
         Examples:
-                  | name         | image_name                | runtime_icon |
-                  | hello-secure | openshift/hello-openshift | fedora       |
+                  | name         | image_name                         | runtime_icon |
+                  | hello-secure | quay.io/openshift-knative/showcase | fedora       |
 
 
         @smoke

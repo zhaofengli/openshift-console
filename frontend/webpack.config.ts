@@ -3,8 +3,10 @@ import * as webpack from 'webpack';
 import * as path from 'path';
 import * as _ from 'lodash';
 import * as HtmlWebpackPlugin from 'html-webpack-plugin';
+import * as HtmlWebpackExcludeAssetsPlugin from 'html-webpack-exclude-assets-plugin';
 import * as MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import * as ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import * as _crypto from 'crypto';
 
 import { Configuration as WebpackDevServerConfiguration } from 'webpack-dev-server';
 import { sharedPluginModules } from '@console/dynamic-plugin-sdk/src/shared-modules';
@@ -31,26 +33,55 @@ const REACT_REFRESH = process.env.REACT_REFRESH;
 const OPENSHIFT_CI = process.env.OPENSHIFT_CI;
 const WDS_PORT = 8080;
 
+// A workaround fix for the breaking change in Node.js v18 due to the change in hashing algorithm.
+// This code change override the default webpack v4 default hashing algorithm -"md4".
+// This change can be remove when console UI update webpack to version 5 in the future.
+const hash = _crypto.createHash;
+Object.assign(_crypto, {
+  createHash: (): _crypto.Hash => hash('sha256'),
+});
+
 /* Helpers */
 const extractCSS = new MiniCssExtractPlugin({
   filename:
-    NODE_ENV === 'production' ? 'app-bundle.[contenthash].css' : 'app-bundle.[name].[hash].css',
+    NODE_ENV === 'production'
+      ? 'app-bundle.[name].[contenthash].css'
+      : 'app-bundle.[name].[hash].css',
   // We follow BEM naming to scope CSS.
   // See https://github.com/webpack-contrib/mini-css-extract-plugin/issues/250
   ignoreOrder: true,
 });
-const getVendorModuleRegExp = (vendorModules: string[]) =>
-  new RegExp(`node_modules\\/(${vendorModules.map((m) => _.escapeRegExp(m)).join('|')})\\/`);
 const virtualModules = new VirtualModulesPlugin();
+
+const getVendorModuleRegExp = (vendorModules: string[]) =>
+  new RegExp(`node_modules\\/(${vendorModules.map(_.escapeRegExp).join('|')})\\/`);
+
 const overpassTest = /overpass-.*\.(woff2?|ttf|eot|otf)(\?.*$|$)/;
-const sharedPluginTest = getVendorModuleRegExp(Object.keys(sharedPluginModules));
-const sharedPatternFlyCoreTest = getVendorModuleRegExp([
-  '@patternfly/react-core',
-  '@patternfly/react-table',
-]);
+
+const sharedPluginModulesTest = getVendorModuleRegExp(
+  // Map shared module names to actual webpack modules as per shared-modules-init.ts
+  sharedPluginModules.map((moduleName) => {
+    if (moduleName === '@openshift-console/dynamic-plugin-sdk') {
+      return '@console/dynamic-plugin-sdk/src/lib-core';
+    }
+
+    if (moduleName === '@openshift-console/dynamic-plugin-sdk-internal') {
+      return '@console/dynamic-plugin-sdk/src/lib-internal';
+    }
+
+    if (moduleName.startsWith('@patternfly/')) {
+      return moduleName.replace(/^@patternfly\//, '@patternfly-4/');
+    }
+
+    return moduleName;
+  }),
+);
 
 const config: Configuration = {
-  entry: ['./public/components/app.jsx', 'monaco-editor-core/esm/vs/editor/editor.worker.js'],
+  entry: {
+    main: ['./public/components/app.jsx', 'monaco-editor-core/esm/vs/editor/editor.worker.js'],
+    'vendor-patternfly-4-shared': './public/vendor-patternfly-4-shared.scss',
+  },
   output: {
     path: path.resolve(__dirname, 'public/dist'),
     publicPath: 'static/',
@@ -59,7 +90,7 @@ const config: Configuration = {
   },
   devServer: {
     hot: HOT_RELOAD !== 'false',
-    webSocketServer: 'ws',
+    webSocketServer: 'sockjs',
     port: WDS_PORT,
     static: false,
     devMiddleware: {
@@ -81,13 +112,32 @@ const config: Configuration = {
     rules: [
       {
         // Disable tree shaking on modules shared with Console dynamic plugins
-        test: sharedPluginTest,
+        test: sharedPluginModulesTest,
         sideEffects: true,
       },
       { test: /\.glsl$/, loader: 'raw!glslify' },
       {
+        test: /\.js$/,
+        include: /node_modules\/@patternfly-4\//,
+        loader: 'babel-loader',
+        options: {
+          plugins: [
+            [
+              'transform-imports',
+              {
+                // Transform all @patternfly/* imports to @patternfly-4/*
+                '@patternfly\\/(\\S*)': {
+                  transform: (importName, matches) => `@patternfly-4/${matches[1]}`,
+                  skipDefaultConversion: true,
+                },
+              },
+            ],
+          ],
+        },
+      },
+      {
         test: /(\.jsx?)|(\.tsx?)$/,
-        exclude: /node_modules\/(?!(bitbucket|ky)\/)/,
+        exclude: /node_modules\/(?!(bitbucket|ky|ini)\/)/,
         use: [
           { loader: 'cache-loader' },
           // Disable thread-loader in CI
@@ -137,7 +187,7 @@ const config: Configuration = {
       },
       {
         test: /\.s?css$/,
-        exclude: /node_modules\/(?!(@patternfly|@console\/plugin-shared)\/).*/,
+        exclude: /node_modules\/(?!(@patternfly(-\S+)?|@console\/plugin-shared)\/).*/,
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
@@ -181,7 +231,7 @@ const config: Configuration = {
         exclude: overpassTest,
         loader: 'file-loader',
         options: {
-          name: 'assets/[name].[ext]',
+          name: 'assets/[path][name].[ext]',
         },
       },
       {
@@ -201,14 +251,29 @@ const config: Configuration = {
   optimization: {
     splitChunks: {
       chunks: 'all',
+      maxInitialRequests: 6,
+      maxAsyncRequests: 8,
       cacheGroups: {
-        vendor: {
-          test: sharedPatternFlyCoreTest,
-          name: 'vendor-patternfly-core',
+        vendors: {
+          test: /\/node_modules\//,
+          priority: -10,
+          enforce: true,
+        },
+        'vendor-patternfly-5': {
+          // modules with @patternfly/ that don't also have @patternfly-4/ in the string
+          test: /^(?!.*@patternfly-4\/).*@patternfly\/.*/,
+        },
+        'vendor-patternfly-4-shared': {
+          test: /@patternfly-4\//,
+        },
+        'vendor-plugins-shared': {
+          test: ({ resource = '' }) =>
+            sharedPluginModulesTest.test(resource) &&
+            !resource.includes('/node_modules/@patternfly'),
         },
       },
     },
-    runtimeChunk: true,
+    runtimeChunk: 'single',
   },
   plugins: [
     new webpack.NormalModuleReplacementPlugin(/^lodash$/, 'lodash-es'),
@@ -225,19 +290,20 @@ const config: Configuration = {
       inject: false,
       chunksSortMode: 'none',
     }),
-    // TODO Remove multicluster
-    new HtmlWebpackPlugin({
-      filename: './multicluster-logout.html',
-      template: './public/multicluster-logout.html',
-      inject: false,
-      chunksSortMode: 'none',
-    }),
     new HtmlWebpackPlugin({
       filename: './index.html',
       template: './public/index.html',
       production: NODE_ENV === 'production',
       chunksSortMode: 'none',
+      // exclude:
+      // vendor-patternfly-4-shared-chunk-<hash>.min.js (js entry for vendor-patternfly-4-shared.scss)
+      // app-bundle.vendor-patternfly-4-shared~main.<hash>.css (PF4 from the shared PF modules - we already share out PF4 css)
+      excludeAssets: [
+        /vendor-patternfly-4-shared-chunk.*\.js/,
+        /vendor-patternfly-4-shared~main.*\.css/,
+      ],
     }),
+    new HtmlWebpackExcludeAssetsPlugin(),
     new MonacoWebpackPlugin({
       languages: ['yaml', 'dockerfile', 'json', 'plaintext'],
     }),
@@ -260,7 +326,6 @@ const config: Configuration = {
     new CopyWebpackPlugin([{ from: './packages/git-service/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/gitops-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/kubevirt-plugin/locales', to: 'locales' }]),
-    new CopyWebpackPlugin([{ from: './packages/ceph-storage-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/metal3-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/vsphere-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([
@@ -271,6 +336,7 @@ const config: Configuration = {
     new CopyWebpackPlugin([
       { from: './packages/local-storage-operator-plugin/locales', to: 'locales' },
     ]),
+    new CopyWebpackPlugin([{ from: './packages/console-telemetry-plugin/locales', to: 'locales' }]),
     extractCSS,
     virtualModules,
     new ConsoleActivePluginsModule(resolvePluginPackages(), virtualModules),
@@ -292,9 +358,7 @@ if (CHECK_CYCLES === 'true') {
   new CircularDependencyPreset({
     exclude: /node_modules|public\/dist/,
     reportFile: '.webpack-cycles',
-    thresholds: {
-      minLengthCycles: 17,
-    },
+    thresholds: { minLengthCycles: 18 },
   }).apply(config.plugins);
 }
 
@@ -311,9 +375,9 @@ if (ANALYZE_BUNDLE === 'true') {
 
 /* Production settings */
 if (NODE_ENV === 'production') {
+  config.devtool = 'source-map';
   config.output.filename = '[name]-bundle-[hash].min.js';
   config.output.chunkFilename = '[name]-chunk-[chunkhash].min.js';
-  extractCSS.filename = '[name]-[chunkhash].min.css';
   // Causes error in --mode=production due to scope hoisting
   config.optimization.concatenateModules = false;
   config.stats = 'normal';

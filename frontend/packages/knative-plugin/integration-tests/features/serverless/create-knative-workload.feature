@@ -1,4 +1,4 @@
-@knative-serverless
+@knative-serverless @knative
 Feature: Create a workload of 'knative Service' type resource
               As a user, I want to create workload from Add Flow page
 
@@ -57,8 +57,8 @@ Feature: Create a workload of 'knative Service' type resource
               And user is able to see workload "<workload_name>" in topology page
 
         Examples:
-                  | image_name                | workload_name       |
-                  | openshift/hello-openshift | knative-ex-registry |
+                  | image_name                         | workload_name       |
+                  | quay.io/openshift-knative/showcase | knative-ex-registry |
 
 
         @regression
@@ -108,7 +108,7 @@ Feature: Create a workload of 'knative Service' type resource
               And user clicks Create button on Add page
               And user clicks on the Knative Service workload "dancer-ex-git"
               And user clicks on name KSVC "dancer-ex-git"
-             Then user will see value of autoscaling.knative.dev/maxScale, autoscaling.knative.dev/minScale, autoscaling.knative.dev/target, autoscaling.knative.dev/targetUtilizationPercentage, autoscaling.knative.dev/window under annotation and containerConcurrency under spec as under spec 5, 1, 3, 70, 9s and 15 respectively
+             Then user will see value of autoscaling.knative.dev/max-scale, autoscaling.knative.dev/min-scale, autoscaling.knative.dev/target, autoscaling.knative.dev/target-utilization-percentage, autoscaling.knative.dev/window under annotation and containerConcurrency under spec as under spec 5, 1, 3, 70, 9s and 15 respectively
 
 
         @regression @manual

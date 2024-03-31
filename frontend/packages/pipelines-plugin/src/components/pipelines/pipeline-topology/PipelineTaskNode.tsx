@@ -16,7 +16,7 @@ import {
 } from '@patternfly/react-topology';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { useK8sWatchResource } from '@console/dynamic-plugin-sdk/src/lib-core';
 import { resourcePathFromModel } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
@@ -45,6 +45,7 @@ const PipelineTaskNode: React.FunctionComponent<PipelineTaskNodeProps> = ({
 }) => {
   const data = element.getData();
   const [hover, hoverRef] = useHover();
+  const taskRef = React.useRef();
   const detailsLevel = useDetailsLevel();
   const isFinallyTask = element.getType() === NodeType.FINALLY_NODE;
   let resources;
@@ -132,7 +133,11 @@ const PipelineTaskNode: React.FunctionComponent<PipelineTaskNodeProps> = ({
 
   const { name: plrName, namespace } = pipelineRun?.metadata;
   const path = plrName
-    ? `${resourcePathFromModel(PipelineRunModel, plrName, namespace)}/logs/${element.getLabel()}`
+    ? `${resourcePathFromModel(
+        PipelineRunModel,
+        plrName,
+        namespace,
+      )}/logs?taskName=${element.getLabel()}`
     : undefined;
 
   const enableLogLink =
@@ -172,6 +177,7 @@ const PipelineTaskNode: React.FunctionComponent<PipelineTaskNodeProps> = ({
         <Tooltip
           position="bottom"
           enableFlip={false}
+          triggerRef={taskRef}
           content={
             <PipelineVisualizationStepList
               isSpecOverview={!data.status}
@@ -181,7 +187,7 @@ const PipelineTaskNode: React.FunctionComponent<PipelineTaskNodeProps> = ({
             />
           }
         >
-          {enableLogLink ? <Link to={path}>{taskNode}</Link> : taskNode}
+          <g ref={taskRef}>{enableLogLink ? <Link to={path}>{taskNode}</Link> : taskNode}</g>
         </Tooltip>
       </g>
     </Layer>

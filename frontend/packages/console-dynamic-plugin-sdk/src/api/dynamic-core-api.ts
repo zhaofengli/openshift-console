@@ -2,34 +2,38 @@
 import * as React from 'react';
 import { ActionServiceProviderProps } from '../extensions/actions';
 import {
+  CodeEditorProps,
+  CodeEditorRef,
   ErrorBoundaryFallbackProps,
   HorizontalNavProps,
-  UseResolvedExtensions,
-  VirtualizedTableFC,
-  TableDataProps,
-  UseActiveColumns,
-  ListPageHeaderProps,
-  ListPageCreateProps,
-  ListPageCreateLinkProps,
-  ListPageCreateButtonProps,
-  ListPageCreateDropdownProps,
-  ListPageFilterProps,
-  UseListPageFilter,
-  ResourceLinkProps,
-  ResourceIconProps,
-  OverviewProps,
-  OverviewGridProps,
-  InventoryItemTitleProps,
   InventoryItemBodyProps,
   InventoryItemStatusProps,
-  CodeEditorProps,
-  ResourceYAMLEditorProps,
-  ResourceEventStreamProps,
-  UsePrometheusPoll,
-  TimestampProps,
+  InventoryItemTitleProps,
+  ListPageCreateButtonProps,
+  ListPageCreateDropdownProps,
+  ListPageCreateLinkProps,
+  ListPageCreateProps,
+  ListPageFilterProps,
+  ListPageHeaderProps,
   NamespaceBarProps,
-  CodeEditorRef,
+  OverviewGridProps,
+  OverviewProps,
   QueryBrowserProps,
+  ResourceEventStreamProps,
+  ResourceIconProps,
+  ResourceLinkProps,
+  ResourceYAMLEditorProps,
+  TableDataProps,
+  TimestampProps,
+  UseActiveColumns,
+  UseAnnotationsModal,
+  UseDeleteModal,
+  UseLabelsModal,
+  UseListPageFilter,
+  UsePrometheusPoll,
+  UseResolvedExtensions,
+  VirtualizedTableFC,
+  UseActiveNamespace,
 } from '../extensions/console-types';
 import { StatusPopupSectionProps, StatusPopupItemProps } from '../extensions/dashboard-types';
 
@@ -55,12 +59,10 @@ export const useResolvedExtensions: UseResolvedExtensions = require('@console/dy
 
 /**
  * A component that creates a Navigation bar for a page.
- *
- * - Routing is handled as part of the component.
- * - `console.tab/horizontalNav` can be used to add additional content to any horizontal nav.
- * @param {object} [resource] - The resource associated with this Navigation, an object of K8sResourceCommon type
- * @param {NavPage[]} pages - An array of page objects
- * @param {object} match - match object provided by React Router
+ * Routing is handled as part of the component.
+ * `console.tab/horizontalNav` can be used to add additional content to any horizontal nav.
+ * @param {object} [resource] - the resource associated with this Navigation, an object of K8sResourceCommon type
+ * @param {NavPage[]} pages - an array of page objects
  * @example
  * ```ts
  * const HomePage: React.FC = (props) => {
@@ -69,7 +71,7 @@ export const useResolvedExtensions: UseResolvedExtensions = require('@console/dy
  *       name: 'Home',
  *       component: () => <>Home</>
  *     }
- *     return <HorizontalNav match={props.match} pages={[page]} />
+ *     return <HorizontalNav pages={[page]} />
  * }
  * ```
  */
@@ -125,6 +127,10 @@ export const VirtualizedTable: VirtualizedTableFC = require('@console/internal/c
  *       <TableData id={columns[1].id} activeColumnIDs={activeColumnIDs}>
  *         <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
  *       </TableData>
+ *       // Important:  the kebab menu cell should include the id and className prop values below
+ *       <TableData id='' className='pf-v5-c-table__action' activeColumnIDs={activeColumnIDs}>
+ *         <MockKebabMenu obj={obj} />
+ *      </TableData>
  *     </>
  *   );
  * };
@@ -135,11 +141,11 @@ export const TableData: React.FC<TableDataProps> = require('@console/internal/co
 
 /**
  * A hook that provides a list of user-selected active TableColumns.
- * @param options - Which are passed as a key-value map
- * @param {TableColumn<D>[]} options.columns - An array of all available TableColumns
- * @param {boolean} [options.showNamespaceOverride] - (optional) If true, a namespace column will be included, regardless of column management selections
- * @param {string} [options.columnManagementID] - (optional) A unique id used to persist and retrieve column management selections to and from user settings. Usually a 'group~verion~kind' string for a resource.
- * @returns A tuple containing the current user selected active columns (a subset of options.columns), and a boolean flag indicating whether user settings have been loaded.
+ * @param {Object} options - Which are passed as a key-value in the map
+ * @param options.columns - An array of all available TableColumns
+ * @param options.showNamespaceOverride - (optional) If true, a namespace column will be included, regardless of column management selections
+ * @param options.columnManagementID - (optional) A unique id used to persist and retrieve column management selections to and from user settings. Usually a `group~version~kind` string for a resource.
+ * @returns A tuple containing the current user-selected active columns (a subset of options.columns), and a boolean flag indicating whether user settings have been loaded.
  * @example
  * ```tsx
  *   // See implementation for more details on TableColumn type
@@ -174,15 +180,15 @@ export const ListPageHeader: React.FC<ListPageHeaderProps> = require('@console/i
   .default;
 
 /**
- * Component for adding a create button for a specific resource kind that automatically generates a link to the create YAML for this resource
- * @param {GroupVersionKind} groupVersionKind - the resource group/version/kind to represent
+ * Component for adding a create button for a specific resource kind that automatically generates a link to the create YAML for this resource.
+ * @param groupVersionKind group, version, kind of k8s resource `K8sGroupVersionKind` is preferred alternatively can pass reference for group, version, kind which is deprecated i.e `group~version~kind` `K8sResourceKindReference`. Core resources with no API group should leave off the `group` property
  * @example
  * ```ts
  * const exampleList: React.FC<MyProps> = () => {
  *   return (
  *     <>
- *       <ListPageHeader title="Example Pod List Page"/>
- *         <ListPageCreate groupVersionKind="Pod">Create Pod</ListPageCreate>
+ *       <ListPageHeader title="Example List Page"/>
+ *         <ListPageCreate groupVersionKind={{ group: 'app'; version: 'v1'; kind: 'Deployment' }}>Create Deployment</ListPageCreate>
  *       </ListPageHeader>
  *     </>
  *   );
@@ -193,7 +199,7 @@ export const ListPageCreate: React.FC<ListPageCreateProps> = require('@console/i
   .default;
 
 /**
- * Component for creating a stylized link
+ * Component for creating a stylized link.
  * @param {string} to - string location where link should direct
  * @param {object} [createAccessReview] -  (optional) object with namespace and kind used to determine access
  * @param {ReactNode} [children] -  (optional) children for the component
@@ -214,7 +220,7 @@ export const ListPageCreateLink: React.FC<ListPageCreateLinkProps> = require('@c
   .ListPageCreateLink;
 
 /**
- * Component for creating button
+ * Component for creating button.
  * @param {object} [createAccessReview] - (optional) object with namespace and kind used to determine access
  * @param {...object} [pfButtonProps] - (optional) Patternfly Button props
  * @example
@@ -234,7 +240,7 @@ export const ListPageCreateButton: React.FC<ListPageCreateButtonProps> = require
   .ListPageCreateButton;
 
 /**
- * Component for creating a dropdown wrapped with permissions check
+ * Component for creating a dropdown wrapped with permissions check.
  * @param {object} items - key:ReactNode pairs of items to display in dropdown component
  * @param {function} onClick - callback function for click on dropdown items
  * @param {object} [createAccessReview] - (optional) object with namespace and kind used to determine access
@@ -260,7 +266,7 @@ export const ListPageCreateDropdown: React.FC<ListPageCreateDropdownProps> = req
   .ListPageCreateDropdown;
 
 /**
- * Component that generates filter for list page
+ * Component that generates filter for list page.
  * @param {D} data - An array of data points
  * @param {boolean} loaded - indicates that data has loaded
  * @param {function} onFilterChange - callback function for when filter is updated
@@ -275,20 +281,21 @@ export const ListPageCreateDropdown: React.FC<ListPageCreateDropdownProps> = req
  * @param {ColumnLayout} [columnLayout] -  (optional) column layout object
  * @param {boolean} [hideColumnManagement] -  (optional) flag to hide the column management
  * @param {string} [nameFilter] - (optional) a unique name key for name filter. This may be useful if there are multiple `ListPageFilter` components rendered at once.
+ * @param {RowSearchFilter[]} [rowSearchFilters] - (optional) An array of RowSearchFilters elements that define search text filters added on top of Name and Label filters
  * @example
  * ```tsx
  *   // See implementation for more details on RowFilter and FilterValue types
  *   const [staticData, filteredData, onFilterChange] = useListPageFilter(
  *     data,
- *     rowFilters,
+ *     [...rowFilters, ...searchFilters],
  *     staticFilters,
  *   );
  *   // ListPageFilter updates filter state based on user interaction and resulting filtered data can be rendered in an independent component.
  *   return (
  *     <>
- *       <ListPageHeader .../>
+ *       <ListPageHeader />
  *       <ListPagBody>
- *         <ListPageFilter data={staticData} onFilterChange={onFilterChange} />
+ *         <ListPageFilter data={staticData} onFilterChange={onFilterChange} rowFilters={rowFilters} rowSearchFilters={searchFilters} />
  *         <List data={filteredData} />
  *       </ListPageBody>
  *     </>
@@ -328,15 +335,15 @@ export const useListPageFilter: UseListPageFilter = require('@console/internal/c
   .useListPageFilter;
 
 /**
- * Component that creates a link to a specific resource type with an icon badge
- * @param {K8sResourceKindReference} [kind] - (optional) the kind of resource i.e. Pod, Deployment, Namespace
+ * Component that creates a link to a specific resource type with an icon badge.
+ * @param {K8sResourceKindReference} [kind] - (optional) the kind of resource such as Pod, Deployment, Namespace
  * @param {K8sGroupVersionKind} [groupVersionKind] - (optional) object with group, version, and kind
  * @param {string} [className] -  (optional) class style for component
  * @param {string} [displayName] -  (optional) display name for component, overwrites the resource name if set
  * @param {boolean} [inline=false] -  (optional) flag to create icon badge and name inline with children
- * @param {boolean} [linkTo=true] -  (optional) flag to create a Link object - defaults to true
+ * @param {boolean} [linkTo=true] -  (optional) flag to create a Link object, defaults to true
  * @param {string} [name] -  (optional) name of resource
- * @param {string} [namesapce] -  (optional) specific namespace for the kind resource to link to
+ * @param {string} [namespace] -  (optional) specific namespace for the kind resource to link to
  * @param {boolean} [hideIcon] -  (optional) flag to hide the icon badge
  * @param {string} [title] -  (optional) title for the link object (not displayed)
  * @param {string} [dataTest] -  (optional) identifier for testing
@@ -356,8 +363,8 @@ export const ResourceLink: React.FC<ResourceLinkProps> = require('@console/inter
 export { default as ResourceStatus } from '../app/components/utils/resource-status';
 
 /**
- * Component that creates an icon badge for a specific resource type
- * @param {K8sResourceKindReference} [kind] - (optional) the kind of resource i.e. Pod, Deployment, Namespace
+ * Component that creates an icon badge for a specific resource type.
+ * @param {K8sResourceKindReference} [kind] - (optional) the kind of resource such as Pod, Deployment, Namespace
  * @param {K8sGroupVersionKind} [groupVersionKind] - (optional) object with group, version, and kind
  * @param {string} [className] -  (optional) class style for component
  * @example
@@ -394,7 +401,7 @@ export {
 } from '../utils/k8s/k8s-ref';
 
 /**
- * Component that shows the status in a popup window. Helpful component for building `console.dashboards/overview/health/resource` extensions
+ * Component that shows the status in a popup window. Can be used when building `console.dashboards/overview/health/resource` extensions.
  * @param {ReactNode} firstColumn - values for first column of popup
  * @param {ReactNode} [secondColumn] - (optional) values for second column of popup
  * @param {ReactNode} [children] -  (optional) children for the popup
@@ -417,7 +424,7 @@ export const StatusPopupSection: React.FC<StatusPopupSectionProps> = require('@c
   .StatusPopupSection;
 
 /**
- * Status element used in status popup; used in `StatusPopupSection`
+ * Status element used in status popup. Used in in `StatusPopupSection`.
  * @param {string} [value] - (optional) text value to display
  * @param {string} [icon] - (optional) icon to display
  * @param {React.ReactNode} children - child elements
@@ -440,7 +447,7 @@ export const StatusPopupItem: React.FC<StatusPopupItemProps> = require('@console
   .default;
 
 /**
- * Creates a wrapper component for a dashboard
+ * Creates a wrapper component for a dashboard.
  * @param {string} [className] - (optional) style class for div
  * @param {React.ReactNode} [children] - (optional) elements of the dashboard
  * @example
@@ -454,7 +461,7 @@ export const Overview: React.FC<OverviewProps> = require('@console/shared/src/co
   .default;
 
 /**
- * Creates a grid of card elements for a dashboard; used within `Overview`
+ * Creates a grid of card elements for a dashboard. Used within `Overview`.
  * @param {OverviewGridCard[]} mainCards - cards for grid
  * @param {OverviewGridCard[]} [leftCards] - (optional) cards for left side of grid
  * @param {OverviewGridCard[]} [rightCards] - (optional) cards for right side of grid
@@ -469,7 +476,7 @@ export const OverviewGrid: React.FC<OverviewGridProps> = require('@console/share
   .default;
 
 /**
- * Creates an inventory card item
+ * Creates an inventory card item.
  * @param {React.ReactNode} children - elements to render inside the item
  * @example
  * ```tsx
@@ -487,7 +494,7 @@ export const InventoryItem: React.FC = require('@console/shared/src/components/d
   .default;
 
 /**
- * Creates a title for an inventory card item; used within `InventoryItem`
+ * Creates a title for an inventory card item. Used within `InventoryItem`.
  * @param {React.ReactNode} children - elements to render inside the title
  * @example
  *  ```tsx
@@ -505,8 +512,8 @@ export const InventoryItemTitle: React.FC<InventoryItemTitleProps> = require('@c
   .InventoryItemTitle;
 
 /**
- * Creates the body of an inventory card; used within `InventoryCard` and can be used with `InventoryTitle`
- * @param {React.ReactNode} children - elements to render inside the Inventory Card or title
+ * Creates the body of an inventory card. Used within `InventoryCard` and can be used with `InventoryTitle`.
+ * @param {React.ReactNode} children - elements to render inside the inventory card or title
  * @param {*} error - elements of the div
  * @example
  *  ```tsx
@@ -524,7 +531,7 @@ export const InventoryItemBody: React.FC<InventoryItemBodyProps> = require('@con
   .InventoryItemBody;
 
 /**
- * Creates a count and icon for an inventory card with optional link address; used within `InventoryItemBody`
+ * Creates a count and icon for an inventory card with optional link address. Used within `InventoryItemBody`.
  * @param {number} count - count for display
  * @param {React.ReactNode} icon - icon for display
  * @param {string} [linkTo] - (optional) link address
@@ -544,7 +551,7 @@ export const InventoryItemStatus: React.FC<InventoryItemStatusProps> = require('
   .InventoryItemStatus;
 
 /**
- * Creates a skeleton container for when an inventory card is loading; used with `InventoryItem` and related components
+ * Creates a skeleton container for when an inventory card is loading. Used with `InventoryItem` and related components.
  * @example
  * ```tsx
  * if (loadError) {
@@ -565,7 +572,7 @@ export const InventoryItemLoading: React.FC = require('@console/shared/src/compo
 export { useFlag } from '../utils/flags';
 
 /**
- * @deprecated Use {@link CodeEditor} instead.
+ * @deprecated Use [CodeEditor](#codeeditor) instead.
  * A basic lazy loaded YAML editor with hover help and completion.
  * @example
  * ```tsx
@@ -577,17 +584,17 @@ export { useFlag } from '../utils/flags';
  * ```
  * @param {YAMLEditorProps['value']} value - String representing the yaml code to render.
  * @param {CodeEditorProps['language']} language - String representing the language of the editor.
- * @param {YAMLEditorProps['options']} options - Monaco editor options. For more details, please, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneEditorConstructionOptions.html.
+ * @param {YAMLEditorProps['options']} options - Monaco editor options. For more details, see https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor.IStandaloneEditorConstructionOptions.html.
  * @param {YAMLEditorProps['minHeight']} minHeight - Minimum editor height in valid CSS height values.
  * @param {YAMLEditorProps['showShortcuts']} showShortcuts - Boolean to show shortcuts on top of the editor.
  * @param {YAMLEditorProps['toolbarLinks']} toolbarLinks - Array of ReactNode rendered on the toolbar links section on top of the editor.
  * @param {YAMLEditorProps['onChange']} onChange - Callback for on code change event.
- * @param {YAMLEditorProps['onSave']} onSave - Callback called when the command CTRL / CMD + S is triggered.
- * @param {YAMLEditorRef} ref - React reference to `{ editor?: IStandaloneCodeEditor }`. Using the 'editor' property, you are able to access to all methods to control the editor. For more information, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneCodeEditor.html.
+ * @param {YAMLEditorProps['onSave']} onSave - Callback called when the command `CTRL + S` / `CMD + S` is triggered.
+ * @param {YAMLEditorRef} ref - React reference to `{ editor?: IStandaloneCodeEditor }`. Using the 'editor' property, you are able to access to all methods to control the editor. For more information, see https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor.IStandaloneCodeEditor.html.
  */
-export const YAMLEditor: React.ForwardRefExoticComponent<CodeEditorProps &
-  React.RefAttributes<CodeEditorRef>> = require('@console/internal/components/AsyncCodeEditor')
-  .AsyncCodeEditor;
+export const YAMLEditor: React.ForwardRefExoticComponent<
+  CodeEditorProps & React.RefAttributes<CodeEditorRef>
+> = require('@console/internal/components/AsyncCodeEditor').AsyncCodeEditor;
 
 /**
  * A basic lazy loaded Code editor with hover help and completion.
@@ -602,24 +609,24 @@ export const YAMLEditor: React.ForwardRefExoticComponent<CodeEditorProps &
  * ```
  * @param {CodeEditorProps['value']} value - String representing the yaml code to render.
  * @param {CodeEditorProps['language']} language - String representing the language of the editor.
- * @param {CodeEditorProps['options']} options - Monaco editor options. For more details, please, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneEditorConstructionOptions.html.
+ * @param {CodeEditorProps['options']} options - Monaco editor options. For more details, please, visit https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor.IStandaloneEditorConstructionOptions.html.
  * @param {CodeEditorProps['minHeight']} minHeight - Minimum editor height in valid CSS height values.
  * @param {CodeEditorProps['showShortcuts']} showShortcuts - Boolean to show shortcuts on top of the editor.
  * @param {CodeEditorProps['toolbarLinks']} toolbarLinks - Array of ReactNode rendered on the toolbar links section on top of the editor.
  * @param {CodeEditorProps['onChange']} onChange - Callback for on code change event.
  * @param {CodeEditorProps['onSave']} onSave - Callback called when the command CTRL / CMD + S is triggered.
- * @param {CodeEditorRef} ref - React reference to `{ editor?: IStandaloneCodeEditor }`. Using the 'editor' property, you are able to access to all methods to control the editor. For more information, visit https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.IStandaloneCodeEditor.html.
+ * @param {CodeEditorRef} ref - React reference to `{ editor?: IStandaloneCodeEditor }`. Using the 'editor' property, you are able to access to all methods to control the editor. For more information, visit https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor.IStandaloneCodeEditor.html.
  */
-export const CodeEditor: React.ForwardRefExoticComponent<CodeEditorProps &
-  React.RefAttributes<CodeEditorRef>> = require('@console/internal/components/AsyncCodeEditor')
-  .AsyncCodeEditor;
+export const CodeEditor: React.ForwardRefExoticComponent<
+  CodeEditorProps & React.RefAttributes<CodeEditorRef>
+> = require('@console/internal/components/AsyncCodeEditor').AsyncCodeEditor;
 
 /**
  * A lazy loaded YAML editor for Kubernetes resources with hover help and completion.
- * The component use the YAMLEditor and add on top of it more functionality like
- * resource update handling, alerts, save, cancel and reload buttons, accessibility and more.
- * Unless onSave callback is provided, the resource update is automatically handled.
- * It should be wrapped in a React.Suspense component.
+ * The component uses the YAML editor and adds functionality, such as
+ * resource update handling, alerts, save; cancel and reload buttons; and accessibility.
+ * Unless `onSave` callback is provided, the resource update is automatically handled.
+ * It should be wrapped in a `React.Suspense` component.
  * @example
  * ```tsx
  * <React.Suspense fallback={<LoadingBox />}>
@@ -630,9 +637,9 @@ export const CodeEditor: React.ForwardRefExoticComponent<CodeEditorProps &
  *   />
  * </React.Suspense>
  * ```
- * @param {ResourceYAMLEditorProps['initialResource']} initialResource - YAML/Object representing a resource to be shown by the editor. This prop is used only during the inital render
- * @param {ResourceYAMLEditorProps['header']} header - Add a header on top of the YAML editor
- * @param {ResourceYAMLEditorProps['onSave']} onSave - Callback for the Save button. Passing it will override the default update performed on the resource by the editor
+ * @param {ResourceYAMLEditorProps['initialResource']} initialResource - YAML/Object representing a resource to be shown by the editor. This prop is used only during the inital render.
+ * @param {ResourceYAMLEditorProps['header']} header - Add a header on top of the YAML editor.
+ * @param {ResourceYAMLEditorProps['onSave']} onSave - Callback for the Save button. Passing it will override the default update performed on the resource by the editor.
  */
 export const ResourceYAMLEditor: React.FC<ResourceYAMLEditorProps> = require('@console/internal/components/AsyncResourceYAMLEditor')
   .AsyncResourceYAMLEditor;
@@ -651,14 +658,14 @@ export const ResourceEventStream: React.FC<ResourceEventStreamProps> = require('
 
 /**
  * Sets up a poll to Prometheus for a single query.
- * @param {PrometheusEndpoint} props.endpoint - one of the PrometheusEndpoint (label, query, range, rules, targets)
- * @param {string} [props.query] - (optional) Prometheus query string. If empty or undefined, polling is not started.
- * @param {number} [props.delay] - (optional) polling delay interval (ms)
- * @param {number} [props.endTime] - (optional) for QUERY_RANGE enpoint, end of the query range
- * @param {number} [props.samples] - (optional) for QUERY_RANGE enpoint
- * @param {number} [options.timespan] - (optional) for QUERY_RANGE enpoint
- * @param {string} [options.namespace] - (optional) a search param to append
- * @param {string} [options.timeout] - (optional) a search param to append
+ * @param {PrometheusEndpoint} endpoint - one of the PrometheusEndpoint (label, query, range, rules, targets)
+ * @param {string} [query] - (optional) Prometheus query string. If empty or undefined, polling is not started.
+ * @param {number} [delay] - (optional) polling delay interval (ms)
+ * @param {number} [endTime] - (optional) for QUERY_RANGE enpoint, end of the query range
+ * @param {number} [samples] - (optional) for QUERY_RANGE enpoint
+ * @param {number} [timespan] - (optional) for QUERY_RANGE enpoint
+ * @param {string} [namespace] - (optional) a search param to append
+ * @param {string} [timeout] - (optional) a search param to append
  * @returns A tuple containing the query response, a boolean flag indicating whether the response has completed, and any errors encountered during the request or post-processing of the request
  */
 export const usePrometheusPoll: UsePrometheusPoll = (options) => {
@@ -671,7 +678,7 @@ export const usePrometheusPoll: UsePrometheusPoll = (options) => {
 
 /**
  * A component to render timestamp.
- * The timestamps are synchronized between invidual instances of the Timestamp component.
+ * The timestamps are synchronized between individual instances of the Timestamp component.
  * The provided timestamp is formatted according to user locale.
  *
  * @param {TimestampProps['timestamp']} timestamp - the timestamp to render. Format is expected to be ISO 8601 (used by Kubernetes), epoch timestamp, or an instance of a Date.
@@ -709,7 +716,7 @@ export const ActionServiceProvider: React.FC<ActionServiceProviderProps> = requi
 
 /**
  * A component that renders a horizontal toolbar with a namespace dropdown menu in the leftmost position. Additional components can be passed in as children and will be rendered to the right of the namespace dropdown. This component is designed to be used at the top of the page. It should be used on pages where the user needs to be able to change the active namespace, such as on pages with k8s resources.
- * @param {function} onNamespaceChange - (optional) A function that is executed when a namespace option is selected. It accepts the new namespace in the form of a string as its only argument. The active namespace is updated automatically when an option is selected, but additional logic can be applied via this function. When the namespace is changed, the namespace parameter in the URL will be changed from the previous namespace to the newly selected namespace.
+ * @param {function} onNamespaceChange - (optional) A function that is executed when a namespace option is selected. It accepts the new namespace in the form of a string as its only argument. The active namespace is updated automatically when an option is selected, but additional logic can be applied through this function. When the namespace is changed, the namespace parameter in the URL will be changed from the previous namespace to the newly selected namespace.
  * @param {boolean} isDisabled - (optional) A boolean flag that disables the namespace dropdown if set to true. This option only applies to the namespace dropdown and has no effect on child components.
  * @param {React.ReactNode} children - (optional) Additional elements to be rendered inside the toolbar to the right of the namespace dropdown.
  * @example
@@ -730,9 +737,8 @@ export const NamespaceBar: React.FC<NamespaceBarProps> = require('@console/inter
   .NamespaceBar;
 
 /**
- * Creates full page ErrorBoundaryFallbackPage component to display the "Oh no! Something went wrong."
- * message along with the stack trace and other helpful debugging information. This is to be used in
- * conjunction with an <ErrorBoundary> component.
+ * Creates a full page ErrorBoundaryFallbackPage component to display the "Oh no! Something went wrong." message along with the stack trace and other helpful debugging information.
+ * This is to be used in conjunction with an `ErrorBoundary` component.
  *
  * @param {string} errorMessage - text description of the error message
  * @param {string} componentStack - component trace of the exception
@@ -776,8 +782,6 @@ export const ErrorBoundaryFallbackPage: React.FC<ErrorBoundaryFallbackProps> = r
  * @param {boolean} showStackedControl - Flag to enable displaying a graph control for switching between stacked graph mode and line graph mode.
  * @param {number} timespan - (optional) The timespan that should be covered by the graph in milliseconds.
  * @param {string} units - (optional) Units to display on the Y-axis and in the tooltip.
-
-
  * @example
  * ```tsx
  * <QueryBrowser
@@ -792,4 +796,80 @@ export const ErrorBoundaryFallbackPage: React.FC<ErrorBoundaryFallbackProps> = r
  * ```
  */
 export const QueryBrowser: React.FC<QueryBrowserProps> = require('@console/shared/src/components/query-browser')
-  .default;
+  .QueryBrowser;
+
+/**
+ * A hook that provides a callback to launch a modal for editing Kubernetes resource annotations.
+ *
+ * @param {object} resource - The resource to edit annotations for, an object of K8sResourceCommon type.
+ * @returns A function which will launch a modal for editing a resource's annotations.
+ * @example
+ * ```tsx
+ * const PodAnnotationsButton = ({ pod }) => {
+ *   const { t } = useTranslation();
+ *   const launchAnnotationsModal = useAnnotationsModal(pod);
+ *   return <button onClick={launchAnnotationsModal}>{t('Edit Pod Annotations')}</button>
+ * }
+ * ```
+ */
+export const useAnnotationsModal: UseAnnotationsModal = require('@console/shared/src/hooks/useAnnotationsModal')
+  .useAnnotationsModal;
+
+/**
+ * A hook that provides a callback to launch a modal for deleting a resource.
+ *
+ * @param resource - The resource to delete.
+ * @param redirectTo - (optional) A location to redirect to after deleting the resource.
+ * @param message - (optional) A message to display in the modal.
+ * @param btnText - (optional) The text to display on the delete button.
+ * @param deleteAllResources - (optional) A function to delete all resources of the same kind.
+ * @returns A function which will launch a modal for deleting a resource.
+ * @example
+ * ```tsx
+ * const DeletePodButton = ({ pod }) => {
+ *   const { t } = useTranslation();
+ *   const launchDeleteModal = useDeleteModal(pod);
+ *   return <button onClick={launchDeleteModal}>{t('Delete Pod')}</button>
+ * }
+ * ```
+ */
+export const useDeleteModal: UseDeleteModal = require('@console/shared/src/hooks/useDeleteModal')
+  .useDeleteModal;
+
+/**
+ * A hook that provides a callback to launch a modal for editing Kubernetes resource labels.
+ *
+ * @param {object} resource - The resource to edit labels for, an object of K8sResourceCommon type.
+ * @returns A function which will launch a modal for editing a resource's labels.
+ * @example
+ * ```tsx
+ * const PodLabelsButton = ({ pod }) => {
+ *   const { t } = useTranslation();
+ *   const launchLabelsModal = useLabelsModal(pod);
+ *   return <button onClick={launchLabelsModal}>{t('Edit Pod Labels')}</button>
+ * }
+ * ```
+ */
+export const useLabelsModal: UseLabelsModal = require('@console/shared/src/hooks/useLabelsModal')
+  .useLabelsModal;
+
+/**
+ * Hook that provides the currently active namespace and a callback for setting the active namespace.
+ * @returns A tuple containing the current active namespace and setter callback.
+ * @example
+ * ```tsx
+ * const Component: React.FC = (props) => {
+ *    const [activeNamespace, setActiveNamespace] = useActiveNamespace();
+ *    return <select
+ *      value={activeNamespace}
+ *      onChange={(e) => setActiveNamespace(e.target.value)}
+ *    >
+ *      {
+ *        // ...namespace options
+ *      }
+ *    </select>
+ * }
+ * ```
+ */
+export const useActiveNamespace: UseActiveNamespace = require('@console/shared/src/hooks/useActiveNamespace')
+  .useActiveNamespace;

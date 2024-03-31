@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
-	"github.com/openshift/console/pkg/bridge"
+	"github.com/openshift/console/pkg/flags"
 )
 
 func Validate(fs *flag.FlagSet) error {
@@ -19,7 +19,7 @@ func Validate(fs *flag.FlagSet) error {
 		return err
 	}
 
-	bridge.ValidateFlagIs("user-settings-location", fs.Lookup("user-settings-location").Value.String(), "configmap", "localstorage")
+	flags.FatalIfFailed(flags.ValidateFlagIs("user-settings-location", fs.Lookup("user-settings-location").Value.String(), "configmap", "localstorage"))
 
 	if _, err := validateQuickStarts(fs.Lookup("quick-starts").Value.String()); err != nil {
 		return err
@@ -181,30 +181,4 @@ func validatePerspectives(value string) ([]Perspective, error) {
 	}
 
 	return perspectives, nil
-}
-
-// TODO remove multicluster
-func ValidateManagedClusterConfig(managedCluster ManagedClusterConfig) error {
-	errors := []string{}
-	if managedCluster.Name == "" {
-		errors = append(errors, "Name is required.")
-	}
-
-	if managedCluster.OAuth.ClientID == "" {
-		errors = append(errors, "Oauth.ClientID is required.")
-	}
-
-	if managedCluster.OAuth.ClientSecret == "" {
-		errors = append(errors, "OAuth.ClientSecret is required.")
-	}
-
-	if managedCluster.OAuth.CAFile == "" {
-		errors = append(errors, "OAuth.CAFile is required.")
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("\n\t- %s\n", strings.Join(errors, "\n\t- "))
-	}
-
-	return nil
 }

@@ -147,6 +147,42 @@ export const TaskRunModelV1Beta1: K8sKind = {
   color,
 };
 
+export const CustomRunModelV1Beta1: K8sKind = {
+  apiGroup: 'tekton.dev',
+  apiVersion: 'v1beta1',
+  label: 'CustomRun',
+  // t('pipelines-plugin~CustomRun')
+  labelKey: 'pipelines-plugin~CustomRun',
+  // t('pipelines-plugin~CustomRuns')
+  labelPluralKey: 'pipelines-plugin~CustomRuns',
+  plural: 'customruns',
+  abbr: 'CR',
+  namespaced: true,
+  kind: 'CustomRun',
+  id: 'customrun',
+  labelPlural: 'CustomRuns',
+  crd: true,
+  color,
+};
+
+export const ApprovalTaskModel: K8sKind = {
+  apiGroup: 'openshift-pipelines.org',
+  apiVersion: 'v1alpha1',
+  label: 'ApprovalTask',
+  // t('pipelines-plugin~ApprovalTask')
+  labelKey: 'pipelines-plugin~ApprovalTask',
+  // t('pipelines-plugin~ApprovalTasks')
+  labelPluralKey: 'pipelines-plugin~ApprovalTasks',
+  plural: 'approvaltasks',
+  abbr: 'AT',
+  namespaced: true,
+  kind: 'ApprovalTask',
+  id: 'approvaltask',
+  labelPlural: 'ApprovalTasks',
+  crd: true,
+  color,
+};
+
 export const PipelineResourceModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1alpha1',
@@ -203,7 +239,7 @@ export const ConditionModel: K8sKind = {
 
 export const TriggerBindingModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
-  apiVersion: 'v1alpha1',
+  apiVersion: 'v1beta1',
   label: 'TriggerBinding',
   // t('pipelines-plugin~TriggerBinding')
   labelKey: 'pipelines-plugin~TriggerBinding',
@@ -221,7 +257,7 @@ export const TriggerBindingModel: K8sKind = {
 
 export const ClusterTriggerBindingModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
-  apiVersion: 'v1alpha1',
+  apiVersion: 'v1beta1',
   label: 'ClusterTriggerBinding',
   // t('pipelines-plugin~ClusterTriggerBinding')
   labelKey: 'pipelines-plugin~ClusterTriggerBinding',
@@ -239,7 +275,7 @@ export const ClusterTriggerBindingModel: K8sKind = {
 
 export const TriggerTemplateModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
-  apiVersion: 'v1alpha1',
+  apiVersion: 'v1beta1',
   label: 'TriggerTemplate',
   // t('pipelines-plugin~TriggerTemplate')
   labelKey: 'pipelines-plugin~TriggerTemplate',
@@ -257,7 +293,7 @@ export const TriggerTemplateModel: K8sKind = {
 
 export const EventListenerModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
-  apiVersion: 'v1alpha1',
+  apiVersion: 'v1beta1',
   label: 'EventListener',
   // t('pipelines-plugin~EventListener')
   labelKey: 'pipelines-plugin~EventListener',
@@ -322,5 +358,22 @@ export const TektonHubModel: K8sKind = {
   kind: 'TektonHub',
   id: 'tektonhub',
   labelPlural: 'TektonHubs',
+  crd: true,
+};
+
+export const TektonResultModel: K8sKind = {
+  apiGroup: 'operator.tekton.dev',
+  apiVersion: 'v1alpha1',
+  label: 'TektonResult',
+  // t('pipelines-plugin~TektonResult')
+  labelKey: 'pipelines-plugin~TektonResult',
+  // t('pipelines-plugin~TektonResults')
+  labelPluralKey: 'pipelines-plugin~TektonResults',
+  plural: 'tektonresults',
+  abbr: 'TR',
+  namespaced: false,
+  kind: 'TektonResult',
+  id: 'tektonresult',
+  labelPlural: 'TektonResults',
   crd: true,
 };

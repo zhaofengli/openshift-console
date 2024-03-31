@@ -6,7 +6,9 @@ declare global {
   namespace Cypress {
     interface Chainable {
       createProject(name: string): Chainable<Element>;
+      createProjectWithCLI(name: string): Chainable<Element>;
       deleteProject(name: string): Chainable<Element>;
+      deleteProjectWithCLI(name: string, timeout?: number): Chainable<Element>;
     }
   }
 }
@@ -17,7 +19,8 @@ declare global {
 // ex: cy.createProject(name)
 Cypress.Commands.add('createProject', (name: string, devConsole: boolean = false) => {
   cy.log(`create project`);
-  cy.visit(`/k8s/cluster/projects`).its('yaml-create').should('be.visible');
+  cy.visit(`/k8s/cluster/projects`);
+  listPage.isCreateButtonVisible();
   listPage.clickCreateYAMLbutton();
   modal.shouldBeOpened();
   cy.byTestID('input-name').click().type(name);
@@ -28,6 +31,10 @@ Cypress.Commands.add('createProject', (name: string, devConsole: boolean = false
   if (devConsole === false) {
     cy.byLegacyTestID('resource-title').should('have.text', name);
   }
+});
+
+Cypress.Commands.add('createProjectWithCLI', (name: string) => {
+  cy.exec(`oc new-project ${name}`);
 });
 
 Cypress.Commands.add('deleteProject', (name: string) => {
@@ -43,4 +50,8 @@ Cypress.Commands.add('deleteProject', (name: string) => {
   modal.submit();
   modal.shouldBeClosed();
   listPage.titleShouldHaveText('Projects');
+});
+
+Cypress.Commands.add('deleteProjectWithCLI', (name: string, timeout?: number) => {
+  cy.exec(`oc delete project ${name}`, { timeout });
 });

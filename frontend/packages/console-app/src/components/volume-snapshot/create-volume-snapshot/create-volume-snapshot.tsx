@@ -2,8 +2,7 @@ import * as React from 'react';
 import { Grid, GridItem, ActionGroup, Button, Alert } from '@patternfly/react-core';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { match } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom-v5-compat';
 import { PVCStatus } from '@console/internal/components/persistent-volume-claim';
 import {
   getAccessModeRadios,
@@ -270,7 +269,7 @@ const CreateSnapshotForm = withHandlePromise<SnapshotResourceProps>((props) => {
                 {t('console-app~Name')}
               </label>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 onChange={handleSnapshotName}
                 name="snapshotName"
@@ -302,7 +301,7 @@ const CreateSnapshotForm = withHandlePromise<SnapshotResourceProps>((props) => {
               </div>
             )}
             <ButtonBar errorMessage={errorMessage || loadError} inProgress={inProgress}>
-              <ActionGroup className="pf-c-form">
+              <ActionGroup className="pf-v5-c-form">
                 <Button
                   type="submit"
                   variant="primary"
@@ -333,10 +332,8 @@ const CreateSnapshotForm = withHandlePromise<SnapshotResourceProps>((props) => {
   );
 });
 
-export const VolumeSnapshot: React.FC<VolumeSnapshotComponentProps> = (props) => {
-  const {
-    match: { params },
-  } = props;
+export const VolumeSnapshot: React.FC = () => {
+  const params = useParams();
   const { pvc } = getURLSearchParams();
   return <CreateSnapshotForm namespace={params.ns} pvcName={pvc} />;
 };
@@ -356,8 +353,4 @@ type SnapshotResourceProps = HandlePromiseProps & {
 
 type PVCSummaryProps = {
   persistentVolumeClaim: PersistentVolumeClaimKind;
-};
-
-type VolumeSnapshotComponentProps = {
-  match: match<{ ns: string }>;
 };

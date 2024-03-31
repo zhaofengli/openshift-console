@@ -599,6 +599,22 @@ export const SelfSubjectAccessReviewModel: K8sKind = {
   labelPluralKey: 'public~SelfSubjectAccessReviews',
 };
 
+export const SelfSubjectReviewModel: K8sKind = {
+  label: 'SelfSubjectReview',
+  // t('public~SelfSubjectReview')
+  labelKey: 'public~SelfSubjectReview',
+  apiGroup: 'authorization.k8s.io',
+  apiVersion: 'v1',
+  plural: 'selfsubjectreviews',
+  abbr: 'SSR',
+  namespaced: true,
+  kind: 'SelfSubjectReview',
+  id: 'selfsubjectreview',
+  labelPlural: 'SelfSubjectReviews',
+  // t('public~SelfSubjectReviews')
+  labelPluralKey: 'public~SelfSubjectReviews',
+};
+
 export const ResourceAccessReviewsModel: K8sKind = {
   label: 'ResourceAccessReview',
   // t('public~ResourceAccessReview')
@@ -1259,4 +1275,24 @@ export const ConsolePluginModel: K8sKind = {
   // t('public~ConsolePlugins')
   labelPluralKey: 'public~ConsolePlugins',
   crd: true,
+};
+
+export const CloudCredentialModel: K8sKind = {
+  kind: 'CloudCredential',
+  label: 'CloudCredential',
+  labelPlural: 'CloudCredentials',
+  apiGroup: 'operator.openshift.io',
+  apiVersion: 'v1',
+  abbr: 'CO',
+  plural: 'cloudcredentials',
+};
+
+export const AuthenticationModel: K8sKind = {
+  kind: 'Authentication',
+  label: 'Authentication',
+  labelPlural: 'Authentications',
+  apiGroup: 'config.openshift.io',
+  apiVersion: 'v1',
+  plural: 'authentications',
+  abbr: 'AU',
 };

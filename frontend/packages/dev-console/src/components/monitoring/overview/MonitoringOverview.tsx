@@ -10,11 +10,11 @@ import {
   EmptyState,
   EmptyStateIcon,
   EmptyStateBody,
-  Title,
+  EmptyStateHeader,
 } from '@patternfly/react-core';
-import { InfoCircleIcon } from '@patternfly/react-icons';
+import { InfoCircleIcon } from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { Alert } from '@console/dynamic-plugin-sdk';
 import { sortEvents } from '@console/internal/components/events';
 import { FirehoseResult, LoadingBox } from '@console/internal/components/utils';
@@ -119,29 +119,32 @@ const MonitoringOverview: React.FC<MonitoringOverviewProps> = (props) => {
           <AccordionContent id="metrics-content" isHidden={!expanded.includes('metrics')}>
             {resource.kind === DeploymentConfigModel.kind ? (
               <EmptyState>
-                <EmptyStateIcon
-                  className="odc-monitoring-overview__empty-state-icon"
-                  icon={InfoCircleIcon}
+                <EmptyStateHeader
+                  titleText={<>{t('devconsole~No metrics found')}</>}
+                  icon={
+                    <EmptyStateIcon
+                      className="odc-monitoring-overview__empty-state-icon"
+                      icon={InfoCircleIcon}
+                    />
+                  }
+                  headingLevel="h2"
                 />
-                <Title headingLevel="h2" size="md">
-                  {t('devconsole~No metrics found')}
-                </Title>
                 <EmptyStateBody>
                   {t('devconsole~Deployment Configuration metrics are not yet supported.')}
                 </EmptyStateBody>
               </EmptyState>
             ) : (
               <>
-                <div className="odc-monitoring-overview__view-monitoring-dashboard">
+                <div className="odc-monitoring-overview__view-monitoring-dashboards">
                   <Link
                     to={`/dev-monitoring/ns/${
                       resource?.metadata?.namespace
                     }?dashboard=grafana-dashboard-k8s-resources-workload&workload=${
                       resource?.metadata?.name
                     }&type=${resource?.kind?.toLowerCase()}`}
-                    data-test="observe-dashboard-link"
+                    data-test="observe-dashboards-link"
                   >
-                    {t('devconsole~View dashboard')}
+                    {t('devconsole~View dashboards')}
                   </Link>
                 </div>
                 <WorkloadGraphs resource={resource} />

@@ -6,6 +6,7 @@ import {
   useModal,
 } from '@openshift-console/dynamic-plugin-sdk';
 import './modal.scss';
+import { useTranslation } from 'react-i18next';
 
 export const scResource = {
   kind: 'StorageClass',
@@ -15,9 +16,14 @@ export const scResource = {
 
 export const TestModal: React.FC<{ closeModal: () => void }> = (props) => {
   const [res] = useK8sWatchResource<K8sResourceCommon[]>(scResource);
+  const { t } = useTranslation();
   return (
-    <Modal isOpen onClose={props?.closeModal} title="Storage Classes">
-      StorageClasses present in this cluster:
+    <Modal
+      isOpen
+      onClose={props?.closeModal}
+      title={t('plugin__console-demo-plugin~Storage Classes')}
+    >
+      {t('plugin__console-demo-plugin~StorageClasses present in this cluster:')}
       <List>
         {!!res &&
           res.map((item) => <ListItem key={item.metadata.uid}>{item.metadata.name}</ListItem>)}
@@ -26,23 +32,28 @@ export const TestModal: React.FC<{ closeModal: () => void }> = (props) => {
   );
 };
 
-const LoadingComponent: React.FC = () => (
-  <Flex
-    className="demo-modal__loader"
-    alignItems={{ default: 'alignItemsCenter' }}
-    justifyContent={{ default: 'justifyContentCenter' }}
-    grow={{ default: 'grow' }}
-  >
-    <Spinner isSVG size="xl" aria-label="Component is resolving" />
-  </Flex>
-);
+const LoadingComponent: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Flex
+      className="demo-modal__loader"
+      alignItems={{ default: 'alignItemsCenter' }}
+      justifyContent={{ default: 'justifyContentCenter' }}
+      grow={{ default: 'grow' }}
+    >
+      <Spinner size="xl" aria-label={t('plugin__console-demo-plugin~Component is resolving')} />
+    </Flex>
+  );
+};
 
 export const TestModalPage: React.FC<{ closeComponent: any }> = () => {
   const launchModal = useModal();
+  const { t } = useTranslation();
 
-  const TestComponent =
-    ({ closeModal, ...rest }) =>
-      <TestModal closeModal={closeModal} {...rest} />;
+  const TestComponent = ({ closeModal, ...rest }) => (
+    <TestModal closeModal={closeModal} {...rest} />
+  );
 
   const Component = React.lazy(() =>
     Promise.all([import('./ModalPage')]).then(([m]) => ({
@@ -50,14 +61,13 @@ export const TestModalPage: React.FC<{ closeComponent: any }> = () => {
     })),
   );
 
-  const AsyncTestComponent =
-    ({ closeModal, ...rest }) => {
-      return (
-        <React.Suspense fallback={LoadingComponent}>
-          <Component closeModal={closeModal} {...rest} />
-        </React.Suspense>
-      );
-    };
+  const AsyncTestComponent = ({ closeModal, ...rest }) => {
+    return (
+      <React.Suspense fallback={LoadingComponent}>
+        <Component closeModal={closeModal} {...rest} />
+      </React.Suspense>
+    );
+  };
 
   const onClick = React.useCallback(() => launchModal(TestComponent, {}), [launchModal]);
   const onAsyncClick = React.useCallback(() => launchModal(AsyncTestComponent, {}), [launchModal]);
@@ -70,8 +80,10 @@ export const TestModalPage: React.FC<{ closeComponent: any }> = () => {
       direction={{ default: 'column' }}
       className="demo-modal__page"
     >
-      <Button onClick={onClick}>Launch Modal</Button>
-      <Button onClick={onAsyncClick}>Launch Modal Asynchronously</Button>
+      <Button onClick={onClick}>{t('plugin__console-demo-plugin~Launch Modal')}</Button>
+      <Button onClick={onAsyncClick}>
+        {t('plugin__console-demo-plugin~Launch Modal Asynchronously')}
+      </Button>
     </Flex>
   );
 };

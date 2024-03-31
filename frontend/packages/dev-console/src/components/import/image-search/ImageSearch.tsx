@@ -14,9 +14,76 @@ import { ImageStreamImportsModel } from '@console/internal/models';
 import { k8sCreate, ContainerPort } from '@console/internal/module/k8s';
 import { InputField, useDebounceCallback, CheckboxField } from '@console/shared';
 import { UNASSIGNED_KEY, CREATE_APPLICATION_KEY } from '@console/topology/src/const';
+import { isContainerImportSource } from '../../../types/samples';
 import { getSuggestedName, getPorts, makePortName } from '../../../utils/imagestream-utils';
+import { getContainerImportSample, getSample } from '../../../utils/samples';
 import { secretModalLauncher } from '../CreateSecretModal';
 import './ImageSearch.scss';
+
+const useQueryParametersIfDefined = (handleSearch: (image: string) => void) => {
+  const { setFieldValue } = useFormikContext<FormikValues>();
+
+  /**
+   * Automatically prefill the container image search field into the Formik values
+   * and trigger a `ImageStreamImport` via `handleSearch`.
+   *
+   * 1. Use optional `image` query parameter to prefill the form immediately and
+   *    trigger a image search.
+   * 2. Use `sample` query parameter to lookup a ConsoleSample.
+   *    1. Lookup for the image if the image query parameter was missed.
+   *    2. Set other form attributes like the image targetPort.
+   */
+  React.useEffect(() => {
+    const { sampleName, image } = getContainerImportSample();
+    if (image) {
+      const componentName = getSuggestedName(image);
+      setFieldValue('searchTerm', image, false);
+      // handleSearch will set the same attributes, but after another API call
+      // so we fill these attributes here first
+      setFieldValue('name', componentName, false);
+      setFieldValue('application.name', `${componentName}-app`, false);
+      handleSearch(image);
+    }
+    if (sampleName) {
+      getSample(sampleName)
+        .then((sample) => {
+          if (isContainerImportSource(sample.spec.source)) {
+            const { containerImport } = sample.spec.source;
+            if (!image) {
+              const componentName = getSuggestedName(containerImport.image);
+              setFieldValue('searchTerm', containerImport.image, false);
+              // handleSearch will set the same attributes, but after another API call
+              // so we fill these attributes here first
+              setFieldValue('name', componentName, false);
+              setFieldValue('application.name', `${componentName}-app`, false);
+            }
+            if (
+              containerImport?.service?.targetPort &&
+              containerImport?.service?.targetPort !== 8080
+            ) {
+              setFieldValue(
+                'route.unknownTargetPort',
+                containerImport.service.targetPort.toString(),
+                false,
+              );
+            }
+            handleSearch(containerImport.image);
+          } else {
+            // eslint-disable-next-line no-console
+            console.error(
+              `Unsupported ConsoleSample "${sampleName}" source type ${sample.spec?.source?.type}`,
+            );
+          }
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.error(`Error while loading ConsoleSample "${sampleName}":`, error);
+        });
+    }
+    // Disable deps to load the samples only once when the component is loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+};
 
 const ImageSearch: React.FC = () => {
   const { t } = useTranslation();
@@ -108,6 +175,8 @@ const ImageSearch: React.FC = () => {
     ],
   );
 
+  useQueryParametersIfDefined(handleSearch);
+
   const debouncedHandleSearch = useDebounceCallback(handleSearch);
 
   const handleSave = React.useCallback(
@@ -118,15 +187,18 @@ const ImageSearch: React.FC = () => {
     [handleSearch, values.searchTerm],
   );
 
-  const getHelpText = () => {
+  const helpText = React.useMemo(() => {
     if (values.isSearchingForImage) {
       return `${t('devconsole~Validating')}...`;
     }
     if (!values.isSearchingForImage && validated === ValidatedOptions.success) {
       return t('devconsole~Validated');
     }
+    if (validated === ValidatedOptions.error) {
+      return values.searchTerm === '' ? t('devconsole~Required') : values.isi.status?.message;
+    }
     return '';
-  };
+  }, [t, validated, values.isSearchingForImage, values.searchTerm, values.isi.status?.message]);
 
   const resetFields = () => {
     if (values.formType === 'edit') {
@@ -142,12 +214,6 @@ const ImageSearch: React.FC = () => {
       !applicationNameTouched &&
       setFieldValue('application.name', '');
   };
-
-  const helpTextInvalid = validated === ValidatedOptions.error && (
-    <span className="odc-image-search__helper-text-invalid">
-      {values.searchTerm === '' ? 'Required' : values.isi.status?.message}
-    </span>
-  );
 
   React.useEffect(() => {
     !dirty && values.searchTerm && handleSearch(values.searchTerm);
@@ -171,7 +237,7 @@ const ImageSearch: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <div data-test-id="image-search-field">
       <InputField
         ref={inputRef}
         type={TextInputTypes.text}
@@ -179,8 +245,8 @@ const ImageSearch: React.FC = () => {
         placeholder={t(
           'devconsole~docker.io/openshift/hello-openshift or quay.io/<username>/<image-name>',
         )}
-        helpText={getHelpText()}
-        helpTextInvalid={helpTextInvalid}
+        helpText={helpText}
+        helpTextInvalid={helpText}
         validated={validated}
         onChange={(e: KeyboardEvent) => {
           resetFields();
@@ -229,7 +295,7 @@ const ImageSearch: React.FC = () => {
           }}
         />
       </div>
-    </>
+    </div>
   );
 };
 

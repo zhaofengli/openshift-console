@@ -1,26 +1,30 @@
 import * as React from 'react';
-import { ActionGroup, Alert, Button, Checkbox } from '@patternfly/react-core';
+import {
+  ActionGroup,
+  Alert,
+  AlertActionCloseButton,
+  Button,
+  Checkbox,
+  TextInput,
+} from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { match } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom-v5-compat';
 import { RadioGroup, RadioInput } from '@console/internal/components/radio';
 import {
   documentationURLs,
-  Dropdown,
   ExternalLink,
   FieldLevelHelp,
   Firehose,
   getDocumentationURL,
   getURLSearchParams,
-  getQueryArgument,
   history,
+  isManaged,
   MsgBox,
   NsDropdown,
   PageHeading,
   ResourceIcon,
-  ResourceName,
   resourcePathFromModel,
   StatusBox,
 } from '@console/internal/components/utils';
@@ -78,18 +82,24 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
   const { provider, channels = [], packageName, catalogSource, catalogSourceNamespace } =
     packageManifest?.status ?? {};
 
-  const { catalogNamespace, pkg } = getURLSearchParams();
+  const { pathname: url } = useLocation();
+
+  const [roleARNText, setRoleARNText] = React.useState('');
+  const [azureTenantId, setAzureTenantId] = React.useState('');
+  const [azureClientId, setAzureClientId] = React.useState('');
+  const [azureSubscriptionId, setAzureSubscriptionId] = React.useState('');
+  const { catalogNamespace, channel, pkg, tokenizedAuth, version } = getURLSearchParams();
   const [targetNamespace, setTargetNamespace] = React.useState(null);
   const [installMode, setInstallMode] = React.useState(null);
 
-  const channel = getQueryArgument('channel');
   const defaultChannel = defaultChannelNameFor(packageManifest);
   const [updateChannelName, setUpdateChannelName] = React.useState(channel || defaultChannel);
   const { currentCSVDesc } = channels.find((ch) => ch.name === updateChannelName) ?? {};
   const { installModes = [], version: currentLatestVersion } = currentCSVDesc ?? {};
 
-  const version = getQueryArgument('version');
   const [updateVersion, setUpdateVersion] = React.useState(version || currentLatestVersion);
+
+  const [showSTSWarn, setShowSTSWarn] = React.useState(true);
 
   const [approval, setApproval] = React.useState(
     updateVersion !== currentLatestVersion
@@ -175,23 +185,15 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     (props.operatorGroup?.data || ([] as OperatorGroupKind[])).find(
       (og) => og.metadata.name === 'global-operators',
     )?.metadata?.namespace || 'openshift-operators';
-  const items = {
-    [globalNS]: <ResourceName kind="Project" name={globalNS} />,
-  };
 
   let selectedTargetNamespace = targetNamespace || props.targetNamespace;
   const operatorSuggestedNamespace = suggestedNamespaceTemplateName || suggestedNamespace;
+
   if (selectedInstallMode === InstallModeType.InstallModeTypeAllNamespaces) {
     if (operatorSuggestedNamespace) {
-      items[operatorSuggestedNamespace] = (
-        <ResourceName
-          kind="Project"
-          name={`${operatorSuggestedNamespace} (Operator recommended)`}
-        />
-      );
       selectedTargetNamespace = targetNamespace || operatorSuggestedNamespace;
     } else {
-      selectedTargetNamespace = globalNS;
+      selectedTargetNamespace = targetNamespace || globalNS;
     }
   }
   if (
@@ -253,10 +255,15 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
   );
 
   React.useEffect(() => {
-    if (version !== currentLatestVersion || manualSubscriptionsInNamespace?.length > 0) {
+    if (
+      version !== currentLatestVersion ||
+      manualSubscriptionsInNamespace?.length > 0 ||
+      tokenizedAuth === 'AWS' ||
+      tokenizedAuth === 'Azure'
+    ) {
       setApproval(InstallPlanApproval.Manual);
     } else setApproval(InstallPlanApproval.Automatic);
-  }, [version, currentLatestVersion, manualSubscriptionsInNamespace]);
+  }, [version, currentLatestVersion, manualSubscriptionsInNamespace?.length, tokenizedAuth]);
 
   const singleInstallMode = installModes.find(
     (m) => m.type === InstallModeType.InstallModeTypeOwnNamespace,
@@ -283,7 +290,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
           item: channels?.[0]?.currentCSVDesc?.displayName,
         })}
         detail={t(
-          'olm~The operator does not support single namespace or global installation modes.',
+          'olm~The Operator does not support to be made available in a single namespace (OwnNamespace installMode) or global installation (AllNamespaces installMode).  Use the CLI to install this Operator instead.',
         )}
       />
     );
@@ -415,6 +422,39 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
       },
     };
 
+    switch (tokenizedAuth) {
+      case 'AWS':
+        subscription.spec.config = {
+          env: [
+            {
+              name: 'ROLEARN',
+              value: roleARNText,
+            },
+          ],
+        };
+        break;
+      case 'Azure':
+        subscription.spec.config = {
+          env: [
+            {
+              name: 'CLIENTID',
+              value: azureClientId,
+            },
+            {
+              name: 'TENANTID',
+              value: azureTenantId,
+            },
+            {
+              name: 'SUBSCRIPTIONID',
+              value: azureSubscriptionId,
+            },
+          ],
+        };
+        break;
+      default:
+        break;
+    }
+
     try {
       if (isSuggestedNamespaceSelected && !suggestedNamespaceExists) {
         await k8sCreate(NamespaceModel, ns);
@@ -461,7 +501,10 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     subscriptionExists(selectedTargetNamespace) ||
     !namespaceSupports(selectedTargetNamespace)(selectedInstallMode) ||
     (selectedTargetNamespace && cannotResolve) ||
-    !_.isEmpty(conflictingProvidedAPIs(selectedTargetNamespace));
+    !_.isEmpty(conflictingProvidedAPIs(selectedTargetNamespace)) ||
+    (tokenizedAuth === 'AWS' && _.isEmpty(roleARNText)) ||
+    (tokenizedAuth === 'Azure' &&
+      [azureClientId, azureTenantId, azureSubscriptionId].some((v) => _.isEmpty(v)));
 
   const formError = () => {
     return (
@@ -595,24 +638,32 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
             id="enable-monitoring-checkbox"
             data-test="enable-monitoring"
             label={t('olm~Enable Operator recommended cluster monitoring on this Namespace')}
-            onChange={setEnableMonitoring}
+            onChange={(_event, value) => setEnableMonitoring(value)}
             isChecked={enableMonitoring}
             data-checked-state={enableMonitoring}
           />
-          {props.packageManifest.data[0].metadata.labels['opsrc-provider'] !== 'redhat' && (
+          {!props.packageManifest.data[0].metadata.labels.provider?.includes('Red Hat') && (
             <Alert
               isInline
-              className="co-alert pf-c-alert--top-margin"
+              className="co-alert pf-v5-c-alert--top-margin"
               variant="warning"
               title={t('olm~Namespace monitoring')}
             >
-              <Trans ns="olm">
-                Please note that installing non-Red Hat operators into OpenShift namespaces and
-                enabling monitoring voids user support. Enabling cluster monitoring for non-Red Hat
-                operators can lead to malicious metrics data overriding existing cluster metrics.
-                For more information, see the{' '}
-                <ExternalLink href={monitoringURL}>cluster monitoring documentation</ExternalLink>.
-              </Trans>
+              <>
+                {t(
+                  'olm~Please note that installing non-Red Hat operators into OpenShift namespaces and enabling monitoring voids user support. Enabling cluster monitoring for non-Red Hat operators can lead to malicious metrics data overriding existing cluster metrics.',
+                )}
+                {!isManaged() && (
+                  <Trans ns="olm">
+                    {' '}
+                    For more information, see the{' '}
+                    <ExternalLink href={monitoringURL}>
+                      cluster monitoring documentation
+                    </ExternalLink>
+                    .
+                  </Trans>
+                )}
+              </>
             </Alert>
           )}
         </div>
@@ -620,55 +671,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     </>
   );
 
-  const globalNamespaceInstallMode = (
-    <>
-      <div className="form-group">
-        <Dropdown
-          id="dropdown-selectbox"
-          dataTest="dropdown-selectbox"
-          dropDownClassName="dropdown--full-width"
-          menuClassName="dropdown-menu--text-wrap"
-          items={items}
-          title={
-            <ResourceName
-              kind="Project"
-              name={
-                isSuggestedNamespaceSelected
-                  ? `${selectedTargetNamespace} (Operator recommended)`
-                  : selectedTargetNamespace
-              }
-            />
-          }
-          disabled={_.size(items) === 1}
-          selectedKey={selectedTargetNamespace}
-          onChange={(ns: string) => {
-            setTargetNamespace(ns);
-            setCannotResolve(false);
-          }}
-        />
-      </div>
-      {suggestedNamespaceDetails}
-      {operatorSuggestedNamespace && operatorSuggestedNamespace !== selectedTargetNamespace && (
-        <Alert
-          isInline
-          className="co-alert pf-c-alert--top-margin"
-          variant="warning"
-          title={t(
-            'olm~Not installing the Operator into the recommended namespace can cause unexpected behavior.',
-          )}
-        />
-      )}
-    </>
-  );
-
-  const singleNamespaceInstallMode = !suggestedNamespace ? (
-    <NsDropdown
-      id="dropdown-selectbox"
-      selectedKey={selectedTargetNamespace}
-      onChange={(ns) => setTargetNamespace(ns)}
-      dataTest="dropdown-selectbox"
-    />
-  ) : (
+  const installedNamespaceOptions = (
     <div className="form-group">
       <RadioInput
         onChange={() => {
@@ -683,7 +686,6 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
         <ResourceIcon kind="Project" />
         <b>{operatorSuggestedNamespace}</b>
       </RadioInput>
-      {useSuggestedNSForSingleInstallMode && suggestedNamespaceDetails}
       <RadioInput
         onChange={() => {
           setUseSuggestedNSForSingleInstallMode(false);
@@ -701,23 +703,54 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
             onChange={(ns) => setTargetNamespace(ns)}
             dataTest="dropdown-selectbox"
           />
-
-          {suggestedNamespace !== selectedTargetNamespace && (
-            <Alert
-              isInline
-              className="co-alert pf-c-alert--top-margin"
-              variant="warning"
-              title={t(
-                'olm~Not installing the Operator into the recommended namespace can cause unexpected behavior.',
-              )}
-            />
-          )}
+          <Alert
+            isInline
+            className="co-alert pf-v5-c-alert--top-margin"
+            variant="warning"
+            title={t(
+              'olm~Not installing the Operator into the recommended namespace can cause unexpected behavior.',
+            )}
+          />
         </>
       )}
     </div>
   );
 
+  const installedNamespaceSelect = (
+    <div className="form-group">
+      <NsDropdown
+        id="dropdown-selectbox"
+        selectedKey={selectedTargetNamespace}
+        onChange={(ns) => setTargetNamespace(ns)}
+        dataTest="dropdown-selectbox"
+      />
+    </div>
+  );
+
+  const globalNamespaceInstallMode = (
+    <>
+      {operatorSuggestedNamespace ? (
+        <>{installedNamespaceOptions}</>
+      ) : (
+        <>{installedNamespaceSelect}</>
+      )}
+      {useSuggestedNSForSingleInstallMode && suggestedNamespaceDetails}
+    </>
+  );
+
+  const singleNamespaceInstallMode = !suggestedNamespace ? (
+    <>{installedNamespaceSelect}</>
+  ) : (
+    <>
+      {installedNamespaceOptions}
+      {useSuggestedNSForSingleInstallMode && suggestedNamespaceDetails}
+    </>
+  );
+
   const providedAPIs = providedAPIsForChannel(props.packageManifest.data[0])(updateChannelName);
+
+  const isApprovalItemDisabled =
+    version !== currentLatestVersion || manualSubscriptionsInNamespace?.length > 0;
 
   return (
     <>
@@ -728,16 +761,132 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
         title={t('olm~Install Operator')}
         breadcrumbs={[
           { name: t('olm~OperatorHub'), path: `/operatorhub?${search.toString()}` },
-          { name: t('olm~Operator Installation'), path: props.match.url },
+          { name: t('olm~Operator Installation'), path: url },
         ]}
         helpText={t(
           'olm~Install your Operator by subscribing to one of the update channels to keep the Operator up to date. The strategy determines either manual or automatic updates.',
         )}
       />
       <div className="co-m-pane__body">
+        {tokenizedAuth === 'AWS' && showSTSWarn && (
+          <Alert
+            isInline
+            variant="warning"
+            title={t('olm~Cluster in STS Mode')}
+            actionClose={<AlertActionCloseButton onClose={() => setShowSTSWarn(false)} />}
+            className="pf-v5-u-mb-lg"
+          >
+            <p>
+              {t(
+                'olm~This cluster is using AWS Security Token Service to reach the cloud API. In order for this operator to take the actions it requires directly with the cloud API, you will need to provide a role ARN (with an attached policy) during installation. Manual subscriptions are highly recommended as steps should be taken prior to upgrade to ensure that the permissions required by the next version are properly accounted for in the role. Please see the operator description for more details.',
+              )}
+            </p>
+          </Alert>
+        )}
+        {tokenizedAuth === 'Azure' && showSTSWarn && (
+          <Alert
+            isInline
+            variant="warning"
+            title={t('olm~Cluster in Azure Workload Identity / Federated Identity Mode')}
+            actionClose={<AlertActionCloseButton onClose={() => setShowSTSWarn(false)} />}
+            className="pf-u-mb-lg"
+          >
+            <p>
+              {t(
+                'olm~This cluster is using Azure Workload Identity / Federated Identity to reach the cloud API. In order for this operator to take the actions it requires directly with the cloud API, provide the Client ID, Tenant ID, and Subscription ID during installation. Manual subscriptions are highly recommended as steps should be taken before upgrade to ensure that the permissions required by the next version are properly accounted for in the role. See the operator description for more details.',
+              )}
+            </p>
+          </Alert>
+        )}
         <div className="row">
           <div className="col-xs-6">
             <>
+              {tokenizedAuth === 'AWS' && (
+                <div className="form-group">
+                  <fieldset>
+                    <label className="co-required">{t('olm~role ARN')}</label>
+                    <FieldLevelHelp>
+                      {t('olm~The role ARN required for the operator to access the cloud API.')}
+                    </FieldLevelHelp>
+                    <div className="co-toolbar__item">
+                      <TextInput
+                        autoFocus
+                        placeholder={'role ARN'}
+                        aria-label={'role ARN'}
+                        type="text"
+                        value={roleARNText}
+                        onChange={(_event, value) => {
+                          setRoleARNText(value);
+                        }}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+              )}
+              {tokenizedAuth === 'Azure' && (
+                <div className="form-group">
+                  <fieldset>
+                    <label className="co-required">{t('olm~Azure Client ID')}</label>
+                    <FieldLevelHelp>
+                      {t(
+                        'olm~The Azure Client ID required for the operator to access the cloud API.',
+                      )}
+                    </FieldLevelHelp>
+                    <div className="co-toolbar__item">
+                      <TextInput
+                        autoFocus
+                        placeholder={'Azure Client ID'}
+                        aria-label={'Azure Client ID'}
+                        type="text"
+                        value={azureClientId}
+                        onChange={(_event, value) => {
+                          setAzureClientId(value);
+                        }}
+                      />
+                    </div>
+                  </fieldset>
+                  <fieldset>
+                    <label className="co-required">{t('olm~Azure Tenant ID')}</label>
+                    <FieldLevelHelp>
+                      {t(
+                        'olm~The Azure Tenant ID required for the operator to access the cloud API.',
+                      )}
+                    </FieldLevelHelp>
+                    <div className="co-toolbar__item">
+                      <TextInput
+                        autoFocus
+                        placeholder={'Azure Tenant ID'}
+                        aria-label={'Azure Tenant ID'}
+                        type="text"
+                        value={azureTenantId}
+                        onChange={(_event, value) => {
+                          setAzureTenantId(value);
+                        }}
+                      />
+                    </div>
+                  </fieldset>
+                  <fieldset>
+                    <label className="co-required">{t('olm~Azure Subscription ID')}</label>
+                    <FieldLevelHelp>
+                      {t(
+                        'olm~The Azure Subscription ID required for the operator to access the cloud API.',
+                      )}
+                    </FieldLevelHelp>
+                    <div className="co-toolbar__item">
+                      <TextInput
+                        autoFocus
+                        placeholder={'Azure Subcription ID'}
+                        aria-label={'Azure Subscription ID'}
+                        type="text"
+                        value={azureSubscriptionId}
+                        onChange={(_event, value) => {
+                          setAzureSubscriptionId(value);
+                        }}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+              )}
               <div className="form-group">
                 <fieldset>
                   <label className="co-required">{t('olm~Update channel')}</label>
@@ -760,6 +909,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
                     selectedUpdateChannel={updateChannelName}
                     updateVersion={updateVersion}
                     setUpdateVersion={setUpdateVersion}
+                    showVersionAlert
                   />
                 </fieldset>
               </div>
@@ -823,8 +973,15 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
                   <RadioGroup
                     currentValue={approval}
                     items={[
-                      { value: InstallPlanApproval.Automatic, title: t('olm~Automatic') },
-                      { value: InstallPlanApproval.Manual, title: t('olm~Manual') },
+                      {
+                        value: InstallPlanApproval.Automatic,
+                        title: t('olm~Automatic'),
+                        disabled: isApprovalItemDisabled,
+                      },
+                      {
+                        value: InstallPlanApproval.Manual,
+                        title: t('olm~Manual'),
+                      },
                     ]}
                     onChange={(e) => {
                       const { value } = e.currentTarget;
@@ -878,7 +1035,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
             </>
             <div className="co-form-section__separator" />
             {formError()}
-            <ActionGroup className="pf-c-form">
+            <ActionGroup className="pf-v5-c-form">
               <Button
                 data-test="install-operator"
                 onClick={() => submit()}
@@ -931,7 +1088,7 @@ const OperatorHubSubscribe: React.FC<OperatorHubSubscribeFormProps> = (props) =>
   </StatusBox>
 );
 
-export const OperatorHubSubscribePage: React.SFC<OperatorHubSubscribePageProps> = (props) => {
+export const OperatorHubSubscribePage: React.SFC = (props) => {
   return (
     <Firehose
       resources={[
@@ -975,12 +1132,7 @@ export type OperatorHubSubscribeFormProps = {
   targetNamespace?: string;
   operatorGroup: { loaded: boolean; data: OperatorGroupKind[] };
   packageManifest: { loaded: boolean; data: PackageManifestKind[] };
-  match: match;
   subscription: { loaded: boolean; data: SubscriptionKind[] };
-};
-
-export type OperatorHubSubscribePageProps = {
-  match: match;
 };
 
 OperatorHubSubscribe.displayName = 'OperatorHubSubscribe';

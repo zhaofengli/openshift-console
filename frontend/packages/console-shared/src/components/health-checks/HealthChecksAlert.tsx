@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Alert, AlertActionCloseButton } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { useAccessReview } from '@console/internal/components/utils';
 import {
   DeploymentConfigModel,
@@ -101,7 +101,7 @@ const HealthChecksAlert: React.FC<HealthChecksAlertProps> = ({ resource }) => {
       {showAlert ? (
         <div className="ocs-health-checks-alert">
           <Alert
-            variant="default"
+            variant="custom"
             title={t('console-shared~Health checks')}
             actionClose={<AlertActionCloseButton onClose={handleAlertAction} />}
             isInline

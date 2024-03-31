@@ -2,16 +2,16 @@ import * as React from 'react';
 import { Tooltip, TooltipPosition } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { impersonateStateToProps } from '@console/dynamic-plugin-sdk';
 import { resourcePathFromModel } from '@console/internal/components/utils';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { Status } from '@console/shared';
 import { BuildDecoratorBubble } from '@console/topology/src/components/graph-view';
 import { BUILDRUN_TO_RESOURCE_MAP_LABEL } from '../../const';
-import { BuildRunModel } from '../../models';
+import { BuildRunModel, BuildRunModelV1Alpha1 } from '../../models';
 import { Build, BuildRun } from '../../types';
-import { getLatestBuildRunStatusforDeployment } from '../../utils';
+import { getLatestBuildRunStatusforDeployment, isV1Alpha1Resource } from '../../utils';
 
 type BuildRunDecoratorProps = {
   buildRuns: BuildRun[];
@@ -37,6 +37,7 @@ export const ConnectedBuildRunDecorator: React.FC<BuildRunDecoratorProps & State
   x,
   y,
 }) => {
+  const ref = React.useRef();
   const { t } = useTranslation();
   const { latestBuildRun, status } = getLatestBuildRunStatusforDeployment(buildRuns, resource);
 
@@ -50,8 +51,12 @@ export const ConnectedBuildRunDecorator: React.FC<BuildRunDecoratorProps & State
     const resourceLabel =
       latestBuildRun.metadata?.labels?.[BUILDRUN_TO_RESOURCE_MAP_LABEL] || 'build-decorator';
 
+    const buildRunModel = isV1Alpha1Resource(latestBuildRun)
+      ? BuildRunModelV1Alpha1
+      : BuildRunModel;
+
     const link = `${resourcePathFromModel(
-      BuildRunModel,
+      buildRunModel,
       latestBuildRun.metadata.name,
       latestBuildRun.metadata.namespace,
     )}/logs`;
@@ -74,8 +79,8 @@ export const ConnectedBuildRunDecorator: React.FC<BuildRunDecoratorProps & State
   }
 
   return (
-    <Tooltip content={tooltipContent} position={TooltipPosition.left}>
-      {decoratorContent}
+    <Tooltip triggerRef={ref} content={tooltipContent} position={TooltipPosition.left}>
+      <g ref={ref}>{decoratorContent}</g>
     </Tooltip>
   );
 };

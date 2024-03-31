@@ -16,7 +16,7 @@ MAINTAINER Ed Rooth - CoreOS
 RUN go install github.com/jstemmer/go-junit-report@latest
 
 ### Install NodeJS and yarn
-ENV NODE_VERSION="v14.21.3"
+ENV NODE_VERSION="v18.18.1"
 ENV YARN_VERSION="v1.22.10"
 
 # yarn needs a home writable by any user running the container
@@ -54,11 +54,3 @@ RUN cd /tmp && \
     rm -f /tmp/yarn.tar.gz && \
     mv /tmp/yarn-${YARN_VERSION} /usr/local/yarn && \
     ln -s /usr/local/yarn/bin/yarn /usr/local/bin/yarn
-
-# Install Chrome for installer gui tests
-RUN test "$(go env GOARCH)" = amd64 || exit 0; \
-    wget --quiet -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y -q \
-    google-chrome-stable ca-certificates

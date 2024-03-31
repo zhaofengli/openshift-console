@@ -14,7 +14,7 @@ declare module '*.png' {
 
 declare interface Window {
   SERVER_FLAGS: {
-    copiedCSVsDisabled: Record<string, boolean>; // TODO remove multicluster
+    copiedCSVsDisabled: boolean;
     alertManagerBaseURL: string;
     alertmanagerUserWorkloadBaseURL: string;
     authDisabled: boolean;
@@ -26,7 +26,6 @@ declare interface Window {
     documentationBaseURL: string;
     kubeAPIServerURL: string;
     kubeAdminLogoutURL: string;
-    kubectlClientID: string;
     loadTestFactor: number;
     loginErrorURL: string;
     loginSuccessURL: string;
@@ -37,7 +36,6 @@ declare interface Window {
     prometheusTenancyBaseURL: string;
     quickStarts: string;
     releaseVersion: string;
-    requestTokenURL: string;
     inactivityTimeout: number;
     statuspageID: string;
     GOARCH: string;
@@ -52,7 +50,6 @@ declare interface Window {
     i18nNamespaces: string[]; // Available i18n namespaces
     quickStarts: string;
     projectAccessClusterRoles: string;
-    clusters: string[]; // TODO remove multicluster
     controlPlaneTopology: string;
     telemetry: Record<string, string>;
     nodeArchitectures: string[];
@@ -65,7 +62,8 @@ declare interface Window {
   i18n?: {}; // i18next instance, only available in development builds for debugging
   store?: {}; // Redux store, only available in development builds for debugging
   pluginStore?: {}; // Console plugin store
-  loadPluginEntry?: Function;
+  loadPluginEntry?: Function; // Console plugin entry callback, used to load dynamic plugins
+  webpackSharedScope?: {}; // webpack shared scope object, contains modules shared across plugins
   Cypress?: {};
 }
 

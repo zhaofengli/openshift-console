@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { InProgressIcon } from '@patternfly/react-icons';
+import { InProgressIcon } from '@patternfly/react-icons/dist/esm/icons/in-progress-icon';
 import { TFunction } from 'i18next';
-import { HealthState } from '@console/dynamic-plugin-sdk';
+import { HealthState } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import {
   GreenCheckCircleIcon,
   RedExclamationCircleIcon,

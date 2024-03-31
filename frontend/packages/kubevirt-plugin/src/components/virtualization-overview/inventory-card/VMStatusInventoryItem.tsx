@@ -1,6 +1,9 @@
 import * as React from 'react';
-import { OffIcon, PausedIcon, SyncAltIcon, InProgressIcon } from '@patternfly/react-icons';
-import { Link } from 'react-router-dom';
+import { InProgressIcon } from '@patternfly/react-icons/dist/esm/icons/in-progress-icon';
+import { OffIcon } from '@patternfly/react-icons/dist/esm/icons/off-icon';
+import { PausedIcon } from '@patternfly/react-icons/dist/esm/icons/paused-icon';
+import { SyncAltIcon } from '@patternfly/react-icons/dist/esm/icons/sync-alt-icon';
+import { Link } from 'react-router-dom-v5-compat';
 import { RedExclamationCircleIcon, YellowExclamationTriangleIcon } from '@console/shared';
 
 import './virt-overview-inventory-card.scss';

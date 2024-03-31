@@ -5,6 +5,9 @@ import {
   ObjectMetadata,
   K8sResourceCommon,
   K8sVerb,
+  K8sResourceCondition,
+  NodeCondition,
+  TaintEffect,
 } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { EventInvolvedObject } from './event';
 import { Selector, MatchLabels, K8sModel } from '@console/dynamic-plugin-sdk/src/api/common-types';
@@ -18,33 +21,11 @@ export type PartialObjectMetadata = {
   metadata: ObjectMetadata;
 };
 
-export enum K8sResourceConditionStatus {
-  True = 'True',
-  False = 'False',
-  Unknown = 'Unknown',
-}
-
-export type K8sResourceCondition = {
-  type: string;
-  status: keyof typeof K8sResourceConditionStatus;
-  lastTransitionTime?: string;
-  reason?: string;
-  message?: string;
-};
-
 export type ClusterServiceVersionCondition = {
   phase: string;
   lastTransitionTime?: string;
   reason?: string;
   message?: string;
-};
-
-export type TaintEffect = '' | 'NoSchedule' | 'PreferNoSchedule' | 'NoExecute';
-
-export type Taint = {
-  key: string;
-  value: string;
-  effect: TaintEffect;
 };
 
 export type TolerationOperator = 'Exists' | 'Equal';
@@ -324,6 +305,25 @@ export type DeploymentKind = {
   };
 } & K8sResourceCommon;
 
+export type DeploymentConfigKind = {
+  spec: {
+    paused?: boolean;
+    replicas?: number;
+    selector: Selector;
+    strategy?: {
+      rollingUpdate?: {
+        maxSurge: number | string;
+        maxUnavailable: number | string;
+      };
+      type?: string;
+    };
+    template: PodTemplate;
+  };
+  status?: {
+    latestVersion?: number;
+  };
+} & K8sResourceCommon;
+
 export type ResourceQuotaKind = {
   spec?: {
     hard?: { [key: string]: string };
@@ -472,31 +472,6 @@ export type StorageClassResourceKind = {
   };
 } & K8sResourceCommon;
 
-export type NodeCondition = {
-  lastHeartbeatTime?: string;
-} & K8sResourceCondition;
-
-export type NodeKind = {
-  spec: {
-    taints?: Taint[];
-    unschedulable?: boolean;
-  };
-  status?: {
-    capacity?: {
-      [key: string]: string;
-    };
-    conditions?: NodeCondition[];
-    images?: {
-      names: string[];
-      sizeBytes?: number;
-    }[];
-    phase?: string;
-    nodeInfo?: {
-      operatingSystem: string;
-    };
-  };
-} & K8sResourceCommon;
-
 export type ConfigMapKind = {
   data?: { [key: string]: string };
   binaryData?: { [key: string]: string };
@@ -624,6 +599,24 @@ export type RouteKind = {
     ingress: RouteIngress[];
     url?: string;
     conditions?: K8sResourceCondition[];
+  };
+} & K8sResourceCommon;
+
+export type CloudCredentialKind = {
+  spec: {
+    credentialsMode: string;
+  };
+} & K8sResourceCommon;
+
+export type InfrastructureKind = {
+  status: {
+    platform: string;
+  };
+} & K8sResourceCommon;
+
+export type AuthenticationKind = {
+  spec: {
+    serviceAccountIssuer: string;
   };
 } & K8sResourceCommon;
 
@@ -947,6 +940,13 @@ export type ResourceAccessReviewResponse = {
   groups: string[];
 } & K8sResourceCommon;
 
+export type UserInfo = {
+  uid?: string;
+  username?: string;
+  groups?: string[];
+  extra?: object;
+};
+
 export type UserKind = {
   fullName?: string;
   identities: string[];
@@ -1211,7 +1211,7 @@ export type ReplicationControllerKind = {
     availableReplicas?: number;
     conditions?: DeploymentCondition[];
     fullyLabeledReplicas?: number;
-    observedGeneratio?: number;
+    observedGeneration?: number;
     readyReplicas?: number;
     replicas: number;
   };

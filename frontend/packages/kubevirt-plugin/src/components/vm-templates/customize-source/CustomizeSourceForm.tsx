@@ -8,17 +8,19 @@ import {
   Form,
   Grid,
   GridItem,
-  SelectOption,
-  SelectVariant,
   Stack,
   StackItem,
   TextArea,
   TextInput,
   Title,
 } from '@patternfly/react-core';
+import {
+  SelectOption as SelectOptionDeprecated,
+  SelectVariant as SelectVariantDeprecated,
+} from '@patternfly/react-core/deprecated';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router';
+import { useLocation } from 'react-router-dom-v5-compat';
 import { dropdownUnits } from '@console/internal/components/storage/shared';
 import {
   convertToBaseValue,
@@ -66,8 +68,9 @@ import { filterTemplates } from '../utils';
 import { FORM_ACTION_TYPE, formReducer, initFormState } from './customize-source-form-reducer';
 import './customize-source.scss';
 
-const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
+const CustomizeSourceForm: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const templateName = urlParams.get('template');
   const templateNs = urlParams.get('templateNs') || 'openshift';
@@ -334,7 +337,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                       name="vmt-name"
                       aria-describedby="vmt-name-helper"
                       value={name}
-                      onChange={(payload) =>
+                      onChange={(_event, payload) =>
                         formDispatch({
                           type: FORM_ACTION_TYPE.SET_NAME,
                           payload,
@@ -354,7 +357,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                       name="vmt-provider"
                       aria-describedby="vmt-provider-helper"
                       value={provider}
-                      onChange={(payload) =>
+                      onChange={(_event, payload) =>
                         formDispatch({
                           type: FORM_ACTION_TYPE.SET_PROVIDER,
                           payload,
@@ -378,12 +381,12 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                       selections={[t(TemplateSupport.fromString(support).toString())]}
                     >
                       {TemplateSupport.getAll().map((templateSupport) => (
-                        <SelectOption
+                        <SelectOptionDeprecated
                           key={templateSupport.getValue()}
                           value={templateSupport.getValue()}
                         >
                           {t(templateSupport.toString())}
-                        </SelectOption>
+                        </SelectOptionDeprecated>
                       ))}
                     </FormPFSelect>
                   </FormRow>
@@ -395,7 +398,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                     >
                       <FormPFSelect
                         toggleId="vmt-flavor-select"
-                        variant={SelectVariant.single}
+                        variant={SelectVariantDeprecated.single}
                         selections={[
                           t(
                             'kubevirt-plugin~{{flavor}}: {{count}} CPU | {{memory}} Memory',
@@ -411,7 +414,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                         isCheckboxSelectionBadgeHidden
                       >
                         {Object.keys(flavors).map((flavor) => (
-                          <SelectOption key={flavor} value={flavor} />
+                          <SelectOptionDeprecated key={flavor} value={flavor} />
                         ))}
                       </FormPFSelect>
                     </FormRow>
@@ -443,7 +446,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                           describedBy="request-size-help"
                           inputID="request-size-input"
                         >
-                          <div className="pf-c-form__helper-text" aria-live="polite">
+                          <div className="pf-v5-c-form__helper-text" aria-live="polite">
                             {t(
                               'kubevirt-plugin~This boot source is marked as CD-ROM, and requires allocated resources (disk) to customize it. Please allocate a PersistentVolumeClaim for the customization process.',
                             )}
@@ -455,7 +458,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                     label="Inject cloud-init"
                     isChecked={injectCloudInit}
                     data-checked-state={injectCloudInit}
-                    onChange={(payload) =>
+                    onChange={(_event, payload) =>
                       formDispatch({
                         type: FORM_ACTION_TYPE.INJECT_CLOUD_INIT,
                         payload,
@@ -469,7 +472,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                       <TextArea
                         className="kv-customize-source__cloud-init"
                         value={cloudInit}
-                        onChange={(payload) =>
+                        onChange={(_event, payload) =>
                           formDispatch({
                             type: FORM_ACTION_TYPE.SET_CLOUD_INIT,
                             payload,
@@ -477,7 +480,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                         }
                         resizeOrientation="vertical"
                       />
-                      <div className="pf-c-form__helper-text" aria-live="polite">
+                      <div className="pf-v5-c-form__helper-text" aria-live="polite">
                         {t('kubevirt-plugin~This script will run against the boot source.')}
                       </div>
                     </>
@@ -492,7 +495,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                 </StackItem>
               )}
             </Stack>
-            <ActionGroup className="pf-c-form kv-customize-source__footer">
+            <ActionGroup className="pf-v5-c-form kv-customize-source__footer">
               <Button
                 data-test="start-customize"
                 isDisabled={creatingVM || !namespace || !name || !!nameValidation || !provider}

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createHash } from 'crypto-browserify';
 // FIXME upgrading redux types is causing many errors at this time
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -9,7 +10,6 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { ConfigMapModel } from '@console/internal/models';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { RootState } from '@console/internal/redux';
-import { HUB_CLUSTER_NAME } from '@console/shared/src/constants/common';
 import {
   createConfigMap,
   deseralizeData,
@@ -64,11 +64,34 @@ export const useUserSettings: UseUserSettings = <T>(key, defaultValue, sync = fa
   // Request counter
   const [isRequestPending, increaseRequest, decreaseRequest] = useCounterRef();
 
+  const hashNameOrKubeadmin = (name: string): string | null => {
+    if (!name) {
+      return null;
+    }
+
+    if (name === 'kube:admin') {
+      return 'kubeadmin';
+    }
+    const hash = createHash('sha256');
+    hash.update(name);
+    return hash.digest('hex');
+  };
+
   // User and impersonate
-  const userUid = useSelector(
-    (state: RootState) =>
-      getImpersonate(state)?.name ?? getUser(state)?.metadata?.uid ?? 'kubeadmin',
-  );
+  const userUid = useSelector((state: RootState) => {
+    const impersonateName = getImpersonate(state)?.name;
+    if (impersonateName) {
+      return impersonateName;
+    }
+    const uid = getUser(state)?.uid;
+    if (uid) {
+      return uid;
+    }
+    const username = hashNameOrKubeadmin(getUser(state)?.username);
+
+    return username || '';
+  });
+
   const impersonate: boolean = useSelector((state: RootState) => !!getImpersonate(state));
 
   // Fallback
@@ -79,6 +102,7 @@ export const useUserSettings: UseUserSettings = <T>(key, defaultValue, sync = fa
     (...args) => mounted.current && setFallbackLocalStorageUnsafe(...args),
     [setFallbackLocalStorageUnsafe],
   );
+
   const isLocalStorage = fallbackLocalStorage || impersonate;
   const [lsData, setLsDataCallback] = useUserSettingsLocalStorage(
     alwaysUseFallbackLocalStorage && !impersonate
@@ -99,7 +123,6 @@ export const useUserSettings: UseUserSettings = <T>(key, defaultValue, sync = fa
             namespace: USER_SETTING_CONFIGMAP_NAMESPACE,
             isList: false,
             name: `user-settings-${userUid}`,
-            cluster: HUB_CLUSTER_NAME, // TODO remove multicluster
           },
     [userUid, isLocalStorage],
   );

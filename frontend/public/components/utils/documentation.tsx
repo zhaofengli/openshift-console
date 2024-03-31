@@ -44,24 +44,28 @@ export const documentationURLs: documentationURLsType = {
     downstream: 'html/operators/understanding-operators#olm-what-operators-are',
     upstream: 'operators/understanding/olm-what-operators-are.html',
   },
+  pipelines: {
+    downstream: 'html/cicd/pipelines#understanding-openshift-pipelines',
+    upstream: '', // intentionally blank as there is no upstream equivalent
+  },
   postInstallationMachineConfigurationTasks: {
-    downstream: 'html/post-installation_configuration/index',
+    downstream: 'html/postinstallation_configuration/index',
     upstream: 'post_installation_configuration/machine-configuration-tasks.html',
   },
   understandingUpgradeChannels: {
     downstream:
-      'html/updating_clusters/understanding-upgrade-channels-releases#understanding-upgrade-channels_understanding-upgrade-channels-releases',
-    upstream:
-      'updating/understanding-upgrade-channels-release.html#understanding-upgrade-channels_understanding-upgrade-channels-releases',
+      'html/updating_clusters/understanding-openshift-updates-1#understanding-update-channels-releases',
+    upstream: 'updating/understanding_updates/intro-to-updates.html',
   },
   updateService: {
     downstream:
-      'html/updating_clusters/updating-restricted-network-cluster#update-service-overview_updating-restricted-network-cluster',
-    upstream: 'updating/understanding-openshift-updates.html',
+      'html/updating_clusters/performing-a-cluster-update#updating-a-cluster-in-a-disconnected-environment',
+    upstream: '', // intentionally blank as there is no upstream equivalent
   },
   updateUsingCustomMachineConfigPools: {
-    downstream: 'html/updating_clusters/update-using-custom-machine-config-pools.html',
-    upstream: 'updating/update-using-custom-machine-config-pools.html',
+    downstream:
+      'html/updating_clusters/performing-a-cluster-update#update-using-custom-machine-config-pools',
+    upstream: 'updating/updating_a_cluster/update-using-custom-machine-config-pools.html',
   },
   usingInsights: {
     downstream:
@@ -77,16 +81,23 @@ export const documentationURLs: documentationURLsType = {
     downstream: 'html/building_applications/projects#working-with-projects',
     upstream: 'applications/projects/working-with-projects.html',
   },
+  deprecatedDeploymentConfig: {
+    downstream: 'html/building_applications/deployments',
+    upstream: 'applications/deployments/what-deployments-are.html',
+  },
 };
 
 export const isUpstream = () => window.SERVER_FLAGS.branding === 'okd';
+
+export const isManaged = () =>
+  window.SERVER_FLAGS.branding === 'rosa' || window.SERVER_FLAGS.branding === 'dedicated';
 
 export const getDocumentationURL = (docURLs: docURLs) =>
   isUpstream()
     ? `${UPSTREAM_LATEST}${docURLs.upstream}`
     : `${window.SERVER_FLAGS.documentationBaseURL}${docURLs.downstream}`;
 
-export const getNetworkPolicyDocURL = (openshiftFlag: boolean) => {
+export const getNetworkPolicyDocURL = (openshiftFlag: boolean): string => {
   const networkLink = getDocumentationURL(documentationURLs.networkPolicy);
 
   return openshiftFlag ? networkLink : documentationURLs.networkPolicy.kube;

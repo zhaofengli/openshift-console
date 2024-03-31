@@ -12,7 +12,6 @@ import {
   apiVersionForModel,
 } from '@console/internal/module/k8s';
 import { TektonResourceLabel } from '../components/pipelines/const';
-import { getTaskRuns } from '../components/taskruns/useTaskRuns';
 import {
   ClusterTaskModel,
   ClusterTriggerBindingModel,
@@ -33,7 +32,7 @@ export interface PropPipelineData {
   latestRun?: PipelineRunKind;
 }
 
-interface StatusMessage {
+export interface StatusMessage {
   message: string;
   pftoken: { name: string; value: string; var: string };
 }
@@ -162,12 +161,27 @@ export const totalPipelineRunTasks = (executedPipeline: PipelineKind): number =>
   return totalTasks + finallyTasks;
 };
 
+export const totalPipelineRunCustomTasks = (executedPipeline: PipelineKind): number => {
+  if (!executedPipeline) {
+    return 0;
+  }
+  const totalCustomTasks =
+    (executedPipeline.spec?.tasks || []).filter(
+      (task) => task.taskRef?.kind !== 'Task' && task.taskRef?.kind !== 'ClusterTask',
+    ).length ?? 0;
+  const finallyCustomTasks =
+    (executedPipeline.spec?.finally || []).filter(
+      (task) => task.taskRef?.kind !== 'Task' && task.taskRef?.kind !== 'ClusterTask',
+    ).length ?? 0;
+  return totalCustomTasks + finallyCustomTasks;
+};
+
 export const getTaskStatus = (
   pipelinerun: PipelineRunKind,
   pipeline: PipelineKind,
   taskRuns: TaskRunKind[],
 ): TaskStatus => {
-  const totalTasks = totalPipelineRunTasks(pipeline);
+  const totalTasks = totalPipelineRunTasks(pipeline) - totalPipelineRunCustomTasks(pipeline);
   const plrTasks = (): string[] => {
     if (pipelinerun?.status?.taskRuns) {
       return Object.keys(pipelinerun.status.taskRuns);
@@ -274,27 +288,30 @@ export const getModelReferenceFromTaskKind = (kind: string): GroupVersionKind =>
   return referenceForModel(model);
 };
 
-export const countRunningTasks = (pipelineRun: PipelineRunKind): number => {
-  let taskRuns: TaskRunKind[] = [];
-  getTaskRuns(pipelineRun.metadata.namespace, pipelineRun.metadata.name)
-    .then((response: TaskRunKind[]) => {
-      taskRuns = response;
-    })
-    .catch(() => {});
+export const countRunningTasks = (
+  pipelineRun: PipelineRunKind,
+  taskRuns: TaskRunKind[],
+): number => {
   const taskStatuses = taskRuns && getTaskStatus(pipelineRun, undefined, taskRuns);
   return taskStatuses?.Running;
 };
 
-export const shouldHidePipelineRunStop = (pipelineRun: PipelineRunKind): boolean =>
+export const shouldHidePipelineRunStop = (
+  pipelineRun: PipelineRunKind,
+  taskRuns: TaskRunKind[],
+): boolean =>
   !(
     pipelineRun &&
-    (countRunningTasks(pipelineRun) > 0 ||
+    (countRunningTasks(pipelineRun, taskRuns) > 0 ||
       pipelineRunFilterReducer(pipelineRun) === ComputedStatus.Running)
   );
 
-export const shouldHidePipelineRunCancel = (pipelineRun: PipelineRunKind): boolean =>
+export const shouldHidePipelineRunCancel = (
+  pipelineRun: PipelineRunKind,
+  taskRuns: TaskRunKind[],
+): boolean =>
   !(
     pipelineRun &&
-    countRunningTasks(pipelineRun) > 0 &&
+    countRunningTasks(pipelineRun, taskRuns) > 0 &&
     pipelineRunFilterReducer(pipelineRun) !== ComputedStatus.Cancelled
   );

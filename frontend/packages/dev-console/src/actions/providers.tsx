@@ -28,8 +28,10 @@ import {
 } from '@console/shared';
 import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
 import { TYPE_APPLICATION_GROUP } from '@console/topology/src/const';
+import { useJavaImageStreamEnabled } from '../components/import/jar/useJavaImageStreamEnabled';
 import {
   FLAG_DEVELOPER_CATALOG,
+  FLAG_JAVA_IMAGE_STREAM_ENABLED,
   FLAG_OPERATOR_BACKED_SERVICE_CATALOG_TYPE,
   FLAG_SAMPLE_CATALOG_TYPE,
   OPERATOR_BACKED_SERVICE_CATALOG_TYPE_ID,
@@ -97,6 +99,7 @@ export const useDeveloperCatalogProvider = (setFeatureFlag: SetFeatureFlag) => {
     isCatalogTypeEnabled(OPERATOR_BACKED_SERVICE_CATALOG_TYPE_ID),
   );
   setFeatureFlag(FLAG_SAMPLE_CATALOG_TYPE, isCatalogTypeEnabled(SAMPLE_CATALOG_TYPE_ID));
+  setFeatureFlag(FLAG_JAVA_IMAGE_STREAM_ENABLED, useJavaImageStreamEnabled());
 };
 
 export const useTopologyGraphActionProvider: TopologyActionProvider = ({
@@ -130,6 +133,7 @@ export const useTopologyGraphActionProvider: TopologyActionProvider = ({
   );
   const isSampleTypeEnabled = isCatalogTypeEnabled(SAMPLE_CATALOG_TYPE_ID);
   const isServerlessEnabled = useFlag('KNATIVE_SERVING_SERVICE');
+  const isJavaImageStreamEnabled = useFlag('JAVA_IMAGE_STREAM_ENABLED');
 
   return React.useMemo(() => {
     const sourceObj = connectorSource?.getData()?.resource;
@@ -162,19 +166,28 @@ export const useTopologyGraphActionProvider: TopologyActionProvider = ({
         ),
       );
     }
-    actionsWithSourceRef.push(
-      AddActions.UploadJarFile(
-        namespace,
-        undefined,
-        sourceReference,
-        '',
-        !isCatalogImageResourceAccess,
-      ),
-    );
-
+    if (isJavaImageStreamEnabled) {
+      actionsWithSourceRef.push(
+        AddActions.UploadJarFile(
+          namespace,
+          undefined,
+          sourceReference,
+          '',
+          !isCatalogImageResourceAccess,
+        ),
+      );
+    }
+    // Tech debt: ODC-7413: Move Serverless specific actions and providers from devconsole into knative-pluigin
     if (isServerlessEnabled) {
       actionsWithSourceRef.push(
         AddActions.CreateServerlessFunction(
+          namespace,
+          undefined,
+          sourceReference,
+          '',
+          !isCatalogImageResourceAccess,
+        ),
+        AddActions.CreateServerlessFunctionUsingSamples(
           namespace,
           undefined,
           sourceReference,
@@ -228,18 +241,28 @@ export const useTopologyGraphActionProvider: TopologyActionProvider = ({
         ),
       );
     }
-    actionsWithoutSourceRef.push(
-      AddActions.UploadJarFile(
-        namespace,
-        undefined,
-        undefined,
-        ADD_TO_PROJECT,
-        !isCatalogImageResourceAccess,
-      ),
-    );
+    if (isJavaImageStreamEnabled) {
+      actionsWithoutSourceRef.push(
+        AddActions.UploadJarFile(
+          namespace,
+          undefined,
+          undefined,
+          ADD_TO_PROJECT,
+          !isCatalogImageResourceAccess,
+        ),
+      );
+    }
+    // Tech debt: ODC-7413: Move Serverless specific actions and providers from devconsole into knative-pluigin
     if (isServerlessEnabled) {
       actionsWithoutSourceRef.push(
         AddActions.CreateServerlessFunction(
+          namespace,
+          undefined,
+          undefined,
+          ADD_TO_PROJECT,
+          !isCatalogImageResourceAccess,
+        ),
+        AddActions.CreateServerlessFunctionUsingSamples(
           namespace,
           undefined,
           undefined,
@@ -263,6 +286,7 @@ export const useTopologyGraphActionProvider: TopologyActionProvider = ({
     isCatalogImageResourceAccess,
     isOperatorBackedServiceEnabled,
     isServerlessEnabled,
+    isJavaImageStreamEnabled,
     isSampleTypeEnabled,
     isDevCatalogEnabled,
     element,
@@ -295,6 +319,7 @@ export const useTopologyApplicationActionProvider: TopologyActionProvider = ({
     serviceAccess;
   const isCatalogImageResourceAccess = isImportResourceAccess && imageStreamImportAccess;
   const isServerlessEnabled = useFlag('KNATIVE_SERVING_SERVICE');
+  const isJavaImageStreamEnabled = useFlag('JAVA_IMAGE_STREAM_ENABLED');
   const application = element.getLabel();
   const appData: TopologyApplicationObject = React.useMemo(
     () => ({
@@ -325,16 +350,28 @@ export const useTopologyApplicationActionProvider: TopologyActionProvider = ({
           path,
           !isCatalogImageResourceAccess,
         ),
-        AddActions.UploadJarFile(
-          namespace,
-          application,
-          sourceReference,
-          path,
-          !isCatalogImageResourceAccess,
-        ),
+        ...(isJavaImageStreamEnabled
+          ? [
+              AddActions.UploadJarFile(
+                namespace,
+                application,
+                sourceReference,
+                path,
+                !isCatalogImageResourceAccess,
+              ),
+            ]
+          : []),
+        // Tech debt: ODC-7413: Move Serverless specific actions and providers from devconsole into knative-pluigin
         ...(isServerlessEnabled
           ? [
               AddActions.CreateServerlessFunction(
+                namespace,
+                application,
+                sourceReference,
+                path,
+                !isCatalogImageResourceAccess,
+              ),
+              AddActions.CreateServerlessFunctionUsingSamples(
                 namespace,
                 application,
                 sourceReference,
@@ -358,5 +395,6 @@ export const useTopologyApplicationActionProvider: TopologyActionProvider = ({
     isImportResourceAccess,
     isCatalogImageResourceAccess,
     isServerlessEnabled,
+    isJavaImageStreamEnabled,
   ]);
 };

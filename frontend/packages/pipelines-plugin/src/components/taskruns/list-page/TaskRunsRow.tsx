@@ -1,21 +1,32 @@
 import * as React from 'react';
+import { Tooltip } from '@patternfly/react-core';
+import { ArchiveIcon } from '@patternfly/react-icons';
+import { useTranslation } from 'react-i18next';
 import { TableData, RowFunctionArgs } from '@console/internal/components/factory';
-import { ResourceLink, Timestamp, ResourceKebab } from '@console/internal/components/utils';
+import { ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
+import {
+  DELETED_RESOURCE_IN_K8S_ANNOTATION,
+  RESOURCE_LOADED_FROM_RESULTS_ANNOTATION,
+} from '../../../const';
 import { TaskRunModel, PipelineModel } from '../../../models';
 import { TaskRunKind } from '../../../types';
 import { getTaskRunKebabActions } from '../../../utils/pipeline-actions';
 import { getModelReferenceFromTaskKind } from '../../../utils/pipeline-augment';
 import { taskRunFilterReducer } from '../../../utils/pipeline-filter-reducer';
 import { pipelineRunDuration } from '../../../utils/pipeline-utils';
+import { ResourceKebab } from '../../pipelineruns/triggered-by/ResourceKebab';
 import { TektonResourceLabel } from '../../pipelines/const';
 import TaskRunStatus from '../status/TaskRunStatus';
 import { tableColumnClasses } from './taskruns-table';
+
+import './TaskRunsRow.scss';
 
 const taskRunsReference = referenceForModel(TaskRunModel);
 const pipelineReference = referenceForModel(PipelineModel);
 
 const TaskRunsRow: React.FC<RowFunctionArgs<TaskRunKind>> = ({ obj, customData }) => {
+  const { t } = useTranslation();
   const { selectedColumns } = customData;
   return (
     <>
@@ -25,6 +36,18 @@ const TaskRunsRow: React.FC<RowFunctionArgs<TaskRunKind>> = ({ obj, customData }
           name={obj.metadata.name}
           namespace={obj.metadata.namespace}
           data-test-id={obj.metadata.name}
+          nameSuffix={
+            <>
+              {obj?.metadata?.annotations?.[DELETED_RESOURCE_IN_K8S_ANNOTATION] === 'true' ||
+              obj?.metadata?.annotations?.[RESOURCE_LOADED_FROM_RESULTS_ANNOTATION] === 'true' ? (
+                <Tooltip content={t('pipelines-plugin~Archived in Tekton results')}>
+                  <div className="opp-task-run-list__results-indicator">
+                    <ArchiveIcon />
+                  </div>
+                </Tooltip>
+              ) : null}
+            </>
+          }
         />
       </TableData>
       {selectedColumns?.has('namespace') && (

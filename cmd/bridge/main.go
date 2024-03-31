@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"runtime"
@@ -15,13 +13,14 @@ import (
 	"os"
 	"strings"
 
+	authopts "github.com/openshift/console/cmd/bridge/config/auth"
+	"github.com/openshift/console/cmd/bridge/config/session"
 	"github.com/openshift/console/pkg/auth"
-	"github.com/openshift/console/pkg/bridge"
+	"github.com/openshift/console/pkg/flags"
 	"github.com/openshift/console/pkg/knative"
 	"github.com/openshift/console/pkg/proxy"
 	"github.com/openshift/console/pkg/server"
 	"github.com/openshift/console/pkg/serverconfig"
-	"github.com/openshift/console/pkg/serverutils"
 	oscrypto "github.com/openshift/library-go/pkg/crypto"
 
 	"k8s.io/client-go/rest"
@@ -65,6 +64,12 @@ func main() {
 	klog.InitFlags(fs)
 	defer klog.Flush()
 
+	authOptions := authopts.NewAuthOptions()
+	authOptions.AddFlags(fs)
+
+	sessionOptions := session.NewSessionOptions()
+	sessionOptions.AddFlags(fs)
+
 	// Define commandline / env / config options
 	fs.String("config", "", "The YAML config file.")
 
@@ -76,22 +81,11 @@ func main() {
 	// See https://github.com/openshift/service-serving-cert-signer
 	fServiceCAFile := fs.String("service-ca-file", "", "CA bundle for OpenShift services signed with the service signing certificates.")
 
-	fUserAuth := fs.String("user-auth", "disabled", "disabled | oidc | openshift")
-	fUserAuthOIDCIssuerURL := fs.String("user-auth-oidc-issuer-url", "", "The OIDC/OAuth2 issuer URL.")
-	fUserAuthOIDCCAFile := fs.String("user-auth-oidc-ca-file", "", "PEM file for the OIDC/OAuth2 issuer.")
-	fUserAuthOIDCClientID := fs.String("user-auth-oidc-client-id", "", "The OIDC OAuth2 Client ID.")
-	fUserAuthOIDCClientSecret := fs.String("user-auth-oidc-client-secret", "", "The OIDC OAuth2 Client Secret.")
-	fUserAuthOIDCClientSecretFile := fs.String("user-auth-oidc-client-secret-file", "", "File containing the OIDC OAuth2 Client Secret.")
-	fUserAuthLogoutRedirect := fs.String("user-auth-logout-redirect", "", "Optional redirect URL on logout needed for some single sign-on identity providers.")
-
-	fInactivityTimeout := fs.Int("inactivity-timeout", 0, "Number of seconds, after which user will be logged out if inactive. Ignored if less than 300 seconds (5 minutes).")
-
 	fK8sMode := fs.String("k8s-mode", "in-cluster", "in-cluster | off-cluster")
 	fK8sModeOffClusterEndpoint := fs.String("k8s-mode-off-cluster-endpoint", "", "URL of the Kubernetes API server.")
 	fK8sModeOffClusterSkipVerifyTLS := fs.Bool("k8s-mode-off-cluster-skip-verify-tls", false, "DEV ONLY. When true, skip verification of certs presented by k8s API server.")
 	fK8sModeOffClusterThanos := fs.String("k8s-mode-off-cluster-thanos", "", "DEV ONLY. URL of the cluster's Thanos server.")
 	fK8sModeOffClusterAlertmanager := fs.String("k8s-mode-off-cluster-alertmanager", "", "DEV ONLY. URL of the cluster's AlertManager server.")
-	fK8sModeOffClusterManagedClusterProxy := fs.String("k8s-mode-off-cluster-managed-cluster-proxy", "", "DEV ONLY. Public URL of the ACM/MCE cluster proxy.")
 
 	fK8sAuth := fs.String("k8s-auth", "service-account", "service-account | bearer-token | oidc | openshift")
 	fK8sAuthBearerToken := fs.String("k8s-auth-bearer-token", "", "Authorization token to send with proxied Kubernetes API requests.")
@@ -105,10 +99,11 @@ func main() {
 	fTlSKeyFile := fs.String("tls-key-file", "", "The TLS certificate key.")
 	fCAFile := fs.String("ca-file", "", "PEM File containing trusted certificates of trusted CAs. If not present, the system's Root CAs will be used.")
 
-	fKubectlClientID := fs.String("kubectl-client-id", "", "The OAuth2 client_id of kubectl.")
-	fKubectlClientSecret := fs.String("kubectl-client-secret", "", "The OAuth2 client_secret of kubectl.")
-	fKubectlClientSecretFile := fs.String("kubectl-client-secret-file", "", "File containing the OAuth2 client_secret of kubectl.")
-	fK8sPublicEndpoint := fs.String("k8s-public-endpoint", "", "Endpoint to use when rendering kubeconfigs for clients. Useful for when bridge uses an internal endpoint clients can't access for communicating with the API server.")
+	_ = fs.String("kubectl-client-id", "", "DEPRECATED: setting this does not do anything.")
+	_ = fs.String("kubectl-client-secret", "", "DEPRECATED: setting this does not do anything.")
+	_ = fs.String("kubectl-client-secret-file", "", "DEPRECATED: setting this does not do anything.")
+
+	fK8sPublicEndpoint := fs.String("k8s-public-endpoint", "", "Endpoint to use to communicate to the API server.")
 
 	fBranding := fs.String("branding", "okd", "Console branding for the masthead logo and title. One of okd, openshift, ocp, online, dedicated, azure, or rosa. Defaults to okd.")
 	fCustomProductName := fs.String("custom-product-name", "", "Custom product name for console branding.")
@@ -146,64 +141,48 @@ func main() {
 	fNodeOperatingSystems := fs.String("node-operating-systems", "", "List of node operating systems. Example --node-operating-system=linux,windows")
 	fCopiedCSVsDisabled := fs.Bool("copied-csvs-disabled", false, "Flag to indicate if OLM copied CSVs are disabled.")
 
-	// TODO Remove multicluster
-	fManagedClusterConfigs := fs.String("managed-clusters", "", "List of managed cluster configurations. (JSON as string)")
-	fHubConsoleURL := fs.String("hub-console-url", "", "URL of the hub cluster's console in a multi cluster environment.")
-	// TODO Remove multicluster
-
-	if err := serverconfig.Parse(fs, os.Args[1:], "BRIDGE"); err != nil {
+	cfg, err := serverconfig.Parse(fs, os.Args[1:], "BRIDGE")
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+
 	if err := serverconfig.Validate(fs); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	baseURL := &url.URL{}
-	if *fBaseAddress != "" {
-		baseURL = bridge.ValidateFlagIsURL("base-address", *fBaseAddress)
-	}
+	authOptions.ApplyConfig(&cfg.Auth)
+	sessionOptions.ApplyConfig(&cfg.Session)
+
+	baseURL, err := flags.ValidateFlagIsURL("base-address", *fBaseAddress, true)
+	flags.FatalIfFailed(err)
 
 	if !strings.HasPrefix(*fBasePath, "/") || !strings.HasSuffix(*fBasePath, "/") {
-		bridge.FlagFatalf("base-path", "value must start and end with slash")
+		flags.FatalIfFailed(flags.NewInvalidFlagError("base-path", "value must start and end with slash"))
 	}
 	baseURL.Path = *fBasePath
-
-	caCertFilePath := *fCAFile
-	if *fK8sMode == "in-cluster" {
-		caCertFilePath = k8sInClusterCA
-	}
-
-	logoutRedirect := &url.URL{}
-	if *fUserAuthLogoutRedirect != "" {
-		logoutRedirect = bridge.ValidateFlagIsURL("user-auth-logout-redirect", *fUserAuthLogoutRedirect)
-	}
 
 	documentationBaseURL := &url.URL{}
 	if *fDocumentationBaseURL != "" {
 		if !strings.HasSuffix(*fDocumentationBaseURL, "/") {
-			bridge.FlagFatalf("documentation-base-url", "value must end with slash")
+			flags.FatalIfFailed(flags.NewInvalidFlagError("documentation-base-url", "value must end with slash"))
 		}
-		documentationBaseURL = bridge.ValidateFlagIsURL("documentation-base-url", *fDocumentationBaseURL)
+		documentationBaseURL, err = flags.ValidateFlagIsURL("documentation-base-url", *fDocumentationBaseURL, false)
+		flags.FatalIfFailed(err)
 	}
 
-	alertManagerPublicURL := &url.URL{}
-	if *fAlermanagerPublicURL != "" {
-		alertManagerPublicURL = bridge.ValidateFlagIsURL("alermanager-public-url", *fAlermanagerPublicURL)
-	}
-	grafanaPublicURL := &url.URL{}
-	if *fGrafanaPublicURL != "" {
-		grafanaPublicURL = bridge.ValidateFlagIsURL("grafana-public-url", *fGrafanaPublicURL)
-	}
-	prometheusPublicURL := &url.URL{}
-	if *fPrometheusPublicURL != "" {
-		prometheusPublicURL = bridge.ValidateFlagIsURL("prometheus-public-url", *fPrometheusPublicURL)
-	}
-	thanosPublicURL := &url.URL{}
-	if *fThanosPublicURL != "" {
-		thanosPublicURL = bridge.ValidateFlagIsURL("thanos-public-url", *fThanosPublicURL)
-	}
+	alertManagerPublicURL, err := flags.ValidateFlagIsURL("alermanager-public-url", *fAlermanagerPublicURL, true)
+	flags.FatalIfFailed(err)
+
+	grafanaPublicURL, err := flags.ValidateFlagIsURL("grafana-public-url", *fGrafanaPublicURL, true)
+	flags.FatalIfFailed(err)
+
+	prometheusPublicURL, err := flags.ValidateFlagIsURL("prometheus-public-url", *fPrometheusPublicURL, true)
+	flags.FatalIfFailed(err)
+
+	thanosPublicURL, err := flags.ValidateFlagIsURL("thanos-public-url", *fThanosPublicURL, true)
+	flags.FatalIfFailed(err)
 
 	branding := *fBranding
 	if branding == "origin" {
@@ -218,23 +197,13 @@ func main() {
 	case "azure":
 	case "rosa":
 	default:
-		bridge.FlagFatalf("branding", "value must be one of okd, openshift, ocp, online, dedicated, azure, or rosa")
+		flags.FatalIfFailed(flags.NewInvalidFlagError("branding", "value must be one of okd, openshift, ocp, online, dedicated, azure, or rosa"))
 	}
 
 	if *fCustomLogoFile != "" {
 		if _, err := os.Stat(*fCustomLogoFile); err != nil {
 			klog.Fatalf("could not read logo file: %v", err)
 		}
-	}
-
-	if *fInactivityTimeout < 300 {
-		klog.Warning("Flag inactivity-timeout is set to less then 300 seconds and will be ignored!")
-	} else {
-		if *fK8sAuth != "oidc" && *fK8sAuth != "openshift" {
-			fmt.Fprintln(os.Stderr, "In order activate the user inactivity timout, flag --user-auth must be one of: oidc, openshift")
-			os.Exit(1)
-		}
-		klog.Infof("Setting user inactivity timout to %d seconds", *fInactivityTimeout)
 	}
 
 	if len(consolePluginsFlags) > 0 {
@@ -249,7 +218,7 @@ func main() {
 		for _, str := range strings.Split(*fI18NamespacesFlags, ",") {
 			str = strings.TrimSpace(str)
 			if str == "" {
-				bridge.FlagFatalf("i18n-namespaces", "list must contain name of i18n namespaces separated by comma")
+				flags.FatalIfFailed(flags.NewInvalidFlagError("i18n-namespaces", "list must contain name of i18n namespaces separated by comma"))
 			}
 			i18nNamespaces = append(i18nNamespaces, str)
 		}
@@ -260,7 +229,7 @@ func main() {
 		for _, str := range strings.Split(*fNodeArchitectures, ",") {
 			str = strings.TrimSpace(str)
 			if str == "" {
-				bridge.FlagFatalf("node-architectures", "list must contain name of node architectures separated by comma")
+				flags.FatalIfFailed(flags.NewInvalidFlagError("node-architectures", "list must contain name of node architectures separated by comma"))
 			}
 			nodeArchitectures = append(nodeArchitectures, str)
 		}
@@ -271,28 +240,15 @@ func main() {
 		for _, str := range strings.Split(*fNodeOperatingSystems, ",") {
 			str = strings.TrimSpace(str)
 			if str == "" {
-				bridge.FlagFatalf("node-operating-systems", "list must contain name of node architectures separated by comma")
+				flags.FatalIfFailed(flags.NewInvalidFlagError("node-operating-systems", "list must contain name of node architectures separated by comma"))
 			}
 			nodeOperatingSystems = append(nodeOperatingSystems, str)
 		}
 	}
 
-	// TODO remove multicluster
-	hubConsoleURL := &url.URL{}
-	if *fHubConsoleURL != "" {
-		hubConsoleURL = bridge.ValidateFlagIsURL("hub-console-url", *fHubConsoleURL)
-	}
-
-	// TODO remove multicluster
-	// Update to bool
-	clusterCopiedCSVsDisabled := map[string]bool{
-		serverutils.LocalClusterName: *fCopiedCSVsDisabled,
-	}
-
 	srv := &server.Server{
 		PublicDir:                    *fPublicDir,
 		BaseURL:                      baseURL,
-		LogoutRedirect:               logoutRedirect,
 		Branding:                     branding,
 		CustomProductName:            *fCustomProductName,
 		CustomLogoFile:               *fCustomLogoFile,
@@ -306,7 +262,6 @@ func main() {
 		PrometheusPublicURL:          prometheusPublicURL,
 		ThanosPublicURL:              thanosPublicURL,
 		LoadTestFactor:               *fLoadTestFactor,
-		InactivityTimeout:            *fInactivityTimeout,
 		DevCatalogCategories:         *fDevCatalogCategories,
 		DevCatalogTypes:              *fDevCatalogTypes,
 		UserSettingsLocation:         *fUserSettingsLocation,
@@ -321,26 +276,20 @@ func main() {
 		ReleaseVersion:               *fReleaseVersion,
 		NodeArchitectures:            nodeArchitectures,
 		NodeOperatingSystems:         nodeOperatingSystems,
-		HubConsoleURL:                hubConsoleURL, // TODO remove multicluster
-		AuthMetrics:                  auth.NewMetrics(),
 		K8sMode:                      *fK8sMode,
+		CopiedCSVsDisabled:           *fCopiedCSVsDisabled,
 	}
 
-	// TODO remove multicluster
-	managedClusterConfigs := []serverconfig.ManagedClusterConfig{}
-	if *fManagedClusterConfigs != "" {
-		unvalidatedManagedClusters := []serverconfig.ManagedClusterConfig{}
-		if err := json.Unmarshal([]byte(*fManagedClusterConfigs), &unvalidatedManagedClusters); err != nil {
-			klog.Fatalf("Unable to parse managed cluster JSON: %v", *fManagedClusterConfigs)
-		}
-		for _, managedClusterConfig := range unvalidatedManagedClusters {
-			err := serverconfig.ValidateManagedClusterConfig(managedClusterConfig)
-			if err != nil {
-				klog.Errorf("Error configuring managed cluster. Invalid configuration: %v", err)
-				continue
-			}
-			managedClusterConfigs = append(managedClusterConfigs, managedClusterConfig)
-		}
+	completedAuthnOptions, err := authOptions.Complete()
+	if err != nil {
+		klog.Fatalf("failed to complete authentication options: %v", err)
+		os.Exit(1)
+	}
+
+	completedSessionOptions, err := sessionOptions.Complete(completedAuthnOptions.AuthType)
+	if err != nil {
+		klog.Fatalf("failed to complete session options: %v", err)
+		os.Exit(1)
 	}
 
 	// if !in-cluster (dev) we should not pass these values to the frontend
@@ -348,16 +297,6 @@ func main() {
 	if *fK8sMode == "in-cluster" {
 		srv.GOARCH = runtime.GOARCH
 		srv.GOOS = runtime.GOOS
-	}
-
-	if (*fKubectlClientID == "") != (*fKubectlClientSecret == "" && *fKubectlClientSecretFile == "") {
-		fmt.Fprintln(os.Stderr, "Must provide both --kubectl-client-id and --kubectl-client-secret or --kubectrl-client-secret-file")
-		os.Exit(1)
-	}
-
-	if *fKubectlClientSecret != "" && *fKubectlClientSecretFile != "" {
-		fmt.Fprintln(os.Stderr, "Cannot provide both --kubectl-client-secret and --kubectrl-client-secret-file")
-		os.Exit(1)
 	}
 
 	if *fLogLevel != "" {
@@ -373,20 +312,10 @@ func main() {
 		k8sAuthServiceAccountBearerToken string
 	)
 
-	var secureCookies bool
-	if baseURL.Scheme == "https" {
-		secureCookies = true
-		klog.Info("cookies are secure!")
-	} else {
-		secureCookies = false
-		klog.Warning("cookies are not secure because base-address is not https!")
-	}
-
 	var k8sEndpoint *url.URL
 	switch *fK8sMode {
 	case "in-cluster":
 		k8sEndpoint = &url.URL{Scheme: "https", Host: "kubernetes.default.svc"}
-
 		var err error
 		k8sCertPEM, err = ioutil.ReadFile(k8sInClusterCA)
 		if err != nil {
@@ -403,6 +332,13 @@ func main() {
 		bearerToken, err := ioutil.ReadFile(k8sInClusterBearerToken)
 		if err != nil {
 			klog.Fatalf("failed to read bearer token: %v", err)
+		}
+
+		srv.InternalProxiedK8SClientConfig = &rest.Config{
+			Host: k8sEndpoint.String(),
+			TLSClientConfig: rest.TLSClientConfig{
+				CAFile: k8sInClusterCA,
+			},
 		}
 
 		srv.K8sProxyConfig = &proxy.Config{
@@ -472,16 +408,12 @@ func main() {
 				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
 				Endpoint:        &url.URL{Scheme: "https", Host: openshiftGitOpsHost},
 			}
-			// TODO remove multicluster
-			srv.ManagedClusterProxyConfig = &proxy.Config{
-				TLSClientConfig: serviceProxyTLSConfig,
-				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
-				Endpoint:        &url.URL{Scheme: "https", Host: openshiftClusterProxyHost},
-			}
 		}
 
 	case "off-cluster":
-		k8sEndpoint = bridge.ValidateFlagIsURL("k8s-mode-off-cluster-endpoint", *fK8sModeOffClusterEndpoint)
+		k8sEndpoint, err = flags.ValidateFlagIsURL("k8s-mode-off-cluster-endpoint", *fK8sModeOffClusterEndpoint, false)
+		flags.FatalIfFailed(err)
+
 		serviceProxyTLSConfig := oscrypto.SecureTLSConfig(&tls.Config{
 			InsecureSkipVerify: *fK8sModeOffClusterSkipVerifyTLS,
 		})
@@ -492,6 +424,11 @@ func main() {
 			},
 		}
 
+		srv.InternalProxiedK8SClientConfig = &rest.Config{
+			Host:      k8sEndpoint.String(),
+			Transport: &http.Transport{TLSClientConfig: serviceProxyTLSConfig},
+		}
+
 		srv.K8sProxyConfig = &proxy.Config{
 			TLSClientConfig:         serviceProxyTLSConfig,
 			HeaderBlacklist:         []string{"Cookie", "X-CSRFToken"},
@@ -500,7 +437,9 @@ func main() {
 		}
 
 		if *fK8sModeOffClusterThanos != "" {
-			offClusterThanosURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-thanos", *fK8sModeOffClusterThanos)
+			offClusterThanosURL, err := flags.ValidateFlagIsURL("k8s-mode-off-cluster-thanos", *fK8sModeOffClusterThanos, false)
+			flags.FatalIfFailed(err)
+
 			offClusterThanosURL.Path += "/api"
 			srv.ThanosTenancyProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
@@ -520,7 +459,9 @@ func main() {
 		}
 
 		if *fK8sModeOffClusterAlertmanager != "" {
-			offClusterAlertManagerURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-alertmanager", *fK8sModeOffClusterAlertmanager)
+			offClusterAlertManagerURL, err := flags.ValidateFlagIsURL("k8s-mode-off-cluster-alertmanager", *fK8sModeOffClusterAlertmanager, false)
+			flags.FatalIfFailed(err)
+
 			offClusterAlertManagerURL.Path += "/api"
 			srv.AlertManagerProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
@@ -543,27 +484,17 @@ func main() {
 		srv.PluginsProxyTLSConfig = serviceProxyTLSConfig
 
 		if *fK8sModeOffClusterGitOps != "" {
-			offClusterGitOpsURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-gitops", *fK8sModeOffClusterGitOps)
+			offClusterGitOpsURL, err := flags.ValidateFlagIsURL("k8s-mode-off-cluster-gitops", *fK8sModeOffClusterGitOps, false)
+			flags.FatalIfFailed(err)
+
 			srv.GitOpsProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
 				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
 				Endpoint:        offClusterGitOpsURL,
 			}
 		}
-
-		// TODO remove multicluster
-		// Must have off-cluster cluster proxy endpoint if we have managed clusters
-		if len(managedClusterConfigs) > 0 {
-			offClusterManagedClusterProxyURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-managed-cluster-proxy", *fK8sModeOffClusterManagedClusterProxy)
-			srv.ManagedClusterProxyConfig = &proxy.Config{
-				TLSClientConfig: serviceProxyTLSConfig,
-				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
-				Endpoint:        offClusterManagedClusterProxyURL,
-			}
-		}
-
 	default:
-		bridge.FlagFatalf("k8s-mode", "must be one of: in-cluster, off-cluster")
+		flags.FatalIfFailed(flags.NewInvalidFlagError("k8s-mode", "must be one of: in-cluster, off-cluster"))
 	}
 
 	apiServerEndpoint := *fK8sPublicEndpoint
@@ -571,11 +502,6 @@ func main() {
 		apiServerEndpoint = srv.K8sProxyConfig.Endpoint.String()
 	}
 	srv.KubeAPIServerURL = apiServerEndpoint
-	srv.K8sClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: srv.K8sProxyConfig.TLSClientConfig,
-		},
-	}
 
 	clusterManagementURL, err := url.Parse(clusterManagementURL)
 	if err != nil {
@@ -587,183 +513,32 @@ func main() {
 		Endpoint:        clusterManagementURL,
 	}
 
-	switch *fUserAuth {
-	case "oidc", "openshift":
-		bridge.ValidateFlagNotEmpty("base-address", *fBaseAddress)
-		bridge.ValidateFlagNotEmpty("user-auth-oidc-client-id", *fUserAuthOIDCClientID)
-
-		if *fUserAuthOIDCClientSecret == "" && *fUserAuthOIDCClientSecretFile == "" {
-			fmt.Fprintln(os.Stderr, "Must provide either --user-auth-oidc-client-secret or --user-auth-oidc-client-secret-file")
-			os.Exit(1)
-		}
-
-		if *fUserAuthOIDCClientSecret != "" && *fUserAuthOIDCClientSecretFile != "" {
-			fmt.Fprintln(os.Stderr, "Cannot provide both --user-auth-oidc-client-secret and --user-auth-oidc-client-secret-file")
-			os.Exit(1)
-		}
-
-		var (
-			err                      error
-			userAuthOIDCIssuerURL    *url.URL
-			authLoginErrorEndpoint   = proxy.SingleJoiningSlash(srv.BaseURL.String(), server.AuthLoginErrorEndpoint)
-			authLoginSuccessEndpoint = proxy.SingleJoiningSlash(srv.BaseURL.String(), server.AuthLoginSuccessEndpoint)
-			oidcClientSecret         = *fUserAuthOIDCClientSecret
-			// Abstraction leak required by NewAuthenticator. We only want the browser to send the auth token for paths starting with basePath/api.
-			cookiePath  = proxy.SingleJoiningSlash(srv.BaseURL.Path, "/api/")
-			refererPath = srv.BaseURL.String()
-		)
-
-		scopes := []string{"openid", "email", "profile", "groups"}
-		authSource := auth.AuthSourceTectonic
-
-		if *fUserAuth == "openshift" {
-			// Scopes come from OpenShift documentation
-			// https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/authentication_and_authorization/using-service-accounts-as-oauth-client
-			//
-			// TODO(ericchiang): Support other scopes like view only permissions.
-			scopes = []string{"user:full"}
-			authSource = auth.AuthSourceOpenShift
-			if *fUserAuthOIDCIssuerURL != "" {
-				bridge.FlagFatalf("user-auth-oidc-issuer-url", "cannot be used with --user-auth=\"openshift\"")
-			}
-			userAuthOIDCIssuerURL = k8sEndpoint
-		} else {
-			userAuthOIDCIssuerURL = bridge.ValidateFlagIsURL("user-auth-oidc-issuer-url", *fUserAuthOIDCIssuerURL)
-		}
-
-		if *fUserAuthOIDCClientSecretFile != "" {
-			buf, err := ioutil.ReadFile(*fUserAuthOIDCClientSecretFile)
-			if err != nil {
-				klog.Fatalf("Failed to read client secret file: %v", err)
-			}
-			oidcClientSecret = string(buf)
-		}
-
-		// Config for logging into console.
-		oidcClientConfig := &auth.Config{
-			AuthSource:   authSource,
-			IssuerURL:    userAuthOIDCIssuerURL.String(),
-			IssuerCA:     *fUserAuthOIDCCAFile,
-			ClientID:     *fUserAuthOIDCClientID,
-			ClientSecret: oidcClientSecret,
-			RedirectURL:  proxy.SingleJoiningSlash(srv.BaseURL.String(), server.AuthLoginCallbackEndpoint),
-			Scope:        scopes,
-
-			// Use the k8s CA file for OpenShift OAuth metadata discovery.
-			// This might be different than IssuerCA.
-			K8sCA: caCertFilePath,
-
-			ErrorURL:   authLoginErrorEndpoint,
-			SuccessURL: authLoginSuccessEndpoint,
-
-			CookiePath:    cookiePath,
-			RefererPath:   refererPath,
-			SecureCookies: secureCookies,
-			ClusterName:   serverutils.LocalClusterName,
-
-			K8sConfig: &rest.Config{
-				Host:      apiServerEndpoint,
-				Transport: srv.K8sClient.Transport,
-			},
-			Metrics: srv.AuthMetrics,
-		}
-
-		// NOTE: This won't work when using the OpenShift auth mode.
-		if *fKubectlClientID != "" {
-			srv.KubectlClientID = *fKubectlClientID
-
-			// Assume kubectl is the client ID trusted by kubernetes, not bridge.
-			// These additional flags causes Dex to issue an ID token valid for
-			// both bridge and kubernetes.
-			oidcClientConfig.Scope = append(
-				oidcClientConfig.Scope,
-				"audience:server:client_id:"+*fUserAuthOIDCClientID,
-				"audience:server:client_id:"+*fKubectlClientID,
-			)
-
-		}
-		// TODO remove multicluster
-		// Revert to *auth.Authenticator property
-		srv.Authers = make(map[string]*auth.Authenticator)
-		if srv.Authers[serverutils.LocalClusterName], err = auth.NewAuthenticator(context.Background(), oidcClientConfig); err != nil {
-			klog.Fatalf("Error initializing authenticator: %v", err)
-		}
-
-		// TODO remove multicluster
-		if len(managedClusterConfigs) > 0 {
-			for _, managedCluster := range managedClusterConfigs {
-				managedClusterOIDCClientConfig := &auth.Config{
-					AuthSource:   authSource,
-					IssuerURL:    managedCluster.APIServer.URL,
-					IssuerCA:     managedCluster.OAuth.CAFile,
-					ClientID:     managedCluster.OAuth.ClientID,
-					ClientSecret: managedCluster.OAuth.ClientSecret,
-					RedirectURL:  proxy.SingleJoiningSlash(srv.BaseURL.String(), fmt.Sprintf("%s/%s", server.AuthLoginCallbackEndpoint, managedCluster.Name)),
-					Scope:        scopes,
-
-					// Use the k8s CA file for OpenShift OAuth metadata discovery.
-					// This might be different than IssuerCA.
-					K8sCA: managedCluster.APIServer.CAFile,
-
-					ErrorURL:   authLoginErrorEndpoint,
-					SuccessURL: authLoginSuccessEndpoint,
-
-					CookiePath:    cookiePath,
-					RefererPath:   refererPath,
-					SecureCookies: secureCookies,
-					ClusterName:   managedCluster.Name,
-
-					K8sConfig: &rest.Config{
-						Host:      apiServerEndpoint,
-						Transport: srv.K8sClient.Transport,
-					},
-					Metrics: srv.AuthMetrics,
-				}
-
-				if srv.Authers[managedCluster.Name], err = auth.NewAuthenticator(context.Background(), managedClusterOIDCClientConfig); err != nil {
-					klog.Fatalf("Error initializing managed cluster authenticator: %v", err)
-				}
-
-				clusterCopiedCSVsDisabled[managedCluster.Name] = managedCluster.CopiedCSVsDisabled
-			}
-		}
-	case "disabled":
-		klog.Warning("running with AUTHENTICATION DISABLED!")
-	default:
-		bridge.FlagFatalf("user-auth", "must be one of: oidc, openshift, disabled")
-	}
-
 	switch *fK8sAuth {
 	case "service-account":
-		bridge.ValidateFlagIs("k8s-mode", *fK8sMode, "in-cluster")
+		flags.FatalIfFailed(flags.ValidateFlagIs("k8s-mode", *fK8sMode, "in-cluster"))
 		srv.StaticUser = &auth.User{
-			Token: k8sAuthServiceAccountBearerToken,
+			Token: k8sAuthServiceAccountBearerToken, // FIXME: make it read the token from the file and periodically re-read?
 		}
-		srv.ServiceAccountToken = k8sAuthServiceAccountBearerToken
+		srv.InternalProxiedK8SClientConfig.BearerTokenFile = k8sInClusterBearerToken
 	case "bearer-token":
-		bridge.ValidateFlagNotEmpty("k8s-auth-bearer-token", *fK8sAuthBearerToken)
+		flags.FatalIfFailed(flags.ValidateFlagNotEmpty("k8s-auth-bearer-token", *fK8sAuthBearerToken))
+
 		srv.StaticUser = &auth.User{
 			Token: *fK8sAuthBearerToken,
 		}
-		srv.ServiceAccountToken = *fK8sAuthBearerToken
+		srv.InternalProxiedK8SClientConfig.BearerToken = *fK8sAuthBearerToken
 	case "oidc", "openshift":
-		bridge.ValidateFlagIs("user-auth", *fUserAuth, "oidc", "openshift")
-		srv.ServiceAccountToken = k8sAuthServiceAccountBearerToken
+		flags.FatalIfFailed(flags.ValidateFlagIs("user-auth", authOptions.AuthType, "oidc", "openshift"))
+		srv.InternalProxiedK8SClientConfig.BearerTokenFile = k8sInClusterBearerToken
 	default:
-		bridge.FlagFatalf("k8s-mode", "must be one of: service-account, bearer-token, oidc, openshift")
+		flags.FatalIfFailed(flags.NewInvalidFlagError("k8s-mode", "must be one of: service-account, bearer-token, oidc, openshift"))
 	}
 
-	// TODO remove multicluster
-	srv.CopiedCSVsDisabled = clusterCopiedCSVsDisabled
-
-	monitoringDashboardHttpClientTransport := &http.Transport{
-		TLSClientConfig: srv.K8sProxyConfig.TLSClientConfig,
-	}
-	if *fK8sMode == "off-cluster" {
-		monitoringDashboardHttpClientTransport.Proxy = http.ProxyFromEnvironment
+	internalProxiedK8SRT, err := rest.TransportFor(srv.InternalProxiedK8SClientConfig)
+	if err != nil {
+		klog.Fatalf("Failed to create k8s HTTP client: %v", err)
 	}
 	srv.MonitoringDashboardConfigMapLister = server.NewResourceLister(
-		srv.ServiceAccountToken,
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
@@ -772,14 +547,11 @@ func main() {
 				"labelSelector": {"console.openshift.io/dashboard=true"},
 			}.Encode(),
 		},
-		&http.Client{
-			Transport: monitoringDashboardHttpClientTransport,
-		},
+		internalProxiedK8SRT,
 		nil,
 	)
 
 	srv.KnativeEventSourceCRDLister = server.NewResourceLister(
-		srv.ServiceAccountToken,
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
@@ -788,16 +560,11 @@ func main() {
 				"labelSelector": {"duck.knative.dev/source=true"},
 			}.Encode(),
 		},
-		&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: srv.K8sProxyConfig.TLSClientConfig,
-			},
-		},
+		internalProxiedK8SRT,
 		knative.EventSourceFilter,
 	)
 
 	srv.KnativeChannelCRDLister = server.NewResourceLister(
-		srv.ServiceAccountToken,
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
@@ -806,27 +573,40 @@ func main() {
 				"labelSelector": {"duck.knative.dev/addressable=true,messaging.knative.dev/subscribable=true"},
 			}.Encode(),
 		},
-		&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: srv.K8sProxyConfig.TLSClientConfig,
-			},
-		},
+		internalProxiedK8SRT,
 		knative.ChannelFilter,
 	)
 
-	listenURL := bridge.ValidateFlagIsURL("listen", *fListen)
+	caCertFilePath := *fCAFile
+	if *fK8sMode == "in-cluster" {
+		caCertFilePath = k8sInClusterCA
+	}
+
+	if err := completedAuthnOptions.ApplyTo(srv, k8sEndpoint, caCertFilePath, completedSessionOptions); err != nil {
+		klog.Fatalf("failed to apply configuration to server: %v", err)
+		os.Exit(1)
+	}
+
+	listenURL, err := flags.ValidateFlagIsURL("listen", *fListen, false)
+	flags.FatalIfFailed(err)
+
 	switch listenURL.Scheme {
 	case "http":
 	case "https":
-		bridge.ValidateFlagNotEmpty("tls-cert-file", *fTlSCertFile)
-		bridge.ValidateFlagNotEmpty("tls-key-file", *fTlSKeyFile)
+		flags.FatalIfFailed(flags.ValidateFlagNotEmpty("tls-cert-file", *fTlSCertFile))
+		flags.FatalIfFailed(flags.ValidateFlagNotEmpty("tls-key-file", *fTlSKeyFile))
 	default:
-		bridge.FlagFatalf("listen", "scheme must be one of: http, https")
+		flags.FatalIfFailed(flags.NewInvalidFlagError("listen", "scheme must be one of: http, https"))
 	}
 
+	consoleHandler, err := srv.HTTPHandler()
+	if err != nil {
+		klog.Errorf("failed to set up the console's HTTP handler: %v", err)
+		os.Exit(1)
+	}
 	httpsrv := &http.Server{
 		Addr:    listenURL.Host,
-		Handler: srv.HTTPHandler(),
+		Handler: consoleHandler,
 		// Disable HTTP/2, which breaks WebSockets.
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 		TLSConfig:    oscrypto.SecureTLSConfig(&tls.Config{}),

@@ -10,9 +10,10 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
-  EmptyStatePrimary,
-  Title,
   Tooltip,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import SearchIcon from '@patternfly/react-icons/dist/js/icons/search-icon';
 
@@ -23,7 +24,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 
-import { PencilAltIcon } from '@patternfly/react-icons';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import { Link } from 'react-router-dom';
 
 import {
@@ -45,7 +46,7 @@ import {
 } from '@console/shared';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import * as k8sActions from '@console/dynamic-plugin-sdk/src/app/k8s/actions/k8s';
-
+import { useActivePerspective } from '@console/dynamic-plugin-sdk';
 import {
   ConsoleLinkModel,
   NamespaceModel,
@@ -78,8 +79,8 @@ import {
   useAccessReview,
 } from './utils';
 import {
-  createNamespaceModal,
   createProjectModal,
+  createNamespaceModal,
   deleteNamespaceModal,
   configureNamespacePullSecretModal,
 } from './modals';
@@ -426,12 +427,15 @@ export const NamespacesList = (props) => {
   );
   const NamespaceNotFoundMessage = () => (
     <EmptyState>
-      <EmptyStateIcon icon={SearchIcon} />
-      <Title size="md" headingLevel="h2">
-        {t('public~No namespaces found')}
-      </Title>
+      <EmptyStateHeader
+        titleText={<>{t('public~No namespaces found')}</>}
+        icon={<EmptyStateIcon icon={SearchIcon} />}
+        headingLevel="h2"
+      />
       <EmptyStateBody>{t('public~No results match the filter criteria.')}</EmptyStateBody>
-      <EmptyStatePrimary />
+      <EmptyStateFooter>
+        <EmptyStateActions />
+      </EmptyStateFooter>
     </EmptyState>
   );
 
@@ -758,7 +762,9 @@ export const ProjectList = ({ data, ...tableProps }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const canGetNS = useFlag(FLAGS.CAN_GET_NS);
+  const canCreateNs = useFlag(FLAGS.CAN_CREATE_NS);
   const canCreateProject = useFlag(FLAGS.CAN_CREATE_PROJECT);
+  const canCreate = canCreateNs || canCreateProject;
   const [tableColumns] = useUserSettingsCompatibility(
     COLUMN_MANAGEMENT_CONFIGMAP_KEY,
     COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
@@ -799,18 +805,21 @@ export const ProjectList = ({ data, ...tableProps }) => {
   const ProjectEmptyMessage = () => (
     <MsgBox
       title={t('public~Welcome to OpenShift')}
-      detail={<OpenShiftGettingStarted canCreateProject={canCreateProject} />}
+      detail={<OpenShiftGettingStarted canCreate={canCreate} />}
     />
   );
 
   const ProjectNotFoundMessage = () => (
     <EmptyState>
-      <EmptyStateIcon icon={SearchIcon} />
-      <Title size="md" headingLevel="h2">
-        {t('public~No projects found')}
-      </Title>
+      <EmptyStateHeader
+        titleText={<>{t('public~No projects found')}</>}
+        icon={<EmptyStateIcon icon={SearchIcon} />}
+        headingLevel="h2"
+      />
       <EmptyStateBody>{t('public~No results match the filter criteria.')}</EmptyStateBody>
-      <EmptyStatePrimary />
+      <EmptyStateFooter>
+        <EmptyStateActions />
+      </EmptyStateFooter>
     </EmptyState>
   );
 
@@ -915,7 +924,7 @@ export const PullSecret = (props) => {
     ) : (
       <Button variant="link" type="button" isInline onClick={modal}>
         {t('public~Not configured')}
-        <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+        <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
       </Button>
     );
   };
@@ -1048,6 +1057,7 @@ export const NamespaceSummary = ({ ns }) => {
 
 export const NamespaceDetails = ({ obj: ns, customData }) => {
   const { t } = useTranslation();
+  const [perspective] = useActivePerspective();
   const [consoleLinks] = useK8sWatchResource({
     isList: true,
     kind: referenceForModel(ConsoleLinkModel),
@@ -1056,9 +1066,11 @@ export const NamespaceDetails = ({ obj: ns, customData }) => {
   const links = getNamespaceDashboardConsoleLinks(ns, consoleLinks);
   return (
     <div>
-      <Helmet>
-        <title>{t('public~Project details')}</title>
-      </Helmet>
+      {perspective === 'dev' && (
+        <Helmet>
+          <title>{t('public~Project details')}</title>
+        </Helmet>
+      )}
       <div className="co-m-pane__body">
         {!customData?.hideHeading && (
           <SectionHeading text={t('public~{{kind}} details', { kind: ns.kind })} />
@@ -1069,7 +1081,7 @@ export const NamespaceDetails = ({ obj: ns, customData }) => {
       {!_.isEmpty(links) && (
         <div className="co-m-pane__body">
           <SectionHeading text={t('public~Launcher')} />
-          <ul className="pf-c-list pf-m-plain">
+          <ul className="pf-v5-c-list pf-m-plain">
             {_.map(_.sortBy(links, 'spec.text'), (link) => {
               return (
                 <li key={link.metadata.uid}>

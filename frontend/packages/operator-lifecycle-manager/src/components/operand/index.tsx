@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useDispatch } from 'react-redux';
-import { useHistory, useParams, useRouteMatch } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom-v5-compat';
 import { ListPageBody, K8sModel } from '@console/dynamic-plugin-sdk';
 import { getResources } from '@console/internal/actions/k8s';
 import { Conditions } from '@console/internal/components/conditions';
@@ -91,7 +91,7 @@ const tableColumnClasses = [
   '',
   '',
   '',
-  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-u-w-16-on-lg'),
+  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-v5-u-w-16-on-lg'),
   classNames('pf-m-hidden', 'pf-m-visible-on-xl'),
   classNames('pf-m-hidden', 'pf-m-visible-on-2xl'),
   Kebab.columnClass,
@@ -155,7 +155,7 @@ export const OperandStatus: React.FC<OperandStatusProps> = ({ operand }) => {
   return (
     <span className="co-icon-and-text">
       {type}
-      <span className="pf-u-pr-sm">:</span>{' '}
+      <span className="pf-v5-u-pr-sm">:</span>{' '}
       {value === 'Running' ? <SuccessStatus title={value} /> : <Status status={value} />}
     </span>
   );
@@ -203,7 +203,7 @@ export const OperandTableRow: React.FC<OperandTableRowProps> = ({ obj, showNames
         <Timestamp timestamp={obj.metadata.creationTimestamp} />
       </TableData>
       <TableData className={tableColumnClasses[6]}>
-        <LazyActionMenu context={context} />
+        <LazyActionMenu context={context} isDisabled={_.has(obj.metadata, 'deletionTimestamp')} />
       </TableData>
     </>
   );
@@ -349,7 +349,7 @@ const getK8sWatchResources = (
 
 export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
   const { t } = useTranslation();
-  const match = useRouteMatch();
+  const location = useLocation();
   const [namespace] = useActiveNamespace();
   const [showOperandsInAllNamespaces] = useShowOperandsInAllNamespaces();
   const {
@@ -360,7 +360,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
     hideColumnManagement = false,
   } = props;
   const [models, inFlight] = useK8sModels();
-  const history = useHistory();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const [apiRefreshed, setAPIRefreshed] = React.useState(false);
 
@@ -416,7 +416,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
         )
       : {};
 
-  const createNavigate = (kind) => history.push(`${match.url.replace('instances', kind)}/~new`);
+  const createNavigate = (kind) => navigate(`${location.pathname.replace('instances', kind)}/~new`);
 
   const data = React.useMemo(() => flatten(resources), [resources, flatten]);
 
@@ -451,7 +451,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
     <>
       <ListPageHeader title={showTitle ? t('olm~All Instances') : undefined}>
         {managesAllNamespaces && (
-          <div className="co-operator-details__toggle-value pf-u-ml-xl-on-md">
+          <div className="co-operator-details__toggle-value pf-v5-u-ml-xl-on-md">
             <ShowOperandsInAllNamespacesRadioGroup />
           </div>
         )}
@@ -483,7 +483,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
 
 const DefaultProvidedAPIPage: React.FC<DefaultProvidedAPIPageProps> = (props) => {
   const { t } = useTranslation();
-  const match = useRouteMatch();
+  const location = useLocation();
   const [showOperandsInAllNamespaces] = useShowOperandsInAllNamespaces();
 
   const {
@@ -494,7 +494,7 @@ const DefaultProvidedAPIPage: React.FC<DefaultProvidedAPIPageProps> = (props) =>
     hideNameLabelFilters = false,
     hideColumnManagement = false,
   } = props;
-  const createPath = `${match.url}/~new`;
+  const createPath = `${location.pathname}/~new`;
 
   const {
     apiGroup: group,
@@ -519,7 +519,7 @@ const DefaultProvidedAPIPage: React.FC<DefaultProvidedAPIPageProps> = (props) =>
     <>
       <ListPageHeader title={showTitle ? `${labelPlural}` : undefined}>
         {managesAllNamespaces && (
-          <div className="co-operator-details__toggle-value pf-u-ml-xl-on-md">
+          <div className="co-operator-details__toggle-value pf-v5-u-ml-xl-on-md">
             <ShowOperandsInAllNamespacesRadioGroup />
           </div>
         )}
@@ -739,8 +739,9 @@ type OperandDetailsPageRouteParams = RouteParams<'appName' | 'ns' | 'name' | 'pl
 
 const DefaultOperandDetailsPage = ({ k8sModel }: DefaultOperandDetailsPageProps) => {
   const { t } = useTranslation();
-  const match = useRouteMatch<OperandDetailsPageRouteParams>();
-  const { appName, ns, name, plural } = useParams<OperandDetailsPageRouteParams>();
+  const params = useParams();
+  const { appName, ns, name, plural } = params;
+  const location = useLocation();
   const [csv] = useClusterServiceVersion(appName, ns);
   const actionItems = React.useCallback((resourceModel: K8sKind, resource: K8sResourceKind) => {
     const context = {
@@ -752,10 +753,10 @@ const DefaultOperandDetailsPage = ({ k8sModel }: DefaultOperandDetailsPageProps)
 
   return (
     <DetailsPage
-      match={match}
       name={name}
       kind={plural}
       namespace={ns}
+      customData={csv}
       resources={[
         {
           kind: CustomResourceDefinitionModel.kind,
@@ -769,15 +770,15 @@ const DefaultOperandDetailsPage = ({ k8sModel }: DefaultOperandDetailsPageProps)
       breadcrumbsFor={() => [
         {
           name: t('olm~Installed Operators'),
-          path: `/k8s/ns/${match.params.ns}/${ClusterServiceVersionModel.plural}`,
+          path: `/k8s/ns/${params.ns}/${ClusterServiceVersionModel.plural}`,
         },
         {
-          name: match.params.appName,
-          path: match.url.slice(0, match.url.lastIndexOf('/')),
+          name: params.appName,
+          path: location.pathname.slice(0, location.pathname.lastIndexOf('/')),
         },
         {
-          name: t('olm~{{item}} details', { item: kindForReference(match.params.plural) }), // Use url param in case model doesn't exist
-          path: `${match.url}`,
+          name: t('olm~{{item}} details', { item: kindForReference(params.plural) }), // Use url param in case model doesn't exist
+          path: `${location.pathname}`,
         },
       ]}
       pages={[
@@ -787,7 +788,7 @@ const DefaultOperandDetailsPage = ({ k8sModel }: DefaultOperandDetailsPageProps)
           // t('olm~Resources')
           nameKey: 'olm~Resources',
           href: 'resources',
-          component: (props) => <Resources {...props} csv={csv} />,
+          component: Resources,
         },
         navFactory.events(ResourceEventStream),
       ]}
@@ -888,7 +889,7 @@ export type OperandDetailsProps = {
   crd: CustomResourceDefinitionKind;
 };
 
-type DefaultOperandDetailsPageProps = { k8sModel: K8sModel };
+type DefaultOperandDetailsPageProps = { customData: any; k8sModel: K8sModel };
 
 export type OperandResourceDetailsProps = {
   csv?: { data: ClusterServiceVersionKind };

@@ -1,7 +1,7 @@
 .env
 .idea
 .vscode
-.protractor-fail-fast
+!.vscode/settings.json
 .DS_Store
 cypress-a11y-report.json
 /bin

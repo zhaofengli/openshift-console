@@ -3,7 +3,7 @@
  */
 import * as _ from 'lodash-es';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { useTranslation } from 'react-i18next';
 
 import { Alert, AlertActionLink } from '@patternfly/react-core';
@@ -117,7 +117,7 @@ const PodOverviewItem: React.FC<PodOverviewItemProps> = ({ pod }) => {
         <span className="col-xs-3">
           <PodStatus pod={pod} />
         </span>
-        <span className="col-xs-3 pf-u-text-align-right">
+        <span className="col-xs-3 pf-v5-u-text-align-right">
           <Link to={`${resourcePath(kind, name, namespace)}/logs`}>{t('public~View logs')}</Link>
         </span>
       </div>

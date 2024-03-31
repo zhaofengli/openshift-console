@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { Base64 } from 'js-base64';
 import { saveAs } from 'file-saver';
-import { EyeIcon, EyeSlashIcon } from '@patternfly/react-icons';
+import { EyeIcon } from '@patternfly/react-icons/dist/esm/icons/eye-icon';
+import { EyeSlashIcon } from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon';
 import { Button } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { CopyToClipboard, EmptyBox, SectionHeading } from './utils';
@@ -11,7 +12,7 @@ export const MaskedData: React.FC<{}> = () => {
   const { t } = useTranslation();
   return (
     <>
-      <span className="sr-only">{t('public~Value hidden')}</span>
+      <span className="pf-v5-u-screen-reader">{t('public~Value hidden')}</span>
       <span aria-hidden="true">&bull;&bull;&bull;&bull;&bull;</span>
     </>
   );
@@ -107,7 +108,7 @@ export const SecretData: React.FC<SecretDataProps> = ({ data, title }) => {
     .sort()
     .forEach((k) => {
       dl.push(
-        <dt i18n-not-translated="true" key={`${k}-k`}>
+        <dt i18n-not-translated="true" key={`${k}-k`} data-test="secret-data-term">
           {k}
         </dt>,
       );
@@ -131,6 +132,7 @@ export const SecretData: React.FC<SecretDataProps> = ({ data, title }) => {
             onClick={() => setReveal(!reveal)}
             variant="link"
             className="pf-m-link--align-right"
+            data-test="reveal-values"
           >
             {reveal ? (
               <>
@@ -146,7 +148,7 @@ export const SecretData: React.FC<SecretDataProps> = ({ data, title }) => {
           </Button>
         ) : null}
       </SectionHeading>
-      {dl.length ? <dl className="secret-data">{dl}</dl> : <EmptyBox label={t('public~Data')} />}
+      {dl.length ? <dl data-test="secret-data">{dl}</dl> : <EmptyBox label={t('public~Data')} />}
     </>
   );
 };

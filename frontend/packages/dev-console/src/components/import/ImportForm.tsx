@@ -14,6 +14,8 @@ import { RootState } from '@console/internal/redux';
 import { ServiceModel as knSvcModel } from '@console/knative-plugin/src';
 import { PipelineType } from '@console/pipelines-plugin/src/components/import/import-types';
 import { defaultRepositoryFormValues } from '@console/pipelines-plugin/src/components/repository/consts';
+import { usePacInfo } from '@console/pipelines-plugin/src/components/repository/hooks/pac-hook';
+import { createRemoteWebhook } from '@console/pipelines-plugin/src/components/repository/repository-form-utils';
 import {
   ALL_APPLICATIONS_KEY,
   usePerspectives,
@@ -35,8 +37,10 @@ import {
   ImportTypes,
 } from './import-types';
 import { validationSchema } from './import-validation-utils';
+import { useDefaultBuildOption } from './section/useDefaultBuildOption';
 import { useUpdateKnScalingDefaultValues } from './serverless/useUpdateKnScalingDefaultValues';
 import ImportToastContent from './toast/ImportToastContent';
+import WebhookToastContent from './toast/WebhookToastContent';
 
 export interface ImportFormProps {
   namespace: string;
@@ -67,6 +71,8 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
   const perspectiveExtensions = usePerspectives();
   const postFormCallback = usePostFormSubmitAction();
   const toastContext = useToast();
+  const [pac, loaded] = usePacInfo();
+  const defaultBuildOption = useDefaultBuildOption();
 
   const initialBaseValues: BaseFormData = getBaseInitialValues(namespace, activeApplication);
   const initialValues: GitImportFormData = {
@@ -116,6 +122,7 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
         config: true,
       },
       strategy: importData.buildStrategy || 'Devfile',
+      option: defaultBuildOption,
     },
     import: {
       loaded: false,
@@ -137,11 +144,13 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
   const builderImages: NormalizedBuilderImages =
     imageStreams && imageStreams.loaded && normalizeBuilderImages(imageStreams.data);
 
-  const handleSubmit = (values, actions) => {
+  const handleSubmit = (values: GitImportFormData, actions) => {
     const imageStream = builderImages && builderImages[values.image.selected]?.obj;
     const createNewProject = projects.loaded && _.isEmpty(projects.data);
     const {
       project: { name: projectName },
+      pipeline: { enabled: pipelineEnabled, type: pipelineType },
+      pac: { repository },
     } = values;
 
     const resourceActions = createOrUpdateResources(
@@ -159,7 +168,26 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
       .catch(() => {});
 
     return resourceActions
-      .then((resources) => {
+      .then(async (resources) => {
+        if (pipelineEnabled && pipelineType === PipelineType.PAC) {
+          const isWebHookAttached = await createRemoteWebhook(repository, pac, loaded);
+          toastContext.addToast({
+            variant: isWebHookAttached ? AlertVariant.success : AlertVariant.danger,
+            title: isWebHookAttached
+              ? t('devconsole~Webhook attached to the Git Repository')
+              : t('devconsole~Could not attach webhook to the Git Repository'),
+            content: !isWebHookAttached ? (
+              <WebhookToastContent
+                repositoryName={repository.name}
+                git={values.git}
+                projectName={projectName}
+              />
+            ) : null,
+            timeout: true,
+            dismissible: true,
+          });
+        }
+
         const deployedResources = resources.filter(
           (resource) =>
             resource.kind === DeploymentModel.kind ||

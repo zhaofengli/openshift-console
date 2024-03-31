@@ -1,12 +1,12 @@
 import * as React from 'react';
-import { EmptyState, EmptyStateVariant, Title, Tooltip } from '@patternfly/react-core';
-import { ExclamationTriangleIcon } from '@patternfly/react-icons';
+import { EmptyState, EmptyStateVariant, Tooltip, EmptyStateHeader } from '@patternfly/react-core';
+import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon';
 import { sortable } from '@patternfly/react-table';
 import * as classNames from 'classnames';
 import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { match } from 'react-router';
+import { useParams } from 'react-router-dom-v5-compat';
 import { DASH } from '@console/dynamic-plugin-sdk/src/app/constants';
 import { DefaultList } from '@console/internal/components/default-resource';
 import {
@@ -55,6 +55,7 @@ export const highestSeverityIndex = (obj: ImageManifestVuln) =>
 
 export const ImageManifestVulnDetails: React.FC<ImageManifestVulnDetailsProps> = (props) => {
   const { t } = useTranslation();
+  const queryURL = quayURLFor(props.obj);
   return (
     <>
       <div className="co-m-pane__body">
@@ -73,16 +74,16 @@ export const ImageManifestVulnDetails: React.FC<ImageManifestVulnDetailsProps> =
                 obj={props.obj}
                 path="spec.image"
               />
-              <DetailsItem
-                label={t('container-security~Manifest')}
-                obj={props.obj}
-                path="obj.spec.manifest"
-              >
-                <ExternalLink
-                  text={shortenHash(props.obj.spec.manifest)}
-                  href={quayURLFor(props.obj)}
-                />
-              </DetailsItem>
+
+              {queryURL && (
+                <DetailsItem
+                  label={t('container-security~Manifest')}
+                  obj={props.obj}
+                  path="obj.spec.manifest"
+                >
+                  <ExternalLink text={shortenHash(props.obj.spec.manifest)} href={queryURL} />
+                </DetailsItem>
+              )}
             </dl>
           </div>
         </div>
@@ -115,20 +116,18 @@ export const AffectedPods: React.FC<AffectedPodsProps> = (props) => {
   );
 };
 
-export const ImageManifestVulnDetailsPage: React.FC<ImageManifestVulnDetailsPageProps> = (
-  props,
-) => {
+export const ImageManifestVulnDetailsPage: React.FC = () => {
+  const params = useParams();
   return (
     <DetailsPage
-      match={props.match}
       kindObj={ImageManifestVulnModel}
       titleFunc={(obj: ImageManifestVuln) => {
         const image = shortenImage(obj?.spec?.image);
         const hash = obj?.spec?.manifest ? `@${shortenHash(obj.spec.manifest)}` : '';
         return image ? `${image}${hash}` : null;
       }}
-      name={props.match.params.name}
-      namespace={props.match.params.ns}
+      name={params.name}
+      namespace={params.ns}
       kind={referenceForModel(ImageManifestVulnModel)}
       menuActions={[]}
       pages={[
@@ -159,6 +158,7 @@ export const ImageManifestVulnTableRow: React.FC<RowFunctionArgs<ImageManifestVu
   obj,
 }) => {
   const { name, namespace } = obj.metadata;
+  const queryURL = quayURLFor(obj);
   return (
     <>
       <TableData className={tableColumnClasses[0]}>
@@ -186,7 +186,11 @@ export const ImageManifestVulnTableRow: React.FC<RowFunctionArgs<ImageManifestVu
       <TableData className={tableColumnClasses[4]}>{obj.status?.fixableCount || 0}</TableData>
       <TableData className={tableColumnClasses[5]}>{totalCount(obj)}</TableData>
       <TableData className={tableColumnClasses[6]}>
-        <ExternalLink text={shortenHash(obj.spec.manifest)} href={quayURLFor(obj)} />
+        {queryURL ? (
+          <ExternalLink text={shortenHash(obj.spec.manifest)} href={queryURL} />
+        ) : (
+          <span className="small text-muted">-</span>
+        )}
       </TableData>
     </>
   );
@@ -241,11 +245,16 @@ export const ImageManifestVulnTableHeader = (t: TFunction) => () => [
 export const ImageManifestVulnList: React.FC<ImageManifestVulnListProps> = (props) => {
   const { t } = useTranslation();
   const EmptyMsg = () => (
-    <EmptyState variant={EmptyStateVariant.large}>
-      <Title headingLevel="h4" size="lg">
-        <EmptyStateResourceBadge model={ImageManifestVulnModel} />
-        {t('container-security~No Image vulnerabilities found')}
-      </Title>
+    <EmptyState variant={EmptyStateVariant.lg}>
+      <EmptyStateHeader
+        titleText={
+          <>
+            <EmptyStateResourceBadge model={ImageManifestVulnModel} />
+            {t('container-security~No Image vulnerabilities found')}
+          </>
+        }
+        headingLevel="h4"
+      />
     </EmptyState>
   );
 
@@ -268,8 +277,9 @@ export const ImageManifestVulnList: React.FC<ImageManifestVulnListProps> = (prop
 
 export const ImageManifestVulnPage: React.FC<ImageManifestVulnPageProps> = (props) => {
   const { t } = useTranslation();
+  const params = useParams();
   const { showTitle = true, hideNameLabelFilters = true } = props;
-  const namespace = props.namespace || props.match?.params?.ns || props.match?.params?.name;
+  const namespace = props.namespace || params?.ns || params?.name;
   return (
     <MultiListPage
       {...props}
@@ -381,13 +391,14 @@ export const ContainerVulnerabilities: React.FC<ContainerVulnerabilitiesProps> =
 };
 
 export const ImageManifestVulnPodTab: React.FC<ImageManifestVulnPodTabProps> = (props) => {
+  const params = useParams();
   return (
     <Firehose
       resources={[
         {
           isList: true,
           kind: referenceForModel(ImageManifestVulnModel),
-          namespace: props.match.params.ns,
+          namespace: params.ns,
           selector: {
             matchLabels: { [podKey(props.obj)]: 'true' },
           },
@@ -407,13 +418,8 @@ export type ContainerVulnerabilitiesProps = {
   imageManifestVuln: FirehoseResult<ImageManifestVuln[]>;
 };
 
-export type ImageManifestVulnDetailsPageProps = {
-  match: match<{ ns: string; name: string }>;
-};
-
 export type ImageManifestVulnPageProps = {
   namespace?: string;
-  match?: match<{ ns?: string; name?: string }>;
   hideNameLabelFilters?: boolean;
   showTitle?: boolean;
   selector?: { [key: string]: string };
@@ -434,7 +440,6 @@ export type AffectedPodsProps = {
 };
 
 export type ImageManifestVulnPodTabProps = {
-  match: match<{ ns: string; name: string }>;
   obj: PodKind;
 };
 

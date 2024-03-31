@@ -2,7 +2,6 @@ package serverconfig
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 )
 
@@ -28,10 +26,10 @@ type Metrics struct {
 	perspectivesInfo *prometheus.GaugeVec
 	pluginsInfo      *prometheus.GaugeVec
 	// Keep the last info so that it is possible to report zero for removed ConsolePlugins.
-	lastPluginInfo *map[PluginVendor]map[PluginState]int
+	lastPluginInfo *map[MappedPluginName]map[PluginState]int
 }
 
-// Reduce cardinality by grouping all perspectives by a 'group name' or a vendor.
+// Reduce cardinality by grouping all perspectives by a 'group name'.
 type PerspectiveGroup string
 
 const (
@@ -58,34 +56,31 @@ const (
 	PerspectiveMetricStateCustomPermissions    PerspectiveMetricState = "custom-permissions"
 )
 
-// Reduce cardinality by mapping known plugin names to a vendor name.
-type PluginVendor string
+// Reduce cardinality by mapping known plugin names, everything else is reported as "unknown".
+type MappedPluginName string
 
-const (
-	PluginVendorRedHat PluginVendor = "redhat"
-	PluginVendorDemo   PluginVendor = "demo"
-	PluginVendorOther  PluginVendor = "other"
-)
-
-var knownPluginVendors = map[string]PluginVendor{
+var knownPluginNames = map[string]MappedPluginName{
 	// Red Hat maintained plugins
 	// https://docs.google.com/spreadsheets/d/1wcCdc1s4ewzxtUJ42VdRhAJ9wFA8UwoTajGSftrr5fM/edit
-	"acm":                             PluginVendorRedHat,
-	"console-telemetry-plugin":        PluginVendorRedHat,
-	"crane-ui-plugin":                 PluginVendorRedHat,
-	"forklift-console-plugin":         PluginVendorRedHat,
-	"kubevirt-plugin":                 PluginVendorRedHat,
-	"logging-view-plugin":             PluginVendorRedHat,
-	"mce":                             PluginVendorRedHat,
-	"netobserv-plugin":                PluginVendorRedHat,
-	"nmstate-console-plugin":          PluginVendorRedHat,
-	"node-remediation-console-plugin": PluginVendorRedHat,
-	"odf-console":                     PluginVendorRedHat,
-	"odf-multicluster-console":        PluginVendorRedHat,
+	"acm":                             "acm",
+	"console-telemetry-plugin":        "telemetry",
+	"crane-ui-plugin":                 "crane",
+	"forklift-console-plugin":         "forklift",
+	"gitops-plugin":                   "gitops",
+	"kubevirt-plugin":                 "kubevirt",
+	"logging-view-plugin":             "logging-view",
+	"mce":                             "mce",
+	"monitoring-plugin":               "monitoring",
+	"netobserv-plugin":                "netobserv",
+	"nmstate-console-plugin":          "nmstate",
+	"node-remediation-console-plugin": "node-remediation",
+	"odf-console":                     "odf",
+	"odf-multicluster-console":        "odf-multicluster",
+	"pipeline-console-plugin":         "pipelines",
 
 	// Unchanged template name from https://github.com/openshift/console-plugin-template
-	"console-plugin-template": PluginVendorDemo,
-	"my-plugin":               PluginVendorDemo,
+	"console-plugin-template": "demo",
+	"my-plugin":               "demo",
 }
 
 type PluginState string
@@ -106,14 +101,10 @@ func (m *Metrics) GetCollectors() []prometheus.Collector {
 	}
 }
 
-func (m *Metrics) MonitorPlugins(
-	userSettingsClient *http.Client,
-	userSettingsEndpoint string,
-	serviceAccountToken string,
-) {
+func (m *Metrics) MonitorPlugins(dynamicClient dynamic.Interface) {
 	go func() {
 		time.Sleep(3 * time.Second)
-		go m.updatePluginMetric(userSettingsClient, userSettingsEndpoint, serviceAccountToken)
+		go m.updatePluginMetric(dynamicClient)
 	}()
 
 	ticker := time.NewTicker(updateConsolePluginInterval)
@@ -122,7 +113,7 @@ func (m *Metrics) MonitorPlugins(
 		for {
 			select {
 			case <-ticker.C:
-				m.updatePluginMetric(userSettingsClient, userSettingsEndpoint, serviceAccountToken)
+				m.updatePluginMetric(dynamicClient)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -133,15 +124,11 @@ func (m *Metrics) MonitorPlugins(
 
 // ConsolePlugins are monitored with a slow interval (see updateConsolePluginInterval).
 // So this gauge can go up and down and it is required to set missing values to 0.
-func (m *Metrics) updatePluginMetric(
-	k8sClient *http.Client,
-	k8sEndpoint string,
-	serviceAccountToken string,
-) {
+func (m *Metrics) updatePluginMetric(dynamicClient dynamic.Interface) {
 	klog.Info("serverconfig.Metrics: Update ConsolePlugin metrics...\n")
 	startTime := time.Now()
 
-	consolePlugins, err := m.getConsolePlugins(k8sClient, k8sEndpoint, serviceAccountToken)
+	consolePlugins, err := m.getConsolePlugins(dynamicClient)
 	if err != nil {
 		klog.Errorf("serverconfig.Metrics: Failed to get all installed ConsolePlugins: %v\n", err)
 	}
@@ -153,31 +140,19 @@ func (m *Metrics) updatePluginMetric(
 		time.Since(startTime),
 	)
 
-	for vendor, states := range *pluginInfo {
+	for mappedPluginName, states := range *pluginInfo {
 		for state, value := range states {
-			if gauge, err := m.pluginsInfo.GetMetricWithLabelValues(string(vendor), string(state)); gauge != nil && err == nil {
+			if gauge, err := m.pluginsInfo.GetMetricWithLabelValues(string(mappedPluginName), string(state)); gauge != nil && err == nil {
 				gauge.Set(float64(value))
 			}
 		}
 	}
 }
 
-func (m *Metrics) getConsolePlugins(
-	k8sClient *http.Client,
-	k8sEndpoint string,
-	serviceAccountToken string,
-) (*[]unstructured.Unstructured, error) {
-	ctx := context.TODO()
-	config := &rest.Config{
-		Transport:   k8sClient.Transport,
-		Host:        k8sEndpoint,
-		BearerToken: serviceAccountToken,
-	}
-	client, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Resource(consolePluginResource).List(ctx, v1.ListOptions{})
+func (m *Metrics) getConsolePlugins(dynamicClient dynamic.Interface) (*[]unstructured.Unstructured, error) {
+	ctx := context.TODO() // FIXME: this is a wrong spot, the context should be wired through to this function
+
+	resp, err := dynamicClient.Resource(consolePluginResource).List(ctx, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -187,17 +162,17 @@ func (m *Metrics) getConsolePlugins(
 // Create a new plugin info map that is based on the last report to report also removed ConsolePlugins.
 func (m *Metrics) calculatePluginInfo(
 	consolePlugins *[]unstructured.Unstructured,
-	lastPluginInfo *map[PluginVendor]map[PluginState]int,
-) *map[PluginVendor]map[PluginState]int {
-	pluginInfo := make(map[PluginVendor]map[PluginState]int)
+	lastPluginInfo *map[MappedPluginName]map[PluginState]int,
+) *map[MappedPluginName]map[PluginState]int {
+	pluginInfo := make(map[MappedPluginName]map[PluginState]int)
 
 	if lastPluginInfo != nil {
-		for lastPluginVendor, lastPluginStates := range *lastPluginInfo {
+		for lastPluginName, lastPluginStates := range *lastPluginInfo {
 			for lastPluginState := range lastPluginStates {
-				if pluginInfo[lastPluginVendor] == nil {
-					pluginInfo[lastPluginVendor] = make(map[PluginState]int)
+				if pluginInfo[lastPluginName] == nil {
+					pluginInfo[lastPluginName] = make(map[PluginState]int)
 				}
-				pluginInfo[lastPluginVendor][lastPluginState] = 0
+				pluginInfo[lastPluginName][lastPluginState] = 0
 			}
 		}
 	}
@@ -207,9 +182,9 @@ func (m *Metrics) calculatePluginInfo(
 	if consolePlugins != nil {
 		for _, consolePlugin := range *consolePlugins {
 			pluginName := consolePlugin.GetName()
-			vendor := knownPluginVendors[pluginName]
-			if vendor == "" {
-				vendor = PluginVendorOther
+			mappedPluginName := knownPluginNames[pluginName]
+			if mappedPluginName == "" {
+				mappedPluginName = "unknown"
 			}
 			state := PluginStateDisabled
 			if m.config != nil && m.config.Plugins != nil {
@@ -217,10 +192,10 @@ func (m *Metrics) calculatePluginInfo(
 					state = PluginStateEnabled
 				}
 			}
-			if pluginInfo[vendor] == nil {
-				pluginInfo[vendor] = make(map[PluginState]int)
+			if pluginInfo[mappedPluginName] == nil {
+				pluginInfo[mappedPluginName] = make(map[PluginState]int)
 			}
-			pluginInfo[vendor][state]++
+			pluginInfo[mappedPluginName][state]++
 			consolePluginNames[pluginName] = true
 		}
 	}
@@ -228,15 +203,15 @@ func (m *Metrics) calculatePluginInfo(
 	if m.config != nil && m.config.Plugins != nil {
 		for pluginName := range m.config.Plugins {
 			if found := consolePluginNames[pluginName]; !found {
-				vendor := knownPluginVendors[pluginName]
-				if vendor == "" {
-					vendor = PluginVendorOther
+				mappedPluginName := knownPluginNames[pluginName]
+				if mappedPluginName == "" {
+					mappedPluginName = "unknown"
 				}
 				state := PluginStateNotFound
-				if pluginInfo[vendor] == nil {
-					pluginInfo[vendor] = make(map[PluginState]int)
+				if pluginInfo[mappedPluginName] == nil {
+					pluginInfo[mappedPluginName] = make(map[PluginState]int)
 				}
-				pluginInfo[vendor][state]++
+				pluginInfo[mappedPluginName][state]++
 			}
 		}
 	}

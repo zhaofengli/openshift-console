@@ -1,21 +1,22 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as React from 'react';
 import {
   Button,
   Divider,
   EmptyState,
   EmptyStateBody,
-  EmptyStatePrimary,
   Menu,
   MenuContent,
   MenuFooter,
   MenuGroup,
-  MenuInput,
+  MenuSearch,
+  MenuSearchInput,
   MenuItem,
   MenuList,
   Switch,
   TextInput,
-  Title,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import fuzzysearch from 'fuzzysearch';
 import { useTranslation } from 'react-i18next';
@@ -44,17 +45,28 @@ export const NoResults: React.FC<{
     <>
       <Divider />
       <EmptyState>
-        <Title size="md" headingLevel="h4">
-          {isProjects
-            ? t('console-shared~No projects found')
-            : t('console-shared~No namespaces found')}
-        </Title>
+        <EmptyStateHeader
+          titleText={
+            <>
+              {isProjects
+                ? t('console-shared~No projects found')
+                : t('console-shared~No namespaces found')}
+            </>
+          }
+          headingLevel="h4"
+        />
         <EmptyStateBody>{t('console-shared~No results match the filter criteria.')}</EmptyStateBody>
-        <EmptyStatePrimary>
-          <Button variant="link" onClick={onClear} className="co-namespace-selector__clear-filters">
-            {t('console-shared~Clear filters')}
-          </Button>
-        </EmptyStatePrimary>
+        <EmptyStateFooter>
+          <EmptyStateActions>
+            <Button
+              variant="link"
+              onClick={onClear}
+              className="co-namespace-selector__clear-filters"
+            >
+              {t('console-shared~Clear filters')}
+            </Button>
+          </EmptyStateActions>
+        </EmptyStateFooter>
       </EmptyState>
     </>
   );
@@ -70,28 +82,28 @@ export const Filter: React.FC<{
 }> = ({ filterText, filterRef, onFilterChange, isProject }) => {
   const { t } = useTranslation();
   return (
-    // @ts-ignore
-    <MenuInput>
-      <TextInput
-        data-test="dropdown-text-filter"
-        autoFocus
-        value={filterText}
-        aria-label={
-          isProject
-            ? t('console-shared~Select project...')
-            : t('console-shared~Select namespace...')
-        }
-        iconVariant="search"
-        type="search"
-        placeholder={
-          isProject
-            ? t('console-shared~Select project...')
-            : t('console-shared~Select namespace...')
-        }
-        onChange={(value: string) => onFilterChange(value)}
-        ref={filterRef}
-      />
-    </MenuInput>
+    <MenuSearch>
+      <MenuSearchInput>
+        <TextInput
+          data-test="dropdown-text-filter"
+          autoFocus
+          value={filterText}
+          aria-label={
+            isProject
+              ? t('console-shared~Select project...')
+              : t('console-shared~Select namespace...')
+          }
+          type="search"
+          placeholder={
+            isProject
+              ? t('console-shared~Select project...')
+              : t('console-shared~Select namespace...')
+          }
+          onChange={(_, value: string) => onFilterChange(value)}
+          ref={filterRef}
+        />
+      </MenuSearchInput>
+    </MenuSearch>
   );
 };
 
@@ -107,22 +119,22 @@ const SystemSwitch: React.FC<{
   return hasSystemNamespaces ? (
     <>
       <Divider />
-      {/*
-        //@ts-ignore */}
-      <MenuInput>
-        <Switch
-          data-test="showSystemSwitch"
-          data-checked-state={isChecked}
-          label={
-            isProject
-              ? t('console-shared~Show default projects')
-              : t('console-shared~Show default namespaces')
-          }
-          isChecked={isChecked}
-          onChange={onChange}
-          className="pf-c-select__menu-item pf-m-action co-namespace-dropdown__switch"
-        />
-      </MenuInput>
+      <MenuSearch>
+        <MenuSearchInput>
+          <Switch
+            data-test="showSystemSwitch"
+            data-checked-state={isChecked}
+            label={
+              isProject
+                ? t('console-shared~Show default projects')
+                : t('console-shared~Show default namespaces')
+            }
+            isChecked={isChecked}
+            onChange={(_, value) => onChange(value)}
+            className="pf-v5-c-select__menu-item pf-m-action co-namespace-dropdown__switch"
+          />
+        </MenuSearchInput>
+      </MenuSearch>
     </>
   ) : null;
 };
@@ -130,27 +142,26 @@ const SystemSwitch: React.FC<{
 /* ****************************************** */
 
 export const NamespaceGroup: React.FC<{
+  isProjects: boolean;
   isFavorites?: boolean;
   options: { key: string; title: string }[];
   selectedKey: string;
   favorites?: { [key: string]: boolean }[];
   canFavorite?: boolean;
-}> = ({ isFavorites, options, selectedKey, favorites, canFavorite = true }) => {
+}> = ({ isProjects, isFavorites, options, selectedKey, favorites, canFavorite = true }) => {
   const { t } = useTranslation();
-  const label = isFavorites ? t('console-shared~Favorites') : t('console-shared~Projects');
+  let label = isProjects ? t('console-shared~Projects') : t('console-shared~Namespaces');
+  if (isFavorites) {
+    label = t('console-shared~Favorites');
+  }
 
   return options.length === 0 ? null : (
     <>
       <Divider />
-      {/*
-        //@ts-ignore */}
       <MenuGroup label={label}>
-        {/*
-        //@ts-ignore */}
         <MenuList>
           {options.map((option) => {
             return (
-              // @ts-ignore
               <MenuItem
                 key={option.key}
                 itemId={option.key}
@@ -215,7 +226,6 @@ const NamespaceMenu: React.FC<{
   onCreateNew: () => void;
   menuRef: React.MutableRefObject<HTMLDivElement>;
 }> = ({ setOpen, onSelect, selected, isProjects, allNamespacesTitle, onCreateNew, menuRef }) => {
-  // const menuRef = React.useRef(null);
   const filterRef = React.useRef(null);
 
   const [filterText, setFilterText] = React.useState('');
@@ -233,7 +243,7 @@ const NamespaceMenu: React.FC<{
   );
 
   const canList: boolean = useFlag(FLAGS.CAN_LIST_NS);
-  const canCreate: boolean = useFlag(FLAGS.CAN_CREATE_PROJECT);
+  const canCreate: boolean = useFlag(isProjects ? FLAGS.CAN_CREATE_PROJECT : FLAGS.CAN_CREATE_NS);
   const [options, optionsLoaded] = useK8sWatchResource<K8sResourceKind[]>({
     isList: true,
     kind: isProjects ? ProjectModel.kind : NamespaceModel.kind,
@@ -332,8 +342,6 @@ const NamespaceMenu: React.FC<{
       data-test="namespace-dropdown-menu"
       isScrollable
     >
-      {/*
-        //@ts-ignore */}
       <MenuContent maxMenuHeight="60vh">
         <Filter
           filterRef={filterRef}
@@ -353,6 +361,7 @@ const NamespaceMenu: React.FC<{
           />
         ) : null}
         <NamespaceGroup
+          isProjects={isProjects}
           isFavorites
           options={filteredFavorites}
           selectedKey={selected}
@@ -364,7 +373,12 @@ const NamespaceMenu: React.FC<{
           isChecked={systemNamespaces}
           onChange={setSystemNamespaces}
         />
-        <NamespaceGroup options={filteredOptions} selectedKey={selected} favorites={favorites} />
+        <NamespaceGroup
+          isProjects={isProjects}
+          options={filteredOptions}
+          selectedKey={selected}
+          favorites={favorites}
+        />
       </MenuContent>
       <Footer
         canCreateNew={canCreate}
@@ -395,7 +409,7 @@ const NamespaceDropdown: React.FC<NamespaceDropdownProps> = ({
 
   const title = selected === ALL_NAMESPACES_KEY ? allNamespacesTitle : selected;
 
-  const NamespaceMenuProps = {
+  const menuProps = {
     setOpen,
     onSelect,
     selected,
@@ -403,13 +417,14 @@ const NamespaceDropdown: React.FC<NamespaceDropdownProps> = ({
     allNamespacesTitle,
     onCreateNew,
     menuRef,
+    children: <></>,
   };
 
   return (
     <div className="co-namespace-dropdown">
       <NamespaceMenuToggle
         disabled={disabled}
-        menu={<NamespaceMenu {...NamespaceMenuProps} />}
+        menu={<NamespaceMenu {...menuProps} />}
         menuRef={menuRef}
         isOpen={isOpen}
         title={`${

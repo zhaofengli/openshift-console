@@ -1,7 +1,18 @@
 import * as React from 'react';
-import { FormGroup, TextArea, TextInput } from '@patternfly/react-core';
+import {
+  FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+  Popover,
+  PopoverPosition,
+  TextArea,
+  TextInput,
+} from '@patternfly/react-core';
+import { HelpIcon } from '@patternfly/react-icons/dist/esm/icons/help-icon';
 import * as classNames from 'classnames';
 import { isEmpty } from 'lodash';
+import { RedExclamationCircleIcon } from '@console/dynamic-plugin-sdk';
 import { Dropdown } from '@console/internal/components/utils';
 import { ELEMENT_TYPES, networkTypeParams, NetworkTypeParams } from '../../constants';
 
@@ -164,7 +175,12 @@ const NetworkTypeOptions = (props) => {
               })}
               id={`network-type-params-${key}-label`}
             >
-              {name}
+              {name}{' '}
+              {parameter?.hintText && (
+                <Popover bodyContent={parameter.hintText} position={PopoverPosition.right}>
+                  <HelpIcon className="network-type-options--help-icon" />
+                </Popover>
+              )}
             </label>
             <TextInput
               type="text"
@@ -189,12 +205,18 @@ const NetworkTypeOptions = (props) => {
     }
 
     return (
-      <FormGroup
-        key={key}
-        fieldId={`network-type-parameters-${key}`}
-        validated={typeParamsData?.[key]?.validationMsg}
-      >
+      <FormGroup key={key} fieldId={`network-type-parameters-${key}`}>
         {children}
+
+        {typeParamsData?.[key]?.validationMsg && (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error" icon={<RedExclamationCircleIcon />}>
+                {typeParamsData?.[key]?.validationMsg}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        )}
       </FormGroup>
     );
   });

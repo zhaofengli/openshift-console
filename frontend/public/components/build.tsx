@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
-import { Link } from 'react-router-dom';
+import { Link, redirect } from 'react-router-dom-v5-compat';
 import { Trans, useTranslation } from 'react-i18next';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
@@ -24,7 +24,7 @@ import {
   k8sPatch,
   K8sKind,
 } from '../module/k8s';
-import { cloneBuild, formatBuildDuration, getBuildNumber } from '../module/k8s/builds';
+import { cloneBuild, getBuildNumber } from '../module/k8s/builds';
 import { DetailsPage, ListPage, Table, TableData, RowFunctionArgs } from './factory';
 import { errorModal, confirmModal } from './modals';
 import {
@@ -32,10 +32,13 @@ import {
   BuildHooks,
   BuildStrategy,
   DetailsItem,
+  documentationURLs,
   ExternalLink,
-  history,
+  getDocumentationURL,
   humanizeBinaryBytes,
   humanizeCpuCores,
+  isManaged,
+  isUpstream,
   Kebab,
   KebabAction,
   navFactory,
@@ -54,6 +57,7 @@ import { Area } from './graphs';
 import { BuildConfigModel, BuildModel } from '../models';
 import { timeFormatter, timeFormatterWithSeconds } from './utils/datetime';
 import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
+import { displayDurationInWords } from './utils/build-utils';
 
 const BuildsReference: K8sResourceKindReference = 'Build';
 
@@ -63,7 +67,7 @@ const CloneBuildAction: KebabAction = (kind: K8sKind, build: K8sResourceKind) =>
   callback: () =>
     cloneBuild(build)
       .then((clone) => {
-        history.push(resourceObjPath(clone, referenceFor(clone)));
+        redirect(resourceObjPath(clone, referenceFor(clone)));
       })
       .catch((err) => {
         const error = err.message;
@@ -224,6 +228,16 @@ const BuildMetrics = ({ obj }) => {
   ) : null;
 };
 
+const OpenShiftPipelines: React.FC = () => {
+  const { t } = useTranslation();
+  const text = t('public~OpenShift Pipelines based on Tekton');
+  return isUpstream() || isManaged() ? (
+    <>{text}</>
+  ) : (
+    <ExternalLink href={getDocumentationURL(documentationURLs.pipelines)} text={text} />
+  );
+};
+
 export const PipelineBuildStrategyAlert: React.FC<BuildsDetailsProps> = () => {
   const { t } = useTranslation();
   return (
@@ -234,13 +248,9 @@ export const PipelineBuildStrategyAlert: React.FC<BuildsDetailsProps> = () => {
       title={t('public~Pipeline build strategy deprecation')}
     >
       <Trans t={t} ns="public">
-        With the release of{' '}
-        <ExternalLink
-          href="https://openshift.github.io/pipelines-docs/"
-          text={t('public~OpenShift Pipelines based on Tekton')}
-        />
-        , the pipelines build strategy has been deprecated. Users should either use Jenkins files
-        directly on Jenkins or use cloud-native CI/CD with Openshift Pipelines.
+        With the release of <OpenShiftPipelines />, the pipelines build strategy has been
+        deprecated. Users should either use Jenkins files directly on Jenkins or use cloud-native
+        CI/CD with Openshift Pipelines.{' '}
         <ExternalLink
           href="https://github.com/openshift/pipelines-tutorial/"
           text={t('public~Try the OpenShift Pipelines tutorial')}
@@ -253,7 +263,6 @@ export const PipelineBuildStrategyAlert: React.FC<BuildsDetailsProps> = () => {
 export const BuildsDetails: React.SFC<BuildsDetailsProps> = ({ obj: build }) => {
   const { logSnippet, message, startTimestamp, completionTimestamp } = build.status;
   const triggeredBy = _.map(build.spec.triggeredBy, 'message').join(', ');
-  const duration = formatBuildDuration(build);
   const hasPipeline = build.spec.strategy.type === BuildStrategyType.JenkinsPipeline;
   const { t } = useTranslation();
   const BUILDCONFIG_TO_BUILD_REFERENCE_LABEL = 'openshift.io/build-config.name';
@@ -316,7 +325,10 @@ export const BuildsDetails: React.SFC<BuildsDetailsProps> = ({ obj: build }) => 
                 <Timestamp timestamp={completionTimestamp} />
               </DetailsItem>
               <DetailsItem label={t('public~Duration')} obj={build} path="status.duration">
-                {duration}
+                {displayDurationInWords(
+                  build?.status?.startTimestamp,
+                  build?.status?.completionTimestamp,
+                )}
               </DetailsItem>
               <DetailsItem label={t('public~Message')} obj={build} path="status.message" hideEmpty>
                 {message}
@@ -384,7 +396,7 @@ export const BuildEnvironmentComponent = (props) => {
   }
   return (
     <div className="cos-status-box">
-      <div className="pf-u-text-align-center">
+      <div className="pf-v5-u-text-align-center">
         {t('public~The environment variable editor does not support build strategy: {{ type }}', {
           type: obj.spec.strategy.type,
         })}
@@ -394,7 +406,7 @@ export const BuildEnvironmentComponent = (props) => {
   );
 };
 
-export const BuildsDetailsPage: React.SFC<BuildsDetailsPageProps> = (props) => {
+export const BuildsDetailsPage: React.SFC = (props) => {
   const prometheusIsAvailable = usePrometheusGate();
   return (
     <DetailsPage
@@ -442,7 +454,10 @@ const BuildsTableRow: React.FC<RowFunctionArgs<K8sResourceKind>> = ({ obj }) => 
         <Status status={obj.status?.phase} />
       </TableData>
       <TableData className={tableColumnClasses[3]}>
-        <Timestamp timestamp={obj.metadata.creationTimestamp} />
+        <Timestamp timestamp={obj.status?.startTimestamp} />
+      </TableData>
+      <TableData className={tableColumnClasses[3]}>
+        {displayDurationInWords(obj.status?.startTimestamp, obj.status?.completionTimestamp)}
       </TableData>
       <TableData className={tableColumnClasses[4]}>
         <ResourceKebab actions={menuActions} kind={BuildsReference} resource={obj} />
@@ -475,8 +490,14 @@ export const BuildsList: React.SFC = (props) => {
         props: { className: tableColumnClasses[2] },
       },
       {
-        title: t('public~Created'),
-        sortField: 'metadata.creationTimestamp',
+        title: t('public~Start time'),
+        sortField: 'status.startTimestamp',
+        transforms: [sortable],
+        props: { className: tableColumnClasses[3] },
+      },
+      {
+        title: t('public~Duration'),
+        sortField: 'status.duration',
         transforms: [sortable],
         props: { className: tableColumnClasses[3] },
       },
@@ -503,7 +524,7 @@ BuildsList.displayName = 'BuildsList';
 
 export const buildPhase = (build) => build.status.phase;
 
-const allPhases = ['New', 'Pending', 'Running', 'Complete', 'Failed', 'Error', 'Cancelled'];
+export const allPhases = ['New', 'Pending', 'Running', 'Complete', 'Failed', 'Error', 'Cancelled'];
 
 export const BuildsPage: React.SFC<BuildsPageProps> = (props) => {
   const { t } = useTranslation();
@@ -538,8 +559,4 @@ export type BuildsPageProps = {
   showTitle?: boolean;
   namespace?: string;
   selector?: any;
-};
-
-export type BuildsDetailsPageProps = {
-  match: any;
 };

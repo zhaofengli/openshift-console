@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import * as React from 'react';
 import { Alert, Button, Popover } from '@patternfly/react-core';
-import { InProgressIcon, PencilAltIcon } from '@patternfly/react-icons';
+import { InProgressIcon } from '@patternfly/react-icons/dist/esm/icons/in-progress-icon';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import { sortable } from '@patternfly/react-table';
 import * as classNames from 'classnames';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { match, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom-v5-compat';
 import { ResourceStatus, StatusIconAndText } from '@console/dynamic-plugin-sdk';
 import { getGroupVersionKindForModel } from '@console/dynamic-plugin-sdk/src/lib-core';
 import { Conditions } from '@console/internal/components/conditions';
@@ -18,6 +19,7 @@ import {
   RowFunctionArgs,
 } from '@console/internal/components/factory';
 import {
+  KebabAction,
   FieldLevelHelp,
   Kebab,
   LoadingInline,
@@ -190,7 +192,7 @@ export const SubscriptionStatus: React.FC<{ subscription: SubscriptionKind }> = 
   }
 };
 
-const menuActions = [
+const menuActions: KebabAction[] = [
   Kebab.factory.Edit,
   (kind, obj) => ({
     // t('olm~Remove Subscription')
@@ -603,7 +605,7 @@ export const SubscriptionUpdates: React.FC<SubscriptionUpdatesProps> = ({
                   isDisabled={!pkg}
                 >
                   {obj.spec.channel || 'default'}
-                  {pkg && <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />}
+                  {pkg && <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />}
                 </Button>
               )}
             </dd>
@@ -625,7 +627,7 @@ export const SubscriptionUpdates: React.FC<SubscriptionUpdatesProps> = ({
                   <div>
                     <Button type="button" isInline onClick={approvalModal} variant="link">
                       {obj.spec.installPlanApproval || 'Automatic'}
-                      <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+                      <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
                     </Button>
                   </div>
                   {obj.spec.installPlanApproval === InstallPlanApproval.Automatic &&
@@ -696,46 +698,48 @@ export const SubscriptionUpdates: React.FC<SubscriptionUpdatesProps> = ({
   );
 };
 
-export const SubscriptionDetailsPage: React.FC<SubscriptionDetailsPageProps> = (props) => (
-  <DetailsPage
-    {...props}
-    namespace={props.match.params.ns}
-    kind={referenceForModel(SubscriptionModel)}
-    name={props.match.params.name}
-    pages={[navFactory.details(SubscriptionDetails), navFactory.editYaml()]}
-    resources={[
-      {
-        kind: referenceForModel(PackageManifestModel),
-        isList: true,
-        namespace: props.namespace,
-        prop: 'packageManifests',
-      },
-      {
-        kind: referenceForModel(InstallPlanModel),
-        isList: true,
-        namespace: props.namespace,
-        prop: 'installPlans',
-      },
-      {
-        kind: referenceForModel(ClusterServiceVersionModel),
-        namespace: props.namespace,
-        isList: true,
-        prop: 'clusterServiceVersions',
-      },
-      {
-        kind: referenceForModel(SubscriptionModel),
-        namespace: props.namespace,
-        isList: true,
-        prop: 'subscriptions',
-      },
-    ]}
-    menuActions={menuActions}
-  />
-);
+export const SubscriptionDetailsPage: React.FC<SubscriptionDetailsPageProps> = (props) => {
+  const params = useParams();
+  return (
+    <DetailsPage
+      {...props}
+      namespace={params.ns}
+      kind={referenceForModel(SubscriptionModel)}
+      name={params.name}
+      pages={[navFactory.details(SubscriptionDetails), navFactory.editYaml()]}
+      resources={[
+        {
+          kind: referenceForModel(PackageManifestModel),
+          isList: true,
+          namespace: props.namespace,
+          prop: 'packageManifests',
+        },
+        {
+          kind: referenceForModel(InstallPlanModel),
+          isList: true,
+          namespace: props.namespace,
+          prop: 'installPlans',
+        },
+        {
+          kind: referenceForModel(ClusterServiceVersionModel),
+          namespace: props.namespace,
+          isList: true,
+          prop: 'clusterServiceVersions',
+        },
+        {
+          kind: referenceForModel(SubscriptionModel),
+          namespace: props.namespace,
+          isList: true,
+          prop: 'subscriptions',
+        },
+      ]}
+      menuActions={menuActions}
+    />
+  );
+};
 
 export type SubscriptionsPageProps = {
   namespace?: string;
-  match?: match<{ ns?: string }>;
 };
 
 export type SubscriptionsListProps = {
@@ -769,7 +773,6 @@ export type SubscriptionDetailsProps = {
 };
 
 export type SubscriptionDetailsPageProps = {
-  match: match<{ ns: string; name: string }>;
   namespace: string;
 };
 

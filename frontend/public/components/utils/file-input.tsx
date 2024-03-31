@@ -6,6 +6,7 @@ import { ConnectDropTarget, DropTargetMonitor } from 'react-dnd/lib/interfaces';
 import { Alert } from '@patternfly/react-core';
 /* eslint-disable-next-line */
 import { withTranslation, WithTranslation } from 'react-i18next';
+import { isBinary } from 'istextorbinary/edition-es2017/index';
 
 import withDragDropContext from './drag-drop-context';
 
@@ -46,7 +47,7 @@ class FileInputWithTranslation extends React.Component<FileInputProps, FileInput
         ? (reader.result as string).split(',')[1]
         : (reader.result as string);
       // OnLoad, if inputFileIsBinary we have read as a binary string, skip next block
-      if (containsNonPrintableCharacters(input) && !fileIsBinary) {
+      if (containsNonPrintableCharacters(input) && isBinary(null, input) && !fileIsBinary) {
         fileIsBinary = true;
         reader.readAsDataURL(file);
       } else {
@@ -93,17 +94,17 @@ class FileInputWithTranslation extends React.Component<FileInputProps, FileInput
             {this.props.label}
           </label>
           <div className="modal-body__field">
-            <div className="pf-c-input-group">
+            <div className="pf-v5-c-input-group">
               <input
                 type="text"
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 aria-label={t('public~Filename')}
                 value={this.props.inputFileName}
                 aria-describedby={this.props.inputFieldHelpText ? `${id}-help` : undefined}
                 readOnly
                 disabled
               />
-              <span className="pf-c-button pf-m-tertiary co-btn-file">
+              <span className="pf-v5-c-button pf-m-tertiary co-btn-file">
                 <input id={id} type="file" onChange={this.onFileUpload} data-test="file-input" />
                 {t('public~Browse...')}
               </span>
@@ -118,7 +119,7 @@ class FileInputWithTranslation extends React.Component<FileInputProps, FileInput
                 data-test-id={
                   this.props['data-test-id'] ? this.props['data-test-id'] : 'file-input-textarea'
                 }
-                className="pf-c-form-control co-file-dropzone__textarea"
+                className="pf-v5-c-form-control co-file-dropzone__textarea"
                 onChange={this.onDataChange}
                 value={this.props.inputFileData}
                 aria-label={this.props.label}
@@ -140,6 +141,7 @@ class FileInputWithTranslation extends React.Component<FileInputProps, FileInput
                 className="co-alert"
                 variant="info"
                 title={t('public~Non-printable file detected.')}
+                data-test="alert-info"
               >
                 {t('public~File contains non-printable characters. Preview is not available.')}
               </Alert>
@@ -175,7 +177,10 @@ const DroppableFileInputWithTranslation = withDragDropContext(
       this.state = {
         inputFileName: '',
         inputFileData: this.props.inputFileData || '',
-        inputFileIsBinary: containsNonPrintableCharacters(this.props.inputFileData),
+        inputFileIsBinary:
+          this.props.inputFileIsBinary ||
+          (containsNonPrintableCharacters(this.props.inputFileData) &&
+            isBinary(null, this.props.inputFileData)),
       };
       this.handleFileDrop = this.handleFileDrop.bind(this);
       this.onDataChange = this.onDataChange.bind(this);
@@ -199,7 +204,7 @@ const DroppableFileInputWithTranslation = withDragDropContext(
       reader.onload = () => {
         const input = reader.result as string; // Note(Yaacov): we use reader.readAsText
         // OnLoad, if inputFileIsBinary we have read as a binary string, skip next block
-        if (containsNonPrintableCharacters(input) && !inputFileIsBinary) {
+        if (containsNonPrintableCharacters(input) && isBinary(null, input) && !inputFileIsBinary) {
           inputFileIsBinary = true;
           reader.readAsBinaryString(file);
         } else {
@@ -256,6 +261,7 @@ export type DroppableFileInputProps = WithTranslation & {
   textareaFieldHelpText: string;
   isRequired: boolean;
   hideContents?: boolean;
+  inputFileIsBinary?: boolean;
 };
 
 export type DroppableFileInputState = {

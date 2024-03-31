@@ -3,16 +3,13 @@ import * as React from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useDispatch } from 'react-redux';
-import { match as RMatch } from 'react-router-dom';
+import { TableGridBreakpoint, SortByDirection, OnSelect } from '@patternfly/react-table';
 import {
   Table as PfTable,
-  TableHeader,
-  TableBody,
-  TableGridBreakpoint,
-  SortByDirection,
-  OnSelect,
+  TableHeader as TableHeaderDeprecated,
+  TableBody as TableBodyDeprecated,
   TableProps as PfTableProps,
-} from '@patternfly/react-table';
+} from '@patternfly/react-table/deprecated';
 import * as classNames from 'classnames';
 import { CellMeasurerCache, CellMeasurer } from 'react-virtualized';
 import {
@@ -21,17 +18,10 @@ import {
   WindowScroller,
 } from '@patternfly/react-virtualized-extension';
 import { Scroll } from '@patternfly/react-virtualized-extension/dist/js/components/Virtualized/types';
+import { useNavigate } from 'react-router-dom-v5-compat';
 import {
-  getNodeRoles,
   getMachinePhase,
   getMachineSetInstanceType,
-  nodeMemory,
-  nodeCPU,
-  nodeFS,
-  nodePods,
-  nodeMachine,
-  nodeInstanceType,
-  nodeZone,
   pvcUsed,
   snapshotSize,
   snapshotSource,
@@ -56,7 +46,6 @@ import {
   getTemplateInstanceStatus,
   K8sResourceKind,
   K8sResourceKindReference,
-  NodeKind,
   PodKind,
   podPhase,
   podReadiness,
@@ -78,11 +67,6 @@ const sorts = {
   instanceType: (obj): string => getMachineSetInstanceType(obj),
   jobCompletionsSucceeded: (job) => job?.status?.succeeded || 0,
   jobType: (job) => getJobTypeAndCompletions(job).type,
-  nodeReadiness: (node: NodeKind) => {
-    let readiness = _.get(node, 'status.conditions');
-    readiness = _.find(readiness, { type: 'Ready' });
-    return _.get(readiness, 'status');
-  },
   numReplicas: (resource) => _.toInteger(_.get(resource, 'status.replicas')),
   namespaceCPU: (ns: K8sResourceKind): number => UIActions.getNamespaceMetric(ns, 'cpu'),
   namespaceMemory: (ns: K8sResourceKind): number => UIActions.getNamespaceMetric(ns, 'memory'),
@@ -98,18 +82,7 @@ const sorts = {
   getClusterOperatorStatus: (operator: ClusterOperator) => getClusterOperatorStatus(operator),
   getClusterOperatorVersion: (operator: ClusterOperator) => getClusterOperatorVersion(operator),
   getTemplateInstanceStatus,
-  nodeRoles: (node: NodeKind): string => {
-    const roles = getNodeRoles(node);
-    return roles.sort().join(', ');
-  },
-  nodeMemory: (node: NodeKind): number => nodeMemory(node),
-  nodeCPU: (node: NodeKind): number => nodeCPU(node),
-  nodeFS: (node: NodeKind): number => nodeFS(node),
-  nodeMachine: (node: NodeKind): string => nodeMachine(node),
-  nodeInstanceType: (node: NodeKind): string => nodeInstanceType(node),
-  nodeZone: (node: NodeKind): string => nodeZone(node),
   machinePhase: (machine: MachineKind): string => getMachinePhase(machine),
-  nodePods: (node: NodeKind): number => nodePods(node),
   pvcUsed: (pvc: K8sResourceKind): number => pvcUsed(pvc),
   volumeSnapshotSize: (snapshot: VolumeSnapshotKind): number => snapshotSize(snapshot),
   volumeSnapshotSource: (snapshot: VolumeSnapshotKind): string => snapshotSource(snapshot),
@@ -138,7 +111,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       data-test-rows="resource-row"
       data-key={trKey}
       style={style}
-      className={className}
+      className={classNames('pf-v5-c-table__tr', className)}
       role="row"
     />
   );
@@ -208,7 +181,7 @@ export const TableData: React.FC<TableDataProps> = ({
   ...props
 }) => {
   return isColumnVisible(window.innerWidth, columnID, columns, showNamespaceOverride) ? (
-    <td {...props} className={className} role="gridcell" />
+    <td {...props} className={classNames('pf-v5-c-table__td', className)} role="gridcell" />
   ) : null;
 };
 TableData.displayName = 'TableData';
@@ -253,6 +226,7 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
     scrollTop,
     width,
     getRowProps,
+    onRowsRendered,
   } = props;
 
   const cellMeasurementCache = new CellMeasurerCache({
@@ -293,7 +267,7 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
   return (
     <VirtualTableBody
       autoHeight
-      className="pf-c-table pf-m-compact pf-m-border-rows pf-c-window-scroller"
+      className="pf-v5-c-table pf-m-compact pf-m-border-rows pf-v5-c-window-scroller"
       deferredMeasurementCache={cellMeasurementCache}
       rowHeight={cellMeasurementCache.rowHeight}
       height={height || 0}
@@ -306,6 +280,7 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
       rowRenderer={rowRenderer}
       scrollTop={scrollTop}
       width={width}
+      onRowsRendered={onRowsRendered}
     />
   );
 };
@@ -328,6 +303,12 @@ export type VirtualBodyProps<D = any, C = any> = {
   width: number;
   expand: boolean;
   getRowProps?: (obj: D) => Partial<Pick<TableRowProps, 'id' | 'className' | 'title'>>;
+  onRowsRendered?: (params: {
+    overscanStartIndex: number;
+    overscanStopIndex: number;
+    startIndex: number;
+    stopIndex: number;
+  }) => void;
 };
 
 type HeaderFunc = (componentProps: ComponentProps) => any[];
@@ -372,13 +353,11 @@ const getComponentProps = (
   data: any[],
   filters: Filter[],
   selected: boolean,
-  match: RMatch<any>,
   kindObj: K8sResourceKindReference,
 ): ComponentProps => ({
   data,
   filters,
   selected,
-  match,
   kindObj,
 });
 
@@ -386,7 +365,6 @@ export const Table: React.FC<TableProps> = ({
   onSelect,
   filters: initFilters,
   selected,
-  match,
   kindObj,
   Header: initHeader,
   activeColumns,
@@ -418,6 +396,7 @@ export const Table: React.FC<TableProps> = ({
   isPinned,
   defaultSortField,
   getRowProps,
+  onRowsRendered,
 }) => {
   const filters = useDeepCompareMemoize(initFilters);
   const Header = useDeepCompareMemoize(initHeader);
@@ -439,11 +418,12 @@ export const Table: React.FC<TableProps> = ({
   });
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
   const [sortBy, setSortBy] = React.useState({});
 
   const [columns, componentProps] = React.useMemo(() => {
-    const cProps = getComponentProps(data, filters, selected, match, kindObj);
+    const cProps = getComponentProps(data, filters, selected, kindObj);
     return [
       getActiveColumns(
         windowWidth,
@@ -461,7 +441,6 @@ export const Table: React.FC<TableProps> = ({
     data,
     filters,
     selected,
-    match,
     kindObj,
     activeColumns,
     columnManagementID,
@@ -490,11 +469,14 @@ export const Table: React.FC<TableProps> = ({
 
   const applySort = React.useCallback(
     (sortField, sortFunc, direction, columnTitle) => {
-      dispatch(
-        UIActions.sortList(listId, sortField, sortFunc || currentSortFunc, direction, columnTitle),
-      );
+      dispatch(UIActions.sortList(listId, sortField, sortFunc || currentSortFunc, direction));
+      const url = new URL(window.location.href);
+      const sp = new URLSearchParams(window.location.search);
+      sp.set('orderBy', direction);
+      sp.set('sortBy', columnTitle);
+      navigate(`${url.pathname}?${sp.toString()}${url.hash}`, { replace: true });
     },
-    [currentSortFunc, dispatch, listId],
+    [currentSortFunc, dispatch, listId, navigate],
   );
 
   const onSort = React.useCallback(
@@ -553,6 +535,7 @@ export const Table: React.FC<TableProps> = ({
                 width={width}
                 expand={expand}
                 getRowProps={getRowProps}
+                onRowsRendered={onRowsRendered}
               />
             </div>
           )}
@@ -584,8 +567,8 @@ export const Table: React.FC<TableProps> = ({
           role={virtualize ? 'presentation' : 'grid'}
           aria-label={virtualize ? null : ariaLabel}
         >
-          <TableHeader role="rowgroup" />
-          {!virtualize && <TableBody />}
+          <TableHeaderDeprecated role="rowgroup" />
+          {!virtualize && <TableBodyDeprecated />}
         </PfTable>
         {virtualize &&
           (scrollNode ? (
@@ -657,12 +640,12 @@ export type TableProps<D = any, C = any> = Partial<ComponentProps<D>> & {
   expand?: boolean;
   scrollElement?: HTMLElement | (() => HTMLElement);
   getRowProps?: VirtualBodyProps<D>['getRowProps'];
+  onRowsRendered?: VirtualBodyProps<D>['onRowsRendered'];
 };
 
 export type ComponentProps<D = any> = {
   data: D[];
   filters: Filter[];
   selected: boolean;
-  match: RMatch<any>;
   kindObj: K8sResourceKindReference;
 };

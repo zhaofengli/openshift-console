@@ -1,12 +1,5 @@
-import {
-  devNavigationMenu,
-  switchPerspective,
-} from '@console/dev-console/integration-tests/support/constants/global';
-import {
-  verifyAndInstallKnativeOperator,
-  navigateTo,
-  perspective,
-} from '@console/dev-console/integration-tests/support/pages';
+import { checkErrors } from '@console/cypress-integration-tests/support';
+import { verifyAndInstallKnativeOperator } from '@console/dev-console/integration-tests/support/pages';
 
 before(() => {
   cy.login();
@@ -26,8 +19,7 @@ before(() => {
 });
 
 beforeEach(() => {
-  perspective.switchTo(switchPerspective.Developer);
-  navigateTo(devNavigationMenu.Add);
+  cy.initDeveloper();
 });
 
 after(() => {
@@ -38,5 +30,5 @@ after(() => {
 
 afterEach(() => {
   // Below code helps to close the form, when there is any issue. so that other scenarios will be executed
-  cy.checkErrors();
+  checkErrors();
 });

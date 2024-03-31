@@ -1,20 +1,27 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper } from 'enzyme';
+import { mount } from 'enzyme';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom-v5-compat';
+import store from '@console/internal/redux';
 
 import { IDPNameInput } from '../../../public/components/cluster-settings/idp-name-input';
 import { IDPCAFileInput } from '../../../public/components/cluster-settings/idp-cafile-input';
 import {
   AddKeystonePage,
-  AddKeystonePageState,
   DroppableFileInput as KeystoneFileInput,
 } from '../../../public/components/cluster-settings/keystone-idp-form';
 import { controlButtonTest } from './basicauth-idp-form.spec';
 
 describe('Add Identity Provider: Keystone', () => {
-  let wrapper: ShallowWrapper<{}, AddKeystonePageState>;
-
+  let wrapper;
   beforeEach(() => {
-    wrapper = shallow(<AddKeystonePage />).dive();
+    wrapper = mount(
+      <Provider store={store}>
+        <BrowserRouter>
+          <AddKeystonePage />
+        </BrowserRouter>
+      </Provider>,
+    );
   });
 
   it('should render AddKeystonePage component', () => {
@@ -38,6 +45,6 @@ describe('Add Identity Provider: Keystone', () => {
   });
 
   it('should prefill keystone in name field by default', () => {
-    expect(wrapper.find(IDPNameInput).props().value).toEqual(wrapper.state().name);
+    expect(wrapper.find(IDPNameInput).props().value).toEqual('keystone');
   });
 });

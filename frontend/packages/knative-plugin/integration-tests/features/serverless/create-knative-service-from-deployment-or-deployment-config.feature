@@ -1,4 +1,4 @@
-@broken-test
+@knative-serverless @knative @broken-test
 Feature: Create Knative service from existing Deployment/Deployment Config workloads
               As a user, I should be able to create a serverless app(knative service) from existing deployment/deployment-config and specify any advanced options which I'm able to specify upon creating a knative service
 
@@ -70,7 +70,7 @@ Feature: Create Knative service from existing Deployment/Deployment Config workl
               And user clicks on save button
               And user right clicks on the knative service workoad "nodejs-ex-git1-sev" in Topology page
               And user selects option "Edit Service" from context options
-             Then user is able to see value of "autoscaling.knative.dev/targetUtilizationPercentage" as "4"
+             Then user is able to see value of "autoscaling.knative.dev/target-utilization-percentage" as "4"
 
 
         @regression @broken-test
@@ -86,5 +86,5 @@ Feature: Create Knative service from existing Deployment/Deployment Config workl
               And user clicks on Create button in Make Serverless form
               And user right clicks on the knative service workoad "nodejs-ex-git2-sev" in Topology page
               And user selects option "Edit Service" from context options
-             Then user is able to see the value of "autoscaling.knative.dev/maxScale" and "autoscaling.knative.dev/minScale" as "6" and "3" percent respectively
+             Then user is able to see the value of "autoscaling.knative.dev/max-scale" and "autoscaling.knative.dev/min-scale" as "6" and "3" percent respectively
               And user is able to see "3" Pods running in Resources tab of sidebar for knative workload "nodejs-ex-git2-sev"

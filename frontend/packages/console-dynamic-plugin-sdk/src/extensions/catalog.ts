@@ -122,6 +122,7 @@ export type CatalogExtensionHookOptions = {
 export type CatalogItem<T extends any = any> = {
   uid: string;
   type: string;
+  typeLabel?: string | React.ReactNode;
   name: string;
   /** Optional title to render a custom title using ReactNode.
    * Rendered in catalog tile and side panel
@@ -168,6 +169,7 @@ export type CatalogItemDetails = {
 export type CatalogItemDetailsProperty = {
   label: string;
   value: string | React.ReactNode;
+  isHidden?: boolean;
 };
 
 export type CatalogItemDetailsDescription = {

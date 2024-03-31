@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CatalogIcon } from '@patternfly/react-icons';
+import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon';
 import { useTranslation } from 'react-i18next';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import { ALL_NAMESPACES_KEY, CatalogServiceProvider, isCatalogTypeEnabled } from '@console/shared';
@@ -65,6 +65,10 @@ export const SampleGettingStartedCard: React.FC<SampleGettingStartedCardProps> =
       {(service) => {
         const orderedCatalogItems = orderCatalogItems(service.items || [], featured);
         const slicedCatalogItems = orderedCatalogItems.slice(0, 2);
+
+        if (service.loaded && slicedCatalogItems.length === 0) {
+          return null;
+        }
 
         const links: GettingStartedLink[] = service.loaded
           ? slicedCatalogItems.map((item) => {

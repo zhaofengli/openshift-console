@@ -1,19 +1,24 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper } from 'enzyme';
+import { mount } from 'enzyme';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom-v5-compat';
+import store from '@console/internal/redux';
 
 import { IDPNameInput } from '../../../public/components/cluster-settings/idp-name-input';
 import { IDPCAFileInput } from '../../../public/components/cluster-settings/idp-cafile-input';
-import {
-  AddGitLabPage,
-  AddGitLabPageState,
-} from '../../../public/components/cluster-settings/gitlab-idp-form';
+import { AddGitLabPage } from '../../../public/components/cluster-settings/gitlab-idp-form';
 import { controlButtonTest } from './basicauth-idp-form.spec';
 
 describe('Add Identity Provider: GitLab', () => {
-  let wrapper: ShallowWrapper<{}, AddGitLabPageState>;
-
+  let wrapper;
   beforeEach(() => {
-    wrapper = shallow(<AddGitLabPage />).dive();
+    wrapper = mount(
+      <Provider store={store}>
+        <BrowserRouter>
+          <AddGitLabPage />
+        </BrowserRouter>
+      </Provider>,
+    );
   });
 
   it('should render AddGitLabPage component', () => {
@@ -37,6 +42,6 @@ describe('Add Identity Provider: GitLab', () => {
   });
 
   it('should prefill gitlab in name field by default', () => {
-    expect(wrapper.find(IDPNameInput).props().value).toEqual(wrapper.state().name);
+    expect(wrapper.find(IDPNameInput).props().value).toEqual('gitlab');
   });
 });

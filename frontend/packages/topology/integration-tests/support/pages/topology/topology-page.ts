@@ -58,7 +58,7 @@ export const topologyPage = {
   },
   verifyContextMenu: () => cy.get(topologyPO.graph.contextMenu).should('be.visible'),
   verifyNoWorkLoadsText: (text: string) =>
-    cy.get('h3.pf-c-title.pf-m-lg').should('contain.text', text),
+    cy.get('h3.pf-v5-c-title.pf-m-lg').should('contain.text', text),
   verifyWorkLoads: () => cy.get(topologyPO.graph.workloads).should('be.visible'),
   search: (name: string) => {
     topologyHelper.search(name);
@@ -226,8 +226,8 @@ export const topologyPage = {
       .contains(eventSource);
   },
   getRevisionNode: (serviceName: string) => {
-    cy.get('[data-type="knative-service"] g.pf-topology__group__label > text', { timeout: 80000 })
-      .contains(serviceName)
+    cy.get('[data-type="knative-revision"] g.pf-topology__node__label > text')
+      .contains(serviceName.substring(0, 6))
       .should('be.visible');
     return cy.get('[data-type="knative-revision"] ellipse.pf-topology__node__background');
   },
@@ -286,8 +286,17 @@ export const topologyPage = {
   },
   clickOnApplicationGroupings: (appName: string) => {
     cy.reload();
+    app.waitForLoad();
+    guidedTour.close();
     const id = `[data-id="group:${appName}"] .odc-resource-icon-application`;
-    cy.get(id).next('text').click({ force: true });
+    cy.log(id);
+    cy.get('[data-test-id="base-node-handler"] image').should('be.visible');
+    cy.get('body').then(($el) => {
+      if ($el.find(topologyPO.sidePane.applicationGroupingsTitle).length === 0) {
+        cy.get(id).next('text').click({ force: true });
+      }
+    });
+    // cy.get(id).next('text').click({ force: true });
   },
   verifyApplicationGroupingsDeleted: (appName: string) => {
     cy.reload();
@@ -302,6 +311,12 @@ export const topologyPage = {
   },
   clickOnSinkBinding: (nodeName: string = 'sink-binding') => {
     topologyPage.getNode(nodeName).click({ force: true });
+  },
+  getHelmRelease: (helmReleaseName: string) => {
+    return cy
+      .get('[data-type="helm-release"]')
+      .find(topologyPO.graph.groupLabel)
+      .contains(helmReleaseName);
   },
   getKnativeService: (serviceName: string) => {
     return cy
@@ -318,8 +333,8 @@ export const topologyPage = {
   waitForKnativeRevision: () => {
     cy.get(topologyPO.graph.node, { timeout: 300000 }).should('be.visible');
   },
-  rightClickOnHelmWorkload: () => {
-    cy.get(topologyPO.graph.node).find('circle').trigger('contextmenu', { force: true });
+  rightClickOnHelmWorkload: (helmReleaseName: string) => {
+    topologyPage.getHelmRelease(helmReleaseName).trigger('contextmenu', { force: true });
   },
   clickOnHelmWorkload: () => {
     cy.get(topologyPO.graph.node).find('circle').click({ force: true });

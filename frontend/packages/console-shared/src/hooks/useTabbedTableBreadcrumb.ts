@@ -4,22 +4,22 @@ import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useSelector } from 'react-redux';
-import { match as RMatch } from 'react-router-dom';
+import { Location } from 'react-router-dom-v5-compat';
 import { getBreadcrumbPath } from '@console/internal/components/utils/breadcrumbs';
 import { K8sKind } from '@console/internal/module/k8s';
 import { getActiveNamespace } from '@console/internal/reducers/ui';
 import { RootState } from '@console/internal/redux';
 import { ALL_NAMESPACES_KEY } from '../constants/common';
 
-type Match = RMatch<{ url: string }>;
-
 export const useTabbedTableBreadcrumbsFor = (
   kindObj: K8sKind,
-  match: Match,
+  location: Location,
+  params: { [key: string]: string },
   navOption: string,
   subTab: string = null,
   customBreadcrumbName?: string,
   customBreadcrumbURLRequired?: boolean,
+  customBreadCrumbDetailsPrefix?: string,
 ) => {
   const { t } = useTranslation();
   const { label, labelKey, labelPlural, labelPluralKey } = kindObj;
@@ -35,25 +35,27 @@ export const useTabbedTableBreadcrumbsFor = (
               name: customBreadcrumbName || (labelPluralKey ? t(labelPluralKey) : labelPlural),
               path: customBreadcrumbURLRequired
                 ? `/${navOption}/${nsURL}/${subTab}`
-                : getBreadcrumbPath(match),
+                : getBreadcrumbPath(params),
             },
             {
               name: t('console-shared~{{label}} details', {
-                label: labelKey ? t(labelKey) : label,
+                label: customBreadCrumbDetailsPrefix || (labelKey ? t(labelKey) : label),
               }),
-              path: match.url,
+              path: location,
             },
           ],
     [
       subTab,
       customBreadcrumbName,
       customBreadcrumbURLRequired,
+      customBreadCrumbDetailsPrefix,
       labelPluralKey,
       t,
       labelPlural,
       navOption,
       nsURL,
-      match,
+      location,
+      params,
       labelKey,
       label,
     ],

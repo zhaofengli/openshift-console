@@ -7,7 +7,8 @@ import {
   SplitItem,
   Split,
 } from '@patternfly/react-core';
-import { PencilAltIcon, UndoIcon } from '@patternfly/react-icons';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
+import { UndoIcon } from '@patternfly/react-icons/dist/esm/icons/undo-icon';
 import { FormikValues, useFormikContext } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { ImportStrategy } from '@console/git-service/src';
@@ -17,7 +18,7 @@ import DevfileStrategySection from './devfile/DevfileStrategySection';
 import DockerSection from './git/DockerSection';
 import ImportStrategySelector from './ImportStrategySelector';
 import FormSection from './section/FormSection';
-import FuncSection from './serverlessfunc/FuncSection';
+import ServerlessFunctionSection from './serverless-function/ServerlessFunctionSection';
 import './ImportStrategySection.scss';
 
 export interface ImportStrategySectionProps {
@@ -46,7 +47,9 @@ const ImportStrategySection: React.FC<ImportStrategySectionProps> = ({ builderIm
     () => ({
       [ImportStrategy.DEVFILE]: <DevfileStrategySection />,
       [ImportStrategy.DOCKERFILE]: <DockerSection />,
-      [ImportStrategy.SERVERLESS_FUNCTION]: <FuncSection builderImages={builderImages} />,
+      [ImportStrategy.SERVERLESS_FUNCTION]: (
+        <ServerlessFunctionSection builderImages={builderImages} />
+      ),
       [ImportStrategy.S2I]: <BuilderSection builderImages={builderImages} />,
     }),
     [builderImages],

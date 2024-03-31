@@ -14,7 +14,7 @@ import {
 } from '@patternfly/react-core';
 import cx from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
 import { useTelemetry } from '../../hooks';
@@ -32,7 +32,10 @@ interface QuickSearchListProps {
   searchTerm: string;
   namespace: string;
   limitItemCount?: number;
-  onSelectListItem: (itemId: string) => void;
+  onSelectListItem: (
+    event: React.MouseEvent<Element, MouseEvent> | React.KeyboardEvent<Element>,
+    itemId: string,
+  ) => void;
   onListChange?: (items: number) => void;
   closeModal: () => void;
 }
@@ -118,7 +121,7 @@ const QuickSearchList: React.FC<QuickSearchListProps> = ({
                       </div>
                     </DataListCell>,
                     <DataListCell
-                      style={{ paddingTop: 'var(--pf-global--spacer--sm)' }}
+                      style={{ paddingTop: 'var(--pf-v5-global--spacer--sm)' }}
                       width={2}
                       wrapModifier="truncate"
                       key={`${item.uid}-name`}
@@ -131,14 +134,23 @@ const QuickSearchList: React.FC<QuickSearchListProps> = ({
                       </span>
                       <Split style={{ alignItems: 'center' }} hasGutter>
                         <SplitItem>
-                          <Label>{itemType}</Label>
+                          <Split>
+                            <SplitItem>
+                              <Label>{itemType}</Label>
+                            </SplitItem>
+                            {item?.secondaryLabel && (
+                              <SplitItem className="ocs-quick-search-list__secondary-label">
+                                <Label>{item.secondaryLabel}</Label>
+                              </SplitItem>
+                            )}
+                          </Split>
                         </SplitItem>
                         <SplitItem>
-                          {item.secondaryLabel ?? (
-                            <TextContent>
-                              <Text component={TextVariants.small}>{item.provider}</Text>
-                            </TextContent>
-                          )}
+                          <TextContent
+                            data-test={`item-name-${item.name}-${item.provider}-secondary-label`}
+                          >
+                            <Text component={TextVariants.small}>{item.provider}</Text>
+                          </TextContent>
                         </SplitItem>
                       </Split>
                     </DataListCell>,
@@ -157,7 +169,7 @@ const QuickSearchList: React.FC<QuickSearchListProps> = ({
               id={catalogLink.catalogType}
               to={catalogLink.to}
               key={catalogLink.catalogType}
-              style={{ fontSize: 'var(--pf-global--FontSize--sm)' }}
+              style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)' }}
             >
               {catalogLink.label}
             </Link>

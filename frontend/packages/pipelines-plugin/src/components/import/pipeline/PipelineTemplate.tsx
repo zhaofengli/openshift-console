@@ -4,7 +4,10 @@ import { useFormikContext, FormikValues } from 'formik';
 import i18next from 'i18next';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { ReadableResourcesNames } from '@console/dev-console/src/components/import/import-types';
+import {
+  BuildOptions,
+  ReadableResourcesNames,
+} from '@console/dev-console/src/components/import/import-types';
 import { NormalizedBuilderImages } from '@console/dev-console/src/utils/imagestream-utils';
 import { getGitService } from '@console/git-service/src';
 import { LoadingInline } from '@console/internal/components/utils';
@@ -64,19 +67,20 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
 
   const {
     values: {
-      import: { recommendedStrategy },
+      import: { recommendedStrategy, selectedStrategy },
       git: { url, type, ref, dir, secretResource },
       pipeline,
       image,
-      build,
+      build: { option: buildOption, strategy },
       resources,
     },
     setFieldValue,
+    setFieldTouched,
   } = useFormikContext<FormikValues>();
 
-  const isDockerStrategy = build.strategy === 'Docker';
+  const isDockerStrategy = strategy === 'Docker';
   const isPipelineAttached = !_.isEmpty(existingPipeline);
-  const isServerlessFunctionStrategy = build.strategy === 'ServerlessFunction';
+  const isServerlessFunctionStrategy = strategy === 'ServerlessFunction';
 
   const getPipelineNames = (pipelines: PipelineKind[]): string =>
     pipelines
@@ -93,13 +97,35 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
       setFieldValue('pipeline.enabled', true);
       setFieldValue('pipeline.type', PipelineType.PAC);
       setFieldValue('pac.repository.gitUrl', url);
+      setFieldValue('pac.pipelineType', PipelineType.PAC);
+      setFieldValue('pac.pipelineEnabled', true);
     } else {
-      setFieldValue('pipeline.enabled', false);
       setFieldValue('pipeline.type', PipelineType.PIPELINE);
       setFieldValue('pac.repository.gitUrl', '');
+      setFieldValue('pac.pipelineType', PipelineType.PIPELINE);
+      setFieldValue('pac.pipelineEnabled', false);
     }
     setIsPipelineTypeChanged(true);
   }, [url, type, ref, dir, secretResource, isRepositoryEnabled, setFieldValue]);
+
+  React.useEffect(() => {
+    pipelineStorageRef.current = {};
+  }, [selectedStrategy]);
+
+  React.useEffect(() => {
+    setFieldValue('pac.pipelineEnabled', !!pipeline.enabled);
+    // Added setTimeout to re-validate yup validation after onchange event
+    setTimeout(() => {
+      setFieldTouched('pipeline.enabled', true);
+    }, 0);
+  }, [pipeline.enabled, setFieldValue, setFieldTouched]);
+
+  React.useEffect(() => {
+    if (buildOption === BuildOptions.PIPELINES) {
+      setFieldValue('pipeline.enabled', true);
+      setFieldValue('pac.pipelineEnabled', true);
+    }
+  }, [buildOption, setFieldValue]);
 
   React.useEffect(() => {
     let ignore = false;
@@ -118,7 +144,10 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
     }
     const fetchPipelineTemplate = async () => {
       let fetchedPipelines: PipelineKind[] = null;
-      if (!pipelineStorageRef.current[image.selected]) {
+      if (
+        !pipelineStorageRef.current[image.selected] ||
+        !pipelineStorageRef.current[image.selected]?.length
+      ) {
         fetchedPipelines = (await k8sList(PipelineModel, {
           ns: CLUSTER_PIPELINE_NS,
           labelSelector,
@@ -164,6 +193,7 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
       } else {
         setFieldValue('pipeline.template', null);
         setFieldValue('pipeline.templateSelected', '');
+        setFieldValue('pipeline.enabled', false);
         setNoTemplateForRuntime(true);
       }
     };
@@ -215,84 +245,99 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
     );
   }
 
+  const onChangePipelineType = (value: PipelineType) => {
+    setFieldValue('pac.pipelineType', value);
+    setFieldValue('pipeline.type', value);
+    // Added setTimeout to re-validate yup validation after onchange event
+    setTimeout(() => {
+      setFieldTouched('pipeline.type', true);
+    }, 0);
+  };
+
   return pipeline.template ? (
     <>
-      <CheckboxField
-        label={t('pipelines-plugin~Add pipeline')}
-        name="pipeline.enabled"
-        isDisabled={isPipelineAttached}
-      />
-      {pipeline.enabled && isPacRepo && (
-        <RadioGroupField
-          className="odc-pipeline-section-pac__radio-intent"
-          name={'pipeline.type'}
-          options={[
-            {
-              value: PipelineType.PAC,
-              label: (
-                <>
-                  {t('pipelines-plugin~Build, deploy and configure a Pipeline Repository')}
-                  {'  '}
-                  <Tooltip
-                    position="right"
-                    content={
-                      <p>
-                        {t(
-                          'pipelines-plugin~Automatically configure a new Pipeline Repository for your Git repository. This will automatically trigger new PipelineRuns on new commits or Pull Requests based on your configuration in your source code.',
-                        )}
-                      </p>
-                    }
-                  >
-                    <BlueInfoCircleIcon />
-                  </Tooltip>
-                </>
-              ),
-              activeChildren: <PacSection />,
-            },
-            {
-              value: PipelineType.PIPELINE,
-              label: (
-                <>
-                  {t('pipelines-plugin~Use Pipeline from this cluster')}
-                  {'  '}
-                  <Tooltip
-                    position="right"
-                    content={
-                      <p>
-                        {t(
-                          'pipelines-plugin~Use an installed Pipeline from your cluster to build and deploy your component. Pipelines are from "openshift" namespace that support the relevant runtime are shown below.',
-                        )}
-                      </p>
-                    }
-                  >
-                    <BlueInfoCircleIcon />
-                  </Tooltip>
-                </>
-              ),
-              activeChildren: (
-                <>
-                  <DropdownField
-                    name="pipeline.templateSelected"
-                    title={pipelineTemplateItems[pipeline.templateSelected]}
-                    items={pipelineTemplateItems}
-                    disabled={isPipelineAttached}
-                    fullWidth
-                  />
-                  <br />
-                  <ExpandableSection
-                    toggleText={`${
-                      isExpanded ? t('pipelines-plugin~Hide') : t('pipelines-plugin~Show')
-                    } ${t('pipelines-plugin~pipeline visualization')}`}
-                    isExpanded={isExpanded}
-                    onToggle={() => setIsExpanded(!isExpanded)}
-                  >
-                    {isExpanded && <PipelineVisualization pipeline={pipeline.template} />}
-                  </ExpandableSection>
-                </>
-              ),
-            },
-          ]}
+      {buildOption !== BuildOptions.PIPELINES && (
+        <CheckboxField
+          label={t('pipelines-plugin~Add pipeline')}
+          name="pipeline.enabled"
+          isDisabled={isPipelineAttached}
         />
+      )}
+      {pipeline.enabled && isPacRepo && (
+        <>
+          <span className="pf-c-form__label-text">{t('pipelines-plugin~Pipeline')}</span>
+          <RadioGroupField
+            className="odc-pipeline-section-pac__radio-intent"
+            name={'pipeline.type'}
+            onChange={(val: string) => onChangePipelineType(val as PipelineType)}
+            options={[
+              {
+                value: PipelineType.PAC,
+                label: (
+                  <>
+                    {t('pipelines-plugin~Build, deploy and configure a Pipeline Repository')}
+                    {'  '}
+                    <Tooltip
+                      position="right"
+                      content={
+                        <p>
+                          {t(
+                            'pipelines-plugin~Automatically configure a new Pipeline Repository for your Git repository. This will automatically trigger new PipelineRuns on new commits or Pull Requests based on your configuration in your source code.',
+                          )}
+                        </p>
+                      }
+                    >
+                      <BlueInfoCircleIcon />
+                    </Tooltip>
+                  </>
+                ),
+                activeChildren: <PacSection />,
+              },
+              {
+                value: PipelineType.PIPELINE,
+                label: (
+                  <>
+                    {t('pipelines-plugin~Use Pipeline from this cluster')}
+                    {'  '}
+                    <Tooltip
+                      position="right"
+                      content={
+                        <p>
+                          {t(
+                            'pipelines-plugin~Use an installed Pipeline from your cluster to build and deploy your component. Pipelines are from "openshift" namespace that support the relevant runtime are shown below.',
+                          )}
+                        </p>
+                      }
+                    >
+                      <BlueInfoCircleIcon />
+                    </Tooltip>
+                  </>
+                ),
+                activeChildren: (
+                  <>
+                    <DropdownField
+                      name="pipeline.templateSelected"
+                      title={pipelineTemplateItems[pipeline.templateSelected]}
+                      items={pipelineTemplateItems}
+                      disabled={isPipelineAttached}
+                      fullWidth
+                    />
+                    <br />
+                    <ExpandableSection
+                      toggleText={`${
+                        isExpanded ? t('pipelines-plugin~Hide') : t('pipelines-plugin~Show')
+                      } ${t('pipelines-plugin~pipeline visualization')}`}
+                      isExpanded={isExpanded}
+                      onToggle={() => setIsExpanded(!isExpanded)}
+                    >
+                      {isExpanded && <PipelineVisualization pipeline={pipeline.template} />}
+                    </ExpandableSection>
+                  </>
+                ),
+              },
+            ]}
+          />
+        </>
       )}
       {pipeline.enabled && !isPacRepo && (
         <>
@@ -301,6 +346,7 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
             title={pipelineTemplateItems[pipeline.templateSelected]}
             items={pipelineTemplateItems}
             disabled={isPipelineAttached}
+            label={t('pipelines-plugin~Pipeline')}
             fullWidth
           />
           <ExpandableSection

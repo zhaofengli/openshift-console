@@ -2,15 +2,15 @@ import * as React from 'react';
 import {
   EmptyState,
   EmptyStateIcon,
-  EmptyStateSecondaryActions,
   EmptyStateVariant,
-  Title,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import { SortByDirection } from '@patternfly/react-table';
 import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { match } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom-v5-compat';
 import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
 import { StatusBox } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
@@ -32,13 +32,10 @@ const getRowProps = (obj) => ({
   id: obj.name,
 });
 
-interface HelmReleaseListProps {
-  match: match<{ ns?: string }>;
-}
-
-const HelmReleaseList: React.FC<HelmReleaseListProps> = (props) => {
+const HelmReleaseList: React.FC = () => {
   const { t } = useTranslation();
-  const namespace = props.match.params.ns;
+  const params = useParams();
+  const namespace = params.ns;
   const secretsCountRef = React.useRef<number>(0);
   const [releasesLoaded, setReleasesLoaded] = React.useState<boolean>(false);
   const [loadError, setLoadError] = React.useState<string>();
@@ -121,17 +118,20 @@ const HelmReleaseList: React.FC<HelmReleaseListProps> = (props) => {
     const installURL = { pathname: `/catalog/ns/${namespace}`, search: '?catalogType=HelmChart' };
     return (
       <EmptyState variant={EmptyStateVariant.full}>
-        <EmptyStateIcon variant="container" component={helmImage} />
-        <Title headingLevel="h3" size="lg">
-          {t('helm-plugin~No Helm Releases found')}
-        </Title>
-        {isHelmEnabled ? (
-          <EmptyStateSecondaryActions>
-            <Link to={installURL}>
-              {t('helm-plugin~Browse the catalog to discover available Helm Charts')}
-            </Link>
-          </EmptyStateSecondaryActions>
-        ) : null}
+        <EmptyStateHeader
+          titleText={<>{t('helm-plugin~No Helm Releases found')}</>}
+          icon={<EmptyStateIcon icon={helmImage} />}
+          headingLevel="h3"
+        />
+        <EmptyStateFooter>
+          {isHelmEnabled ? (
+            <EmptyStateActions>
+              <Link to={installURL}>
+                {t('helm-plugin~Browse the catalog to discover available Helm Charts')}
+              </Link>
+            </EmptyStateActions>
+          ) : null}
+        </EmptyStateFooter>
       </EmptyState>
     );
   };

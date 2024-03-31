@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as _ from 'lodash-es';
 import { CopyToClipboard as CTC } from 'react-copy-to-clipboard';
 import { Button, CodeBlock, CodeBlockAction, CodeBlockCode, Tooltip } from '@patternfly/react-core';
-import { CopyIcon } from '@patternfly/react-icons';
+import { CopyIcon } from '@patternfly/react-icons/dist/esm/icons/copy-icon';
 import { useTranslation } from 'react-i18next';
 
 export const CopyToClipboard: React.FC<CopyToClipboardProps> = React.memo((props) => {
@@ -30,7 +30,7 @@ export const CopyToClipboard: React.FC<CopyToClipboardProps> = React.memo((props
             type="button"
           >
             <CopyIcon />
-            <span className="sr-only">{t('public~Copy to clipboard')}</span>
+            <span className="pf-v5-u-screen-reader">{t('public~Copy to clipboard')}</span>
           </Button>
         </CTC>
       </Tooltip>
@@ -39,7 +39,11 @@ export const CopyToClipboard: React.FC<CopyToClipboardProps> = React.memo((props
 
   return (
     <CodeBlock actions={actions} className="co-copy-to-clipboard">
-      <CodeBlockCode className="co-copy-to-clipboard__text" data-test="copy-to-clipboard">
+      <CodeBlockCode
+        className="co-copy-to-clipboard__text"
+        data-test="copy-to-clipboard"
+        codeClassName="co-copy-to-clipboard__code"
+      >
         {visibleValue}
       </CodeBlockCode>
     </CodeBlock>

@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as _ from 'lodash-es';
 import { Map as ImmutableMap } from 'immutable';
 import { connect } from 'react-redux';
-import { Card, CardHeader, CardTitle, CardActions } from '@patternfly/react-core';
+import { Card, CardHeader, CardTitle } from '@patternfly/react-core';
 import ActivityBody, {
   RecentEventsBody,
   OngoingActivityBody,
@@ -27,7 +27,7 @@ import { RootState } from '../../../redux';
 import { ProjectDashboardContext } from './project-dashboard-context';
 import { getName } from '@console/shared';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 
 const getEventsResource = (projectName: string): FirehoseResource => ({
   isList: true,
@@ -147,14 +147,26 @@ export const ActivityCard: React.FC = () => {
   const viewEvents = `/k8s/ns/${projectName}/events`;
   const { t } = useTranslation();
   return (
-    <Card data-test-id="activity-card" className="co-overview-card--gradient">
-      <CardHeader>
+    <Card
+      data-test-id="activity-card"
+      className="co-overview-card--gradient"
+      isClickable
+      isSelectable
+    >
+      <CardHeader
+        actions={{
+          actions: (
+            <>
+              <Link to={viewEvents} data-test="view-events-link">
+                {t('public~View events')}
+              </Link>
+            </>
+          ),
+          hasNoOffset: false,
+          className: 'co-overview-card__actions',
+        }}
+      >
         <CardTitle>{t('public~Activity')}</CardTitle>
-        <CardActions className="co-overview-card__actions">
-          <Link to={viewEvents} data-test="view-events-link">
-            {t('public~View events')}
-          </Link>
-        </CardActions>
       </CardHeader>
       <ActivityBody className="co-project-dashboard__activity-body">
         <OngoingActivity projectName={projectName} />

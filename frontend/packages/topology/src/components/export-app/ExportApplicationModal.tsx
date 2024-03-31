@@ -50,7 +50,7 @@ export const ExportApplicationModal: React.FC<ExportApplicationModalProps> = (pr
 
   React.useEffect(() => {
     if (exportResource && exportResource.status?.completed !== true) {
-      setStartTime(dateTimeFormatter.format(new Date(exportResource.metadata.creationTimestamp)));
+      setStartTime(dateTimeFormatter().format(new Date(exportResource.metadata.creationTimestamp)));
     }
   }, [exportResource]);
 
@@ -257,7 +257,7 @@ export const handleExportApplication = async (
     });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.warn(err, 'Resource not found');
+    console.warn('Error while getting export resource:', err);
     exportApplicationModal({
       name,
       namespace,

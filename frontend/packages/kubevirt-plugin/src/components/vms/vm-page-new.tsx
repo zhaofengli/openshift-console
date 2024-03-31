@@ -5,16 +5,17 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
-  EmptyStateSecondaryActions,
-  Title,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
-import { RocketIcon, VirtualMachineIcon } from '@patternfly/react-icons';
+import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon';
+import { VirtualMachineIcon } from '@patternfly/react-icons/dist/esm/icons/virtual-machine-icon';
 import { sortable } from '@patternfly/react-table';
 import * as classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
-import { match } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom-v5-compat';
 import { QuickStartModel } from '@console/app/src/models';
 import { GenericStatus } from '@console/dynamic-plugin-sdk';
 import {
@@ -73,7 +74,7 @@ import VMIP from './VMIP';
 import './vm.scss';
 
 const tableColumnClasses = (showNamespace: boolean) => [
-  'pf-u-w-16-on-xl pf-u-w-50-on-xs',
+  'pf-v5-u-w-16-on-xl pf-v5-u-w-50-on-xs',
   classNames('pf-m-hidden', { 'pf-m-visible-on-lg': showNamespace }),
   '',
   'pf-m-hidden pf-m-visible-on-xl',
@@ -207,10 +208,11 @@ const VMListEmpty: React.FC = () => {
 
   return (
     <EmptyState>
-      <EmptyStateIcon icon={VirtualMachineIcon} />
-      <Title headingLevel="h4" size="lg">
-        {t('kubevirt-plugin~No virtual machines found')}
-      </Title>
+      <EmptyStateHeader
+        titleText={<>{t('kubevirt-plugin~No virtual machines found')}</>}
+        icon={<EmptyStateIcon icon={VirtualMachineIcon} />}
+        headingLevel="h4"
+      />
       <EmptyStateBody>
         <Trans ns="kubevirt-plugin">
           See the{' '}
@@ -220,34 +222,36 @@ const VMListEmpty: React.FC = () => {
           to quickly create a virtual machine from the available templates.
         </Trans>
       </EmptyStateBody>
-      <Button
-        data-test="create-vm-empty"
-        variant="primary"
-        isDisabled={!canCreate}
-        onClick={() =>
-          history.push(
-            getVMWizardCreateLink({
-              namespace,
-              wizardName: VMWizardName.BASIC,
-              mode: VMWizardMode.VM,
-            }),
-          )
-        }
-      >
-        {t('kubevirt-plugin~Create virtual machine')}
-      </Button>
-      {hasQuickStarts && (
-        <EmptyStateSecondaryActions>
-          <Button
-            data-test="vm-quickstart"
-            variant="secondary"
-            onClick={() => history.push('/quickstart?keyword=virtual+machine')}
-          >
-            <RocketIcon className="kv-vm-quickstart-icon" />
-            {t('kubevirt-plugin~Learn how to use virtual machines')}
-          </Button>
-        </EmptyStateSecondaryActions>
-      )}
+      <EmptyStateFooter>
+        <Button
+          data-test="create-vm-empty"
+          variant="primary"
+          isDisabled={!canCreate}
+          onClick={() =>
+            history.push(
+              getVMWizardCreateLink({
+                namespace,
+                wizardName: VMWizardName.BASIC,
+                mode: VMWizardMode.VM,
+              }),
+            )
+          }
+        >
+          {t('kubevirt-plugin~Create virtual machine')}
+        </Button>
+        {hasQuickStarts && (
+          <EmptyStateActions>
+            <Button
+              data-test="vm-quickstart"
+              variant="secondary"
+              onClick={() => history.push('/quickstart?keyword=virtual+machine')}
+            >
+              <RocketIcon className="kv-vm-quickstart-icon" />
+              {t('kubevirt-plugin~Learn how to use virtual machines')}
+            </Button>
+          </EmptyStateActions>
+        )}
+      </EmptyStateFooter>
     </EmptyState>
   );
 };
@@ -273,8 +277,9 @@ VMList.displayName = 'VMList';
 
 export const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
   const { t } = useTranslation();
+  const params = useParams();
   const { skipAccessReview, noProjectsAvailable, showTitle } = props.customData;
-  const namespace = props.match.params.ns;
+  const namespace = params.ns;
   const vmStatusResources = useVmStatusResources(namespace);
 
   const resources = React.useMemo(
@@ -390,7 +395,6 @@ type VMListProps = {
 };
 
 type VirtualMachinesPageProps = {
-  match: match<{ ns?: string }>;
   customData: {
     showTitle?: boolean;
     skipAccessReview?: boolean;

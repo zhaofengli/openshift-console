@@ -2,7 +2,8 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
 import * as fuzzy from 'fuzzysearch';
-import { Link } from 'react-router-dom';
+import classNames from 'classnames';
+import { Link, useLocation, useNavigate } from 'react-router-dom-v5-compat';
 import { sortable } from '@patternfly/react-table';
 import {
   Alert,
@@ -12,16 +13,20 @@ import {
   EmptyStateVariant,
   Label as PfLabel,
   LabelGroup as PfLabelGroup,
-  Title,
+  EmptyStateHeader,
+  Breadcrumb,
+  BreadcrumbItem,
 } from '@patternfly/react-core';
-import { PencilAltIcon } from '@patternfly/react-icons';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
+
+import { breadcrumbsForGlobalConfig } from '../../cluster-settings/global-config';
 
 import { K8sResourceKind } from '../../../module/k8s';
 import { Table, TableData, TextFilter, RowFunctionArgs } from '../../factory';
 import { confirmModal, createAlertRoutingModal } from '../../modals';
-import { Firehose, history, Kebab, MsgBox, SectionHeading, StatusBox } from '../../utils';
+import { Firehose, Kebab, MsgBox, SectionHeading, StatusBox } from '../../utils';
 import {
   getAlertmanagerConfig,
   patchAlertmanagerConfig,
@@ -51,6 +56,7 @@ const AlertRouting = ({ secret, config }: AlertRoutingProps) => {
           className="co-alert-manager-config__edit-alert-routing-btn"
           onClick={() => createAlertRoutingModal({ config, secret })}
           variant="secondary"
+          data-test="edit-alert-routing-btn"
         >
           {t('public~Edit')}
         </Button>
@@ -84,9 +90,9 @@ const AlertRouting = ({ secret, config }: AlertRoutingProps) => {
 };
 
 const tableColumnClasses = [
-  'pf-u-w-50-on-xs pf-u-w-25-on-lg',
-  'pf-m-hidden pf-m-visible-on-lg pf-u-w-25-on-lg',
-  'pf-u-w-50-on-xs',
+  'pf-v5-u-w-50-on-xs pf-v5-u-w-25-on-lg',
+  'pf-m-hidden pf-m-visible-on-lg pf-v5-u-w-25-on-lg',
+  'pf-v5-u-w-50-on-xs',
   Kebab.columnClass,
 ];
 
@@ -102,8 +108,8 @@ const getIntegrationTypes = (receiver: AlertmanagerReceiver): string[] => {
 };
 
 /**
- * Recursive function which transverses routes and sub-routes to get labels for each receiver.
- * Each entry is a set of labels used to route alerts to a receiver
+ * Recursive function which transverses routes and sub-routes to get labels and/or matchers for each receiver.
+ * Each entry is a set of labels and/or matchers used to route alerts to a receiver
  *
  * Ex: returns
  * [{
@@ -111,7 +117,8 @@ const getIntegrationTypes = (receiver: AlertmanagerReceiver): string[] => {
  *   "labels": {
  *     "service": "database",
  *     "owner": "team-Y"
- *   }
+ *   },
+ *   "matchers": ["severity = critical"]
  * },
  * {
  *   "receiver": "team-Y-pager",
@@ -121,14 +128,19 @@ const getIntegrationTypes = (receiver: AlertmanagerReceiver): string[] => {
  *   }
  * }]
 }*/
-const getRoutingLabelsByReceivers = (routes, parentLabels): RoutingLabelsByReceivers[] => {
+const getRoutingLabelsByReceivers = (
+  routes: AlertmanagerRoute[],
+  parentLabels: { [key: string]: string } = {},
+  parentMatchers: string[] = [],
+): RoutingLabelsByReceivers[] => {
   let results: RoutingLabelsByReceivers[] = [];
   let labels = {};
   for (const obj of routes) {
     labels = _.merge({}, parentLabels, obj.match, obj.match_re);
-    results.push({ receiver: obj.receiver, labels });
+    const matchers = [...parentMatchers, ...(obj.matchers ?? [])];
+    results.push({ receiver: obj.receiver, labels, matchers });
     if (obj.routes) {
-      results = results.concat(getRoutingLabelsByReceivers(obj.routes, labels));
+      results = results.concat(getRoutingLabelsByReceivers(obj.routes, labels, matchers));
     }
   }
   return results;
@@ -191,34 +203,25 @@ export const numberOfIncompleteReceivers = (config: AlertmanagerConfig): number 
     : numIncompleteReceivers;
 };
 
-// Puts sets of key=value pairs into single comma delimited label
-const RoutingLabel: React.FC<RoutingLabelProps> = ({ labels }) => {
-  let count = 0;
-  const { t } = useTranslation();
-  const list = _.map(labels, (value, key) => {
-    count++;
-    return key === 'default' ? (
-      <span key="default">{t('public~All (default receiver)')}</span>
-    ) : (
-      <PfLabel className="co-label" key={`label-${key}-${value}`}>
-        <span className="co-label__key">{key}</span>
-        <span className="co-label__eq">=</span>
-        <span className="co-label__value">{value}</span>
-        {count < _.size(labels) && <>,&nbsp;</>}
-      </PfLabel>
-    );
-  });
-  return (
-    <div>
-      <PfLabelGroup className="co-label-group">{list}</PfLabelGroup>
-    </div>
-  );
+const RoutingLabels: React.FC<RoutingLabelsProps> = ({ data }) => {
+  const { labels, matchers } = data;
+  const lbls = _.map(labels || {}, (value, key) => `${key}=${value}`);
+  const values = [...lbls, ...(matchers ?? [])];
+
+  return values.length > 0 ? (
+    <PfLabelGroup>
+      {values.map((value, i) => (
+        <PfLabel key={`label-${i}`}>{value}</PfLabel>
+      ))}
+    </PfLabelGroup>
+  ) : null;
 };
 
 const deleteReceiver = (
   secret: K8sResourceKind,
   config: AlertmanagerConfig,
   receiverName: string,
+  navigate: any,
 ) => {
   // remove any routes which use receiverToDelete
   _.update(config, 'route.routes', (routes) => {
@@ -231,7 +234,7 @@ const deleteReceiver = (
     return receivers;
   });
   return patchAlertmanagerConfig(secret, config).then(() => {
-    history.push('/monitoring/alertmanagerconfig');
+    navigate('/monitoring/alertmanagerconfig');
   });
 };
 
@@ -248,6 +251,7 @@ const ReceiverTableRow: React.FC<RowFunctionArgs<
   customData: { routingLabelsByReceivers, defaultReceiverName, config, secret },
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   // filter to routing labels belonging to current Receiver
   const receiverRoutingLabels = _.filter(routingLabelsByReceivers, { receiver: receiver.name });
   const receiverIntegrationTypes = getIntegrationTypes(receiver);
@@ -273,7 +277,7 @@ const ReceiverTableRow: React.FC<RowFunctionArgs<
         const targetUrl = canUseEditForm
           ? `/monitoring/alertmanagerconfig/receivers/${receiverName}/edit`
           : `/monitoring/alertmanageryaml`;
-        return history.push(targetUrl);
+        return navigate(targetUrl);
       },
     },
     {
@@ -289,7 +293,7 @@ const ReceiverTableRow: React.FC<RowFunctionArgs<
             receiverName,
           }),
           btnText: t('public~Delete Receiver'),
-          executeFn: () => deleteReceiver(secret, config, receiverName),
+          executeFn: () => deleteReceiver(secret, config, receiverName, navigate),
         }),
     },
   ];
@@ -302,7 +306,7 @@ const ReceiverTableRow: React.FC<RowFunctionArgs<
           receiver.name === InitialReceivers.Default) &&
         !integrationTypesLabel ? (
           <Link to={`/monitoring/alertmanagerconfig/receivers/${receiver.name}/edit`}>
-            <PencilAltIcon className="co-icon-space-r pf-c-button-icon--plain" />
+            <PencilAltIcon className="co-icon-space-r pf-v5-c-button-icon--plain" />
             {t('public~Configure')}
           </Link>
         ) : (
@@ -310,10 +314,11 @@ const ReceiverTableRow: React.FC<RowFunctionArgs<
         )}
       </TableData>
       <TableData className={tableColumnClasses[2]}>
-        {isDefaultReceiver && <RoutingLabel labels={{ default: 'all' }} />}
-        {_.map(receiverRoutingLabels, (rte, i) => {
-          return !_.isEmpty(rte.labels) ? <RoutingLabel key={i} labels={rte.labels} /> : null;
-        })}
+        {isDefaultReceiver
+          ? t('public~All (default receiver)')
+          : _.map(receiverRoutingLabels, (rte, i) => {
+              return <RoutingLabels data={rte} key={i} />;
+            })}
       </TableData>
       <TableData className={tableColumnClasses[3]}>
         <Kebab options={receiverMenuItems(receiver.name)} />
@@ -336,7 +341,7 @@ const ReceiversTable: React.FC<ReceiversTableProps> = (props) => {
   const { t } = useTranslation();
 
   const routingLabelsByReceivers = React.useMemo(
-    () => (_.isEmpty(routes) ? [] : getRoutingLabelsByReceivers(routes, {})),
+    () => (_.isEmpty(routes) ? [] : getRoutingLabelsByReceivers(routes)),
     [routes],
   );
 
@@ -396,9 +401,7 @@ const ReceiversEmptyState: React.FC<{}> = () => {
   const { t } = useTranslation();
   return (
     <EmptyState variant={EmptyStateVariant.full}>
-      <Title headingLevel="h2" size="lg">
-        {t('public~No receivers found')}
-      </Title>
+      <EmptyStateHeader titleText={<>{t('public~No receivers found')}</>} headingLevel="h2" />
       <EmptyStateBody>
         {t(
           'public~Create a receiver to get OpenShift alerts through other services such as email or a chat platform. The first receiver you create will become the default receiver and will automatically receive all alerts from this cluster. Subsequent receivers can have specific sets of alerts routed to them.',
@@ -431,7 +434,7 @@ const Receivers = ({ secret, config }: ReceiversProps) => {
         <TextFilter
           defaultValue=""
           label={t('public~Receivers by name')}
-          onChange={(val) => setReceiverFilter(val)}
+          onChange={(_event, val) => setReceiverFilter(val)}
         />
         <Link
           className="co-m-primary-action co-m-pane__filter-row-action"
@@ -512,21 +515,72 @@ const AlertmanagerConfigWrapper: React.FC<AlertmanagerConfigWrapperProps> = Reac
   },
 );
 
-export const AlertmanagerConfig = () => (
-  <Firehose
-    resources={[
-      {
-        kind: 'Secret',
-        name: 'alertmanager-main',
-        namespace: 'openshift-monitoring',
-        isList: false,
-        prop: 'obj',
-      },
-    ]}
-  >
-    <AlertmanagerConfigWrapper />
-  </Firehose>
-);
+export const AlertmanagerConfig: React.FC = () => {
+  const { t } = useTranslation();
+  const { pathname: url } = useLocation();
+
+  const configPath = '/monitoring/alertmanagerconfig';
+  const YAMLPath = '/monitoring/alertmanageryaml';
+
+  const breadcrumbs = breadcrumbsForGlobalConfig('Alertmanager', configPath);
+
+  return (
+    <>
+      <div className="pf-c-page__main-breadcrumb">
+        <Breadcrumb className="monitoring-breadcrumbs">
+          <BreadcrumbItem>
+            <Link className="pf-c-breadcrumb__link" to={breadcrumbs[0].path}>
+              {breadcrumbs[0].name}
+            </Link>
+          </BreadcrumbItem>
+          <BreadcrumbItem isActive>{breadcrumbs[1].name}</BreadcrumbItem>
+        </Breadcrumb>
+      </div>
+      <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
+        <h1 className="co-m-pane__heading">
+          <div className="co-m-pane__name co-resource-item">
+            <span className="co-resource-item__resource-name" data-test-id="resource-title">
+              {t('public~Alertmanager')}
+            </span>
+          </div>
+        </h1>
+      </div>
+      <ul className="co-m-horizontal-nav__menu">
+        <li
+          className={classNames('co-m-horizontal-nav__menu-item', {
+            'co-m-horizontal-nav-item--active': url === configPath,
+          })}
+        >
+          <Link to={configPath} data-test-id="horizontal-link-details">
+            {t('public~Details')}
+          </Link>
+        </li>
+        <li
+          className={classNames('co-m-horizontal-nav__menu-item', {
+            'co-m-horizontal-nav-item--active': url === YAMLPath,
+          })}
+        >
+          <Link to={YAMLPath} data-test-id="horizontal-link-yaml">
+            {t('public~YAML')}
+          </Link>
+        </li>
+      </ul>
+      <Firehose
+        resources={[
+          {
+            kind: 'Secret',
+            name: 'alertmanager-main',
+            namespace: 'openshift-monitoring',
+            isList: false,
+            prop: 'obj',
+          },
+        ]}
+      >
+        <AlertmanagerConfigWrapper />
+      </Firehose>
+    </>
+  );
+};
 
 type AlertmanagerConfigWrapperProps = {
   obj?: {
@@ -552,11 +606,13 @@ export type AlertmanagerRoute = {
   match?: labels[];
   match_re?: labels[];
   routes?: AlertmanagerRoute[];
+  matchers?: string[];
 };
 
 type RoutingLabelsByReceivers = {
   receiver: string;
   labels: { [key: string]: string };
+  matchers: string[];
 };
 
 type WebhookConfig = {
@@ -581,6 +637,6 @@ export type AlertmanagerConfig = {
   receivers: AlertmanagerReceiver[];
 };
 
-type RoutingLabelProps = {
-  labels: { [key: string]: string };
+type RoutingLabelsProps = {
+  data: RoutingLabelsByReceivers;
 };

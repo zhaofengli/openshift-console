@@ -10,6 +10,7 @@ import { PipelineRunModel } from '../../../models';
 import { PipelineRunKind } from '../../../types';
 import { rerunPipelineAndStay } from '../../../utils/pipeline-actions';
 import { getLatestRun } from '../../../utils/pipeline-augment';
+import { returnValidPipelineRunModel } from '../../../utils/pipeline-utils';
 import { usePipelineRunWithUserAnnotation } from '../../pipelineruns/triggered-by';
 
 type TriggerLastRunButtonProps = {
@@ -25,8 +26,9 @@ const TriggerLastRunButton: React.FC<TriggerLastRunButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const latestRun = usePipelineRunWithUserAnnotation(getLatestRun(pipelineRuns, 'startTimestamp'));
+  const pipelineRunModel = returnValidPipelineRunModel(latestRun);
   const { labelKey, callback, accessReview: utilityAccessReview } = rerunPipelineAndStay(
-    PipelineRunModel,
+    pipelineRunModel,
     latestRun,
   );
   const defaultAccessReview: AccessReviewResourceAttributes = {

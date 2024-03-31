@@ -3,22 +3,24 @@ import {
   ActionGroup,
   Alert,
   Button,
+  Checkbox,
   Title,
   Form,
   FormFieldGroupExpandable,
   FormFieldGroupHeader,
+  FormGroup,
   AlertActionCloseButton,
   AlertVariant,
 } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
-import { Checkbox } from '@console/internal/components/checkbox';
 import { confirmModal } from '@console/internal/components/modals/confirm-modal';
 import {
   ButtonBar,
   ExternalLink,
   getNetworkPolicyDocURL,
   history,
+  isManaged,
   resourcePathFromModel,
 } from '@console/internal/components/utils';
 import { NetworkPolicyModel } from '@console/internal/models';
@@ -217,13 +219,15 @@ export const NetworkPolicyForm: React.FC<NetworkPolicyFormProps> = ({ formData, 
               <p>
                 {t('Refer to your cluster administrator to know which network provider is used.')}
               </p>
-              <p>
-                {t('console-app~More information:')}&nbsp;
-                <ExternalLink
-                  href={getNetworkPolicyDocURL(isOpenShift)}
-                  text={t('console-app~NetworkPolicies documentation')}
-                />
-              </p>
+              {!isManaged() && (
+                <p>
+                  {t('console-app~More information:')}&nbsp;
+                  <ExternalLink
+                    href={getNetworkPolicyDocURL(isOpenShift)}
+                    text={t('console-app~NetworkPolicies documentation')}
+                  />
+                </p>
+              )}
             </Alert>
           )}
         <div className="form-group co-create-networkpolicy__name">
@@ -231,7 +235,7 @@ export const NetworkPolicyForm: React.FC<NetworkPolicyFormProps> = ({ formData, 
             {t('console-app~Policy name')}
           </label>
           <input
-            className="pf-c-form-control"
+            className="pf-v5-c-form-control"
             type="text"
             onChange={handleNameChange}
             value={networkPolicy.name}
@@ -272,33 +276,29 @@ export const NetworkPolicyForm: React.FC<NetworkPolicyFormProps> = ({ formData, 
             dataTest="policy-pods-preview"
           />
         </div>
-        <div className="form-group co-create-networkpolicy__type">
-          <Title headingLevel="h2">{t('console-app~Policy type')}</Title>
-        </div>
-        <div className="form-group co-create-networkpolicy__deny">
-          <label>{t('console-app~Select default ingress and egress deny rules')}</label>
-
-          <div className="co-create-networkpolicy__deny-checkboxes">
-            <div className="co-create-networkpolicy__deny-checkbox">
-              <Checkbox
-                label={t('console-app~Deny all ingress traffic')}
-                onChange={handleDenyAllIngress}
-                checked={networkPolicy.ingress.denyAll}
-                name="denyAllIngress"
-              />
-            </div>
-            {networkFeaturesLoaded && networkFeatures.PolicyEgress !== false && (
-              <div className="co-create-networkpolicy__deny-checkbox">
-                <Checkbox
-                  label={t('console-app~Deny all egress traffic')}
-                  onChange={handleDenyAllEgress}
-                  checked={networkPolicy.egress.denyAll}
-                  name="denyAllEgress"
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <Title headingLevel="h2">{t('console-app~Policy type')}</Title>
+        <FormGroup
+          role="group"
+          isInline
+          label={t('console-app~Select default ingress and egress deny rules')}
+        >
+          <Checkbox
+            label={t('console-app~Deny all ingress traffic')}
+            onChange={handleDenyAllIngress}
+            isChecked={networkPolicy.ingress.denyAll}
+            name="denyAllIngress"
+            id="denyAllIngress"
+          />
+          {networkFeaturesLoaded && networkFeatures.PolicyEgress !== false && (
+            <Checkbox
+              label={t('console-app~Deny all egress traffic')}
+              onChange={handleDenyAllEgress}
+              isChecked={networkPolicy.egress.denyAll}
+              name="denyAllEgress"
+              id="denyAllEgress"
+            />
+          )}
+        </FormGroup>
         {!networkPolicy.ingress.denyAll && (
           <FormFieldGroupExpandable
             toggleAriaLabel="Ingress"
@@ -392,7 +392,7 @@ export const NetworkPolicyForm: React.FC<NetworkPolicyFormProps> = ({ formData, 
             </FormFieldGroupExpandable>
           )}
         <ButtonBar errorMessage={error} inProgress={inProgress}>
-          <ActionGroup className="pf-c-form">
+          <ActionGroup className="pf-v5-c-form">
             <Button type="submit" id="save-changes" variant="primary">
               {t('console-app~Create')}
             </Button>

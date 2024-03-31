@@ -2,6 +2,7 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom-v5-compat';
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +20,8 @@ import {
   ToolbarFilter,
   ToolbarItem,
 } from '@patternfly/react-core';
-import { PlusCircleIcon, MinusCircleIcon } from '@patternfly/react-icons';
+import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon';
+import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon';
 import { getBadgeFromType, usePinnedResources } from '@console/shared';
 import { connectToModel } from '../kinds';
 import { DefaultPage } from './default-resource';
@@ -85,8 +87,9 @@ const SearchPage_: React.FC<SearchProps> = (props) => {
   const [labelFilterInput, setLabelFilterInput] = React.useState('');
   const [typeaheadNameFilter, setTypeaheadNameFilter] = React.useState('');
   const [pinnedResources, setPinnedResources, pinnedResourcesLoaded] = usePinnedResources();
-  const { namespace, noProjectsAvailable } = props;
+  const { noProjectsAvailable } = props;
   const { t } = useTranslation();
+  const { ns: namespace } = useParams();
   // Set state variables from the URL
   React.useEffect(() => {
     let kind: string, q: string, name: string;
@@ -250,6 +253,7 @@ const SearchPage_: React.FC<SearchProps> = (props) => {
                 <ResourceListDropdown
                   selected={[...selectedItems]}
                   onChange={updateSelectedItems}
+                  recentList={true}
                 />
               </ToolbarFilter>
             </ToolbarItem>
@@ -342,6 +346,6 @@ const SearchPage_: React.FC<SearchProps> = (props) => {
 export const SearchPage = withStartGuide(SearchPage_);
 
 export type SearchProps = {
-  namespace: string;
-  noProjectsAvailable: boolean;
+  namespace?: string;
+  noProjectsAvailable?: boolean;
 };

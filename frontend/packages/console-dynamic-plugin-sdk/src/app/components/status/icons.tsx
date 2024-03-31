@@ -1,9 +1,10 @@
 import * as React from 'react';
+import { Icon } from '@patternfly/react-core';
 import {
   CheckCircleIcon,
-  InfoCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  InfoCircleIcon,
 } from '@patternfly/react-icons';
 import * as classNames from 'classnames';
 
@@ -16,7 +17,7 @@ export type ColoredIconProps = {
 };
 
 /**
- * Component for displaying a green check mark circle icon
+ * Component for displaying a green check mark circle icon.
  * @param {string} [className] - (optional) additional class name for the component
  * @param {string} [title] - (optional) icon title
  * @param {string} [size] - (optional) icon size: ('sm', 'md', 'lg', 'xl')
@@ -26,16 +27,17 @@ export type ColoredIconProps = {
  * ```
  */
 export const GreenCheckCircleIcon: React.FC<ColoredIconProps> = ({ className, title, size }) => (
-  <CheckCircleIcon
-    data-test="success-icon"
-    size={size}
-    className={classNames('dps-icons__green-check-icon', className)}
-    title={title}
-  />
+  <Icon size={size}>
+    <CheckCircleIcon
+      data-test="success-icon"
+      className={classNames('dps-icons__green-check-icon', className)}
+      title={title}
+    />
+  </Icon>
 );
 
 /**
- * Component for displaying a red exclamation mark circle icon
+ * Component for displaying a red exclamation mark circle icon.
  * @param {string} [className] - (optional) additional class name for the component
  * @param {string} [title] - (optional) icon title
  * @param {string} [size] - (optional) icon size: ('sm', 'md', 'lg', 'xl')
@@ -49,15 +51,16 @@ export const RedExclamationCircleIcon: React.FC<ColoredIconProps> = ({
   title,
   size,
 }) => (
-  <ExclamationCircleIcon
-    size={size}
-    className={classNames('dps-icons__red-exclamation-icon', className)}
-    title={title}
-  />
+  <Icon size={size}>
+    <ExclamationCircleIcon
+      className={classNames('dps-icons__red-exclamation-icon', className)}
+      title={title}
+    />
+  </Icon>
 );
 
 /**
- * Component for displaying a yellow triangle exclamation icon
+ * Component for displaying a yellow triangle exclamation icon.
  * @param {string} [className] - (optional) additional class name for the component
  * @param {string} [title] - (optional) icon title
  * @param {string} [size] - (optional) icon size: ('sm', 'md', 'lg', 'xl')
@@ -71,15 +74,16 @@ export const YellowExclamationTriangleIcon: React.FC<ColoredIconProps> = ({
   title,
   size,
 }) => (
-  <ExclamationTriangleIcon
-    size={size}
-    className={classNames('dps-icons__yellow-exclamation-icon', className)}
-    title={title}
-  />
+  <Icon size={size}>
+    <ExclamationTriangleIcon
+      className={classNames('dps-icons__yellow-exclamation-icon', className)}
+      title={title}
+    />
+  </Icon>
 );
 
 /**
- * Component for displaying a blue info circle icon
+ * Component for displaying a blue info circle icon.
  * @param {string} [className] - (optional) additional class name for the component
  * @param {string} [title] - (optional) icon title
  * @param {string} [size] - (optional) icon size: ('sm', 'md', 'lg', 'xl')
@@ -88,6 +92,8 @@ export const YellowExclamationTriangleIcon: React.FC<ColoredIconProps> = ({
  * <BlueInfoCircleIcon title="Info" />
  * ```
  */
-export const BlueInfoCircleIcon: React.FC<ColoredIconProps> = ({ className, title }) => (
-  <InfoCircleIcon className={classNames('dps-icons__blue-info-icon', className)} title={title} />
+export const BlueInfoCircleIcon: React.FC<ColoredIconProps> = ({ className, title, size }) => (
+  <Icon size={size}>
+    <InfoCircleIcon className={classNames('dps-icons__blue-info-icon', className)} title={title} />
+  </Icon>
 );

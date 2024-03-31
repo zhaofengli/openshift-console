@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { SelectOption, Switch } from '@patternfly/react-core';
+import { Switch } from '@patternfly/react-core';
+import { SelectOption as SelectOptionDeprecated } from '@patternfly/react-core/deprecated';
 import { mount, shallow } from 'enzyme';
 import { DisplayFilters, TopologyDisplayFilterType, TopologyViewType } from '../../topology-types';
 import {
@@ -9,6 +10,10 @@ import {
 } from '../const';
 import { getFilterById } from '../filter-utils';
 import FilterDropdown from '../FilterDropdown';
+
+jest.mock('@console/shared/src/hooks/useTelemetry', () => ({
+  useTelemetry: () => {},
+}));
 
 describe(FilterDropdown.displayName, () => {
   let dropdownFilter: DisplayFilters;
@@ -40,7 +45,7 @@ describe(FilterDropdown.displayName, () => {
         opened
       />,
     );
-    expect(wrapper.find(SelectOption)).toHaveLength(DEFAULT_TOPOLOGY_FILTERS.length - 1);
+    expect(wrapper.find(SelectOptionDeprecated)).toHaveLength(DEFAULT_TOPOLOGY_FILTERS.length - 1);
   });
 
   it('should hide the show filters for list view', () => {
@@ -53,7 +58,7 @@ describe(FilterDropdown.displayName, () => {
         opened
       />,
     );
-    expect(wrapper.find(SelectOption)).toHaveLength(
+    expect(wrapper.find(SelectOptionDeprecated)).toHaveLength(
       DEFAULT_TOPOLOGY_FILTERS.filter((f) => f.type !== TopologyDisplayFilterType.show).length - 1,
     );
   });
@@ -68,7 +73,7 @@ describe(FilterDropdown.displayName, () => {
         opened
       />,
     );
-    expect(wrapper.find(SelectOption)).toHaveLength(1);
+    expect(wrapper.find(SelectOptionDeprecated)).toHaveLength(1);
   });
 
   it('should contain the expand groups switch', () => {
@@ -95,6 +100,6 @@ describe(FilterDropdown.displayName, () => {
         opened
       />,
     );
-    expect(wrapper.find(SelectOption).first().props().isDisabled).toBeTruthy();
+    expect(wrapper.find(SelectOptionDeprecated).first().props().isDisabled).toBeTruthy();
   });
 });

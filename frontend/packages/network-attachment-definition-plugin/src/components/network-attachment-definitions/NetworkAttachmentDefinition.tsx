@@ -1,9 +1,16 @@
 import * as React from 'react';
 import { QuickStart } from '@patternfly/quickstarts';
-import { Button, EmptyState, EmptyStateSecondaryActions, Title } from '@patternfly/react-core';
-import { RocketIcon } from '@patternfly/react-icons';
+import {
+  Button,
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
+} from '@patternfly/react-core';
+import { RocketIcon } from '@patternfly/react-icons/dist/esm/icons/rocket-icon';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom-v5-compat';
 import { QuickStartModel } from '@console/app/src/models';
 import { ListPage, Table, TableData, RowFunctionArgs } from '@console/internal/components/factory';
 import { history, Kebab, ResourceKebab, ResourceLink } from '@console/internal/components/utils';
@@ -128,30 +135,33 @@ const NADListEmpty: React.FC = () => {
 
   return (
     <EmptyState>
-      <Title headingLevel="h4" size="lg">
-        {t('kubevirt-plugin~No network attachment definitions found')}
-      </Title>
-      <Button
-        data-test-id="create-nad-empty"
-        variant="primary"
-        onClick={() =>
-          history.push(getCreateLink(namespace === ALL_NAMESPACES_KEY ? undefined : namespace))
-        }
-      >
-        {t('kubevirt-plugin~Create network attachment definition')}
-      </Button>
-      {hasQuickStarts && (
-        <EmptyStateSecondaryActions>
-          <Button
-            data-test-id="nad-quickstart"
-            variant="secondary"
-            onClick={() => history.push('/quickstart?keyword=network+attachment+definition')}
-          >
-            <RocketIcon className="nad-quickstart-icon" />
-            {t('kubevirt-plugin~Learn how to use network attachment definitions')}
-          </Button>
-        </EmptyStateSecondaryActions>
-      )}
+      <EmptyStateHeader
+        titleText={<>{t('kubevirt-plugin~No network attachment definitions found')}</>}
+        headingLevel="h4"
+      />
+      <EmptyStateFooter>
+        <Button
+          data-test-id="create-nad-empty"
+          variant="primary"
+          onClick={() =>
+            history.push(getCreateLink(namespace === ALL_NAMESPACES_KEY ? undefined : namespace))
+          }
+        >
+          {t('kubevirt-plugin~Create network attachment definition')}
+        </Button>
+        {hasQuickStarts && (
+          <EmptyStateActions>
+            <Button
+              data-test-id="nad-quickstart"
+              variant="secondary"
+              onClick={() => history.push('/quickstart?keyword=network+attachment+definition')}
+            >
+              <RocketIcon className="nad-quickstart-icon" />
+              {t('kubevirt-plugin~Learn how to use network attachment definitions')}
+            </Button>
+          </EmptyStateActions>
+        )}
+      </EmptyStateFooter>
     </EmptyState>
   );
 };
@@ -178,7 +188,8 @@ NetworkAttachmentDefinitionsList.displayName = 'NetworkAttachmentDefinitionsList
 export const NetworkAttachmentDefinitionsPage: React.FC<NetworkAttachmentDefinitionsPageProps> = (
   props,
 ) => {
-  const namespace = props.namespace || props.match?.params?.ns;
+  const params = useParams();
+  const namespace = props.namespace || params?.ns;
   const createProps = {
     to: getCreateLink(namespace),
   };

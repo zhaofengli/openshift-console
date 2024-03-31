@@ -2,8 +2,7 @@ import * as React from 'react';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { match } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom-v5-compat';
 import { OPERATOR_BACKED_SERVICE_CATALOG_TYPE_ID } from '@console/dev-console/src/const';
 import {
   DOC_URL_RED_HAT_MARKETPLACE,
@@ -14,12 +13,22 @@ import {
   skeletonCatalog,
   StatusBox,
 } from '@console/internal/components/utils';
-import { referenceForModel } from '@console/internal/module/k8s';
+import {
+  referenceForModel,
+  CloudCredentialKind,
+  InfrastructureKind,
+  AuthenticationKind,
+} from '@console/internal/module/k8s';
 import { fromRequirements } from '@console/internal/module/k8s/selector';
 import { isCatalogTypeEnabled, useIsDeveloperCatalogEnabled } from '@console/shared';
 import { ErrorBoundaryFallbackPage, withFallback } from '@console/shared/src/components/error';
 import { parseJSONAnnotation } from '@console/shared/src/utils/annotations';
 import { iconFor } from '..';
+import {
+  CloudCredentialModel,
+  AuthenticationModel,
+  InfrastructureModel,
+} from '../../../../../public/models';
 import { OPERATOR_TYPE_ANNOTATION, NON_STANDALONE_ANNOTATION_VALUE } from '../../const';
 import {
   ClusterServiceVersionModel,
@@ -35,7 +44,11 @@ import {
 } from '../../types';
 import { subscriptionFor } from '../operator-group';
 import { OperatorHubTileView } from './operator-hub-items';
-import { getCatalogSourceDisplayName } from './operator-hub-utils';
+import {
+  getCatalogSourceDisplayName,
+  isAWSSTSCluster,
+  isAzureWIFCluster,
+} from './operator-hub-utils';
 import {
   OperatorHubItem,
   OperatorHubCSVAnnotations,
@@ -73,6 +86,9 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
   packageManifests,
   subscriptions,
   clusterServiceVersions,
+  cloudCredentials,
+  authentication,
+  infrastructure,
 }) => {
   const { t } = useTranslation();
   const items: OperatorHubItem[] = React.useMemo(() => {
@@ -134,11 +150,6 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
             [],
           );
 
-          // TODO remove lodash and implement using Array.prototye.reduce
-          const infraFeatures = _.uniq(
-            _.compact(_.map(parsedInfraFeatures, (key) => InfraFeatures[key])),
-          );
-
           const {
             certifiedLevel,
             healthIndex,
@@ -147,6 +158,16 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
             createdAt,
             support,
             capabilities: capabilityLevel,
+            [OperatorHubCSVAnnotationKey.disconnected]: disconnected,
+            [OperatorHubCSVAnnotationKey.fipsCompliant]: fipsCompliant,
+            [OperatorHubCSVAnnotationKey.proxyAware]: proxyAware,
+            [OperatorHubCSVAnnotationKey.cnf]: cnf,
+            [OperatorHubCSVAnnotationKey.cni]: cni,
+            [OperatorHubCSVAnnotationKey.csi]: csi,
+            [OperatorHubCSVAnnotationKey.tlsProfiles]: tlsProfiles,
+            [OperatorHubCSVAnnotationKey.tokenAuthAWS]: tokenAuthAWS,
+            [OperatorHubCSVAnnotationKey.tokenAuthAzure]: tokenAuthAzure,
+            [OperatorHubCSVAnnotationKey.tokenAuthGCP]: tokenAuthGCP,
             [OperatorHubCSVAnnotationKey.actionText]: marketplaceActionText,
             [OperatorHubCSVAnnotationKey.remoteWorkflow]: marketplaceRemoteWorkflow,
             [OperatorHubCSVAnnotationKey.supportWorkflow]: marketplaceSupportWorkflow,
@@ -154,6 +175,47 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
 
           const subscription =
             loaded && subscriptionFor(subscriptions?.data)(operatorGroups?.data)(pkg)(namespace);
+
+          const cloudCredential = loaded && cloudCredentials?.data;
+
+          const infra = loaded && infrastructure?.data;
+
+          const auth = loaded && authentication?.data;
+
+          // old infra feature annotation
+          let infrastructureFeatures: InfraFeatures[] = parsedInfraFeatures.map(
+            (key) => InfraFeatures[key],
+          );
+
+          // new infra feature annotation
+          const featuresAnnotationsObjects = [
+            { key: InfraFeatures.Disconnected, value: disconnected },
+            { key: InfraFeatures.FipsMode, value: fipsCompliant },
+            { key: InfraFeatures.Proxy, value: proxyAware },
+            { key: InfraFeatures.cnf, value: cnf },
+            { key: InfraFeatures.cni, value: cni },
+            { key: InfraFeatures.csi, value: csi },
+            { key: InfraFeatures.tlsProfiles, value: tlsProfiles },
+            { key: InfraFeatures.tokenAuthGCP, value: tokenAuthGCP },
+          ];
+
+          // override old with new
+          featuresAnnotationsObjects.forEach(({ key, value }) => {
+            if (value === 'false') {
+              // override existing operators.openshift.io/infrastructure-features annotation value
+              infrastructureFeatures = infrastructureFeatures.filter((feature) => feature !== key);
+            } else if (value === 'true') {
+              infrastructureFeatures.push(key);
+            }
+          });
+
+          if (tokenAuthAWS === 'true' && isAWSSTSCluster(cloudCredential, infra, auth)) {
+            infrastructureFeatures.push(InfraFeatures.TokenAuth);
+          } else if (tokenAuthAzure === 'true' && isAzureWIFCluster(cloudCredential, infra, auth)) {
+            infrastructureFeatures.push(InfraFeatures.TokenAuth);
+          }
+
+          const infraFeatures = _.uniq(_.compact(infrastructureFeatures));
 
           const clusterServiceVersion =
             loaded &&
@@ -203,6 +265,9 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
             validSubscriptionFilters,
             infraFeatures,
             keywords: currentCSVDesc?.keywords ?? [],
+            cloudCredentials: cloudCredential,
+            infrastructure: infra,
+            authentication: auth,
           };
         },
       );
@@ -214,6 +279,9 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
     operatorGroups,
     packageManifests,
     subscriptions,
+    cloudCredentials,
+    infrastructure,
+    authentication,
   ]);
 
   const uniqueItems = _.uniqBy(items, 'uid');
@@ -253,7 +321,8 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
   );
 };
 
-export const OperatorHubPage = withFallback((props: OperatorHubPageProps) => {
+export const OperatorHubPage = withFallback((props) => {
+  const params = useParams();
   const isDevCatalogEnabled = useIsDeveloperCatalogEnabled();
   const isOperatorBackedServiceEnabled = isCatalogTypeEnabled(
     OPERATOR_BACKED_SERVICE_CATALOG_TYPE_ID,
@@ -299,14 +368,14 @@ export const OperatorHubPage = withFallback((props: OperatorHubPageProps) => {
                 {
                   isList: true,
                   kind: referenceForModel(PackageManifestModel),
-                  namespace: props.match.params.ns,
+                  namespace: params.ns,
                   selector: { 'openshift-marketplace': 'true' },
                   prop: 'marketplacePackageManifests',
                 },
                 {
                   isList: true,
                   kind: referenceForModel(PackageManifestModel),
-                  namespace: props.match.params.ns,
+                  namespace: params.ns,
                   selector: fromRequirements([
                     { key: 'opsrc-owner-name', operator: 'DoesNotExist' },
                     { key: 'csc-owner-name', operator: 'DoesNotExist' },
@@ -322,13 +391,28 @@ export const OperatorHubPage = withFallback((props: OperatorHubPageProps) => {
                   kind: referenceForModel(ClusterServiceVersionModel),
                   namespaced: true,
                   isList: true,
-                  namespace: props.match.params.ns,
+                  namespace: params.ns,
                   prop: 'clusterServiceVersions',
+                },
+                {
+                  kind: referenceForModel(CloudCredentialModel),
+                  prop: 'cloudCredentials',
+                  name: 'cluster',
+                },
+                {
+                  kind: referenceForModel(InfrastructureModel),
+                  prop: 'infrastructure',
+                  name: 'cluster',
+                },
+                {
+                  kind: referenceForModel(AuthenticationModel),
+                  prop: 'authentication',
+                  name: 'cluster',
                 },
               ]}
             >
               {/* FIXME(alecmerdler): Hack because `Firehose` injects props without TypeScript knowing about it */}
-              <OperatorHubList {...(props as any)} namespace={props.match.params.ns} />
+              <OperatorHubList {...(props as any)} namespace={params.ns} />
             </Firehose>
           </div>
         </div>
@@ -337,16 +421,15 @@ export const OperatorHubPage = withFallback((props: OperatorHubPageProps) => {
   );
 }, ErrorBoundaryFallbackPage);
 
-export type OperatorHubPageProps = {
-  match: match<{ ns?: string }>;
-};
-
 export type OperatorHubListProps = {
   namespace?: string;
   operatorGroups: { loaded: boolean; data?: OperatorGroupKind[] };
   packageManifests: { loaded: boolean; data?: PackageManifestKind[] };
   marketplacePackageManifests: { loaded: boolean; data?: PackageManifestKind[] };
   subscriptions: { loaded: boolean; data?: SubscriptionKind[] };
+  cloudCredentials: { loaded: boolean; data?: CloudCredentialKind };
+  infrastructure: { loaded: boolean; data?: InfrastructureKind };
+  authentication: { loaded: boolean; data?: AuthenticationKind };
   loaded: boolean;
   loadError?: string;
   clusterServiceVersions: { loaded: boolean; data?: ClusterServiceVersionKind[] };

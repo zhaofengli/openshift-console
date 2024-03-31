@@ -1,10 +1,13 @@
 import * as React from 'react';
-import { Wizard, WizardStep } from '@patternfly/react-core';
+import {
+  Wizard as WizardDeprecated,
+  WizardStep as WizardStepDeprecated,
+} from '@patternfly/react-core/deprecated';
 import { Location } from 'history';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
-import { match as RouterMatch } from 'react-router';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
 import { compose } from 'redux';
 import { Firehose, history } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
@@ -295,7 +298,7 @@ const CreateVMWizardComponent: React.FC<CreateVMWizardComponentProps> = (props) 
     },
   ];
 
-  const calculateStepsVisibility = (initialSteps: WizardStep[]): WizardStep[] =>
+  const calculateStepsVisibility = (initialSteps: WizardStepDeprecated[]): WizardStepDeprecated[] =>
     initialSteps
       .map((step) => {
         if (step.steps) {
@@ -313,7 +316,7 @@ const CreateVMWizardComponent: React.FC<CreateVMWizardComponentProps> = (props) 
           <h1 className="yaml-editor__header-text">{getWizardTitle()}</h1>
         </div>
       )}
-      <Wizard
+      <WizardDeprecated
         key="wizard"
         className="kubevirt-create-vm-modal__wizard-content"
         onClose={onClose}
@@ -413,14 +416,14 @@ const imagesNamespace = getOSImagesNS();
 
 export const CreateVMWizardPageComponent: React.FC<CreateVMWizardPageComponentProps> = ({
   reduxID,
-  match,
-  location,
   flags,
   wsResources,
   commonTemplates,
   hasCompleted,
 }) => {
-  const activeNamespace = match && match.params && match.params.ns;
+  const params = useParams();
+  const location = useLocation();
+  const activeNamespace = params && params.ns;
   const searchParams = new URLSearchParams(location && location.search);
   const userMode = searchParams.get(VMWizardURLParams.MODE) || VMWizardMode.VM;
   const [dataVolumes] = useK8sWatchResource({
@@ -562,7 +565,6 @@ type CreateVMWizardPageComponentProps = {
   wsResources?: FirehoseResourceEnhanced[];
   commonTemplates?: any;
   hasCompleted: boolean;
-  match?: RouterMatch<{ ns: string; plural: string; appName?: string }>;
   flags: FlagsObject;
 };
 

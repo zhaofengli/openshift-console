@@ -1,11 +1,14 @@
+import * as React from 'react';
 import i18n from 'i18next';
 import * as _ from 'lodash';
-import { errorModal } from '@console/internal/components/modals';
+import { SemVer } from 'semver';
+import { deleteModal, errorModal } from '@console/internal/components/modals';
 import {
   history,
   resourcePathFromModel,
   Kebab,
   KebabAction,
+  asAccessReview,
 } from '@console/internal/components/utils';
 import { k8sCreate, K8sKind, k8sPatch, referenceForModel } from '@console/internal/module/k8s';
 import { StartedByAnnotation } from '../components/pipelines/const';
@@ -15,9 +18,12 @@ import {
   removeTriggerModal,
 } from '../components/pipelines/modals';
 import { getPipelineRunData } from '../components/pipelines/modals/common/utils';
-import { EventListenerModel, PipelineModel, PipelineRunModel } from '../models';
-import { PipelineKind, PipelineRunKind } from '../types';
+import { getTaskRunsOfPipelineRun } from '../components/taskruns/useTaskRuns';
+import { RESOURCE_LOADED_FROM_RESULTS_ANNOTATION } from '../const';
+import { EventListenerModel, PipelineModel, PipelineRunModel, TaskRunModel } from '../models';
+import { PipelineKind, PipelineRunKind, TaskRunKind } from '../types';
 import { shouldHidePipelineRunStop, shouldHidePipelineRunCancel } from './pipeline-augment';
+import { getSbomTaskRun, returnValidPipelineRunModel } from './pipeline-utils';
 
 export const handlePipelineRunSubmit = (pipelineRun: PipelineRunKind) => {
   history.push(
@@ -45,7 +51,7 @@ export const reRunPipelineRun: KebabAction = (kind: K8sKind, pipelineRun: Pipeli
     const namespace = _.get(pipelineRun, 'metadata.namespace');
     const { pipelineRef, pipelineSpec } = pipelineRun.spec;
     if (namespace && (pipelineRef?.name || pipelineSpec)) {
-      k8sCreate(PipelineRunModel, getPipelineRunData(null, pipelineRun));
+      k8sCreate(returnValidPipelineRunModel(pipelineRun), getPipelineRunData(null, pipelineRun));
     } else {
       errorModal({
         error: i18n.t(
@@ -137,7 +143,7 @@ const rerunPipeline: KebabAction = (
   return {
     ...sharedProps,
     callback: () => {
-      k8sCreate(PipelineRunModel, getPipelineRunData(null, pipelineRun))
+      k8sCreate(kind, getPipelineRunData(null, pipelineRun))
         .then(typeof onComplete === 'function' ? onComplete : () => {})
         .catch((err) => errorModal({ error: err.message }));
     },
@@ -166,6 +172,42 @@ export const rerunPipelineAndRedirect: KebabAction = (
   });
 };
 
+export const deleteResourceObj: KebabAction = (
+  kind: K8sKind,
+  resourceObj: PipelineRunKind | TaskRunKind,
+) => {
+  const tektonResultsFlag =
+    resourceObj?.metadata?.annotations?.['results.tekton.dev/log'] ||
+    resourceObj?.metadata?.annotations?.['results.tekton.dev/record'] ||
+    resourceObj?.metadata?.annotations?.['results.tekton.dev/result'];
+  const isResourceLoadedFromTR =
+    resourceObj?.metadata?.annotations?.[RESOURCE_LOADED_FROM_RESULTS_ANNOTATION];
+
+  const message = (
+    <p>
+      {i18n.t(
+        'pipelines-plugin~This action will delete resource from k8s but still the resource can be fetched from Tekton Results',
+      )}
+    </p>
+  );
+  return {
+    // t('pipelines-plugin~Delete {{kind}}', {kind: kind.label})
+    labelKey: 'pipelines-plugin~Delete {{kind}}',
+    labelKind: { kind: kind.labelKey ? i18n.t(kind.labelKey) : kind.label },
+    callback: () =>
+      deleteModal({
+        kind,
+        resource: resourceObj,
+        message: !isResourceLoadedFromTR && tektonResultsFlag ? message : '',
+      }),
+    accessReview: asAccessReview(kind, resourceObj, 'delete'),
+    isDisabled: !!isResourceLoadedFromTR,
+    tooltip: isResourceLoadedFromTR
+      ? i18n.t('pipelines-plugin~Resource is being fetched from Tekton Results.')
+      : '',
+  };
+};
+
 export const rerunPipelineRunAndRedirect: KebabAction = (
   kind: K8sKind,
   pipelineRun: PipelineRunKind,
@@ -177,7 +219,13 @@ export const rerunPipelineRunAndRedirect: KebabAction = (
   });
 };
 
-export const stopPipelineRun: KebabAction = (kind: K8sKind, pipelineRun: PipelineRunKind) => {
+export const stopPipelineRun: KebabAction = (
+  kind: K8sKind,
+  pipelineRun: PipelineRunKind,
+  operatorVersion: SemVer,
+  taskRuns: TaskRunKind[],
+) => {
+  const PLRTasks = getTaskRunsOfPipelineRun(taskRuns, pipelineRun?.metadata?.name);
   // The returned function will be called using the 'kind' and 'obj' in Kebab Actions
   return {
     // t('pipelines-plugin~Stop')
@@ -194,12 +242,15 @@ export const stopPipelineRun: KebabAction = (kind: K8sKind, pipelineRun: Pipelin
           {
             op: 'replace',
             path: `/spec/status`,
-            value: 'StoppedRunFinally',
+            value:
+              operatorVersion.major === 1 && operatorVersion.minor < 9
+                ? 'PipelineRunCancelled'
+                : 'StoppedRunFinally',
           },
         ],
       );
     },
-    hidden: shouldHidePipelineRunStop(pipelineRun),
+    hidden: shouldHidePipelineRunStop(pipelineRun, PLRTasks),
     accessReview: {
       group: kind.apiGroup,
       resource: kind.plural,
@@ -213,7 +264,9 @@ export const stopPipelineRun: KebabAction = (kind: K8sKind, pipelineRun: Pipelin
 export const cancelPipelineRunFinally: KebabAction = (
   kind: K8sKind,
   pipelineRun: PipelineRunKind,
+  taskRuns: TaskRunKind[],
 ) => {
+  const PLRTasks = getTaskRunsOfPipelineRun(taskRuns, pipelineRun?.metadata?.name);
   // The returned function will be called using the 'kind' and 'obj' in Kebab Actions
   return {
     // t('pipelines-plugin~Cancel')
@@ -236,7 +289,7 @@ export const cancelPipelineRunFinally: KebabAction = (
         ],
       );
     },
-    hidden: shouldHidePipelineRunCancel(pipelineRun),
+    hidden: shouldHidePipelineRunCancel(pipelineRun, PLRTasks),
     accessReview: {
       group: kind.apiGroup,
       resource: kind.plural,
@@ -244,6 +297,27 @@ export const cancelPipelineRunFinally: KebabAction = (
       namespace: pipelineRun.metadata.namespace,
       verb: 'update',
     },
+  };
+};
+
+export const viewPipelineRunSBOM: KebabAction = (
+  kind: K8sKind,
+  pipelineRun: PipelineRunKind,
+  taskRuns: TaskRunKind[],
+) => {
+  const PLRTasks = getTaskRunsOfPipelineRun(taskRuns, pipelineRun?.metadata?.name);
+  const sbomTaskRun = getSbomTaskRun(PLRTasks);
+
+  return {
+    labelKey: 'pipelines-plugin~View SBOM',
+    callback: () => {
+      history.push(
+        `/k8s/ns/${sbomTaskRun.metadata.namespace}/${referenceForModel(TaskRunModel)}/${
+          sbomTaskRun.metadata.name
+        }/logs`,
+      );
+    },
+    hidden: !sbomTaskRun,
   };
 };
 
@@ -297,13 +371,20 @@ export const getPipelineKebabActions = (
   Kebab.factory.Delete,
 ];
 
-export const getPipelineRunKebabActions = (redirectReRun?: boolean): KebabAction[] => [
+export const getPipelineRunKebabActions = (
+  operatorVersion: SemVer,
+  taskRuns: TaskRunKind[],
+  redirectReRun?: boolean,
+): KebabAction[] => [
   redirectReRun
     ? (model, pipelineRun) => rerunPipelineRunAndRedirect(model, pipelineRun)
     : (model, pipelineRun) => reRunPipelineRun(model, pipelineRun),
-  (model, pipelineRun) => stopPipelineRun(model, pipelineRun),
-  (model, pipelineRun) => cancelPipelineRunFinally(model, pipelineRun),
-  Kebab.factory.Delete,
+  (model, pipelineRun) => stopPipelineRun(model, pipelineRun, operatorVersion, taskRuns),
+  (model, pipelineRun) => viewPipelineRunSBOM(model, pipelineRun, taskRuns),
+  (model, pipelineRun) => cancelPipelineRunFinally(model, pipelineRun, taskRuns),
+  (model, pipelineRun) => deleteResourceObj(model, pipelineRun),
 ];
 
-export const getTaskRunKebabActions = (): KebabAction[] => [Kebab.factory.Delete];
+export const getTaskRunKebabActions = (): KebabAction[] => [
+  (model, taskRun) => deleteResourceObj(model, taskRun),
+];

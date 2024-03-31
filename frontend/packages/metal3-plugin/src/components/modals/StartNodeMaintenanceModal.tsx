@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Alert, FormGroup, Stack, StackItem, TextInput } from '@patternfly/react-core';
 import { Trans, useTranslation } from 'react-i18next';
-import { CephClusterModel } from '@console/ceph-storage-plugin/src/models';
 import {
   ModalTitle,
   ModalBody,
@@ -14,6 +13,7 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { referenceForModel, K8sResourceKind } from '@console/internal/module/k8s';
 import { useMaintenanceCapability } from '../../hooks/useMaintenanceCapability';
 import { startNodeMaintenance } from '../../k8s/requests/node-maintenance';
+import { CephClusterModel } from '../../models';
 
 const cephClusterResource = {
   kind: referenceForModel(CephClusterModel),
@@ -29,7 +29,7 @@ export type StartNodeMaintenanceModalProps = HandlePromiseProps &
 const StartNodeMaintenanceModal = withHandlePromise<StartNodeMaintenanceModalProps>((props) => {
   const { t } = useTranslation();
   const { nodeName, inProgress, errorMessage, handlePromise, close, cancel } = props;
-  const [, model] = useMaintenanceCapability();
+  const [model] = useMaintenanceCapability();
 
   const [reason, setReason] = React.useState('');
 
@@ -66,7 +66,7 @@ const StartNodeMaintenanceModal = withHandlePromise<StartNodeMaintenanceModalPro
                 type="text"
                 id="node-maintenance-reason"
                 value={reason}
-                onChange={setReason}
+                onChange={(_event, value) => setReason(value)}
               />
             </FormGroup>
           </StackItem>

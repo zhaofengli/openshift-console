@@ -1,5 +1,13 @@
 import * as React from 'react';
-import { FormGroup, Grid, GridItem, TextInput } from '@patternfly/react-core';
+import {
+  FormGroup,
+  FormHelperText,
+  Grid,
+  GridItem,
+  HelperText,
+  HelperTextItem,
+  TextInput,
+} from '@patternfly/react-core';
 import { Trans, useTranslation } from 'react-i18next';
 import { VolumeModeSelector } from '@console/app/src/components/volume-modes/volume-mode';
 import {
@@ -19,12 +27,13 @@ import {
   HandlePromiseProps,
   ResourceIcon,
   withHandlePromise,
-  validate,
   history,
   RequestSizeInput,
   Timestamp,
   resourcePathFromModel,
   convertToBaseValue,
+  humanizeBinaryBytesWithoutB,
+  humanizeBinaryBytes,
 } from '@console/internal/components/utils';
 import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import { StorageClassDropdown } from '@console/internal/components/utils/storage-class-dropdown';
@@ -32,16 +41,23 @@ import {
   NamespaceModel,
   PersistentVolumeClaimModel,
   VolumeSnapshotModel,
-  VolumeSnapshotClassModel,
+  StorageClassModel,
 } from '@console/internal/models';
 import {
   k8sCreate,
   VolumeSnapshotKind,
   StorageClassResourceKind,
   PersistentVolumeClaimKind,
-  VolumeSnapshotClassKind,
 } from '@console/internal/module/k8s';
-import { getName, getNamespace, Status, isCephProvisioner, getAnnotations } from '@console/shared';
+import {
+  getName,
+  getNamespace,
+  Status,
+  isCephProvisioner,
+  getAnnotations,
+  RedExclamationCircleIcon,
+  onlyPvcSCs,
+} from '@console/shared';
 import { AccessModeSelector } from '../../access-modes/access-mode';
 
 import './restore-pvc-modal.scss';
@@ -51,16 +67,13 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
     const { t } = useTranslation();
     const [restorePVCName, setPVCName] = React.useState(`${getName(resource) || 'pvc'}-restore`);
     const volumeSnapshotAnnotations = getAnnotations(resource);
-    const defaultSize: string[] = resource?.status?.restoreSize
-      ? validate.split(resource?.status?.restoreSize)
-      : [null, null];
-    const pvcRequestedSize = resource?.status?.restoreSize
-      ? `${defaultSize[0]} ${dropdownUnits[defaultSize[1]]}`
-      : '';
-    const [requestedSize, setRequestedSize] = React.useState(defaultSize?.[0] ?? '');
-    const [requestedUnit, setRequestedUnit] = React.useState(defaultSize?.[1] ?? 'Ti');
+    const snapshotBaseSize = convertToBaseValue(resource?.status?.restoreSize ?? '0');
+    const snapshotHumanizedSize = humanizeBinaryBytesWithoutB(snapshotBaseSize);
+    const [requestedSize, setRequestedSize] = React.useState(snapshotHumanizedSize.value);
+    const [requestedUnit, setRequestedUnit] = React.useState(snapshotHumanizedSize.unit);
     const [pvcSC, setPVCStorageClass] = React.useState('');
-    const [validSize, setValidSize] = React.useState(true);
+    const requestedBytes = convertToBaseValue(requestedSize + requestedUnit);
+    const validSize = requestedBytes >= snapshotBaseSize;
     const [restoreAccessMode, setRestoreAccessMode] = React.useState('');
     const [updatedProvisioner, setUpdatedProvisioner] = React.useState('');
     const namespace = getNamespace(resource);
@@ -70,28 +83,16 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
       PersistentVolumeClaimKind
     >(PersistentVolumeClaimModel, resource?.spec?.source?.persistentVolumeClaimName, namespace);
 
-    const [
-      snapshotClassResource,
-      snapshotClassResourceLoaded,
-      snapshotClassResourceLoadError,
-    ] = useK8sGet<VolumeSnapshotClassKind>(
-      VolumeSnapshotClassModel,
-      resource?.spec?.volumeSnapshotClassName,
+    const pvcStorageClassName = pvcResource?.spec?.storageClassName;
+    const [scResource, scResourceLoaded, scResourceLoadError] = useK8sGet<StorageClassResourceKind>(
+      StorageClassModel,
+      pvcStorageClassName,
     );
 
     const [volumeMode, setVolumeMode] = React.useState('');
-    const onlyPvcSCs = (scObj: StorageClassResourceKind) =>
-      !snapshotClassResourceLoadError
-        ? scObj.provisioner.includes(snapshotClassResource?.driver)
-        : true;
-
     const requestedSizeInputChange = ({ value, unit }) => {
       setRequestedSize(value);
       setRequestedUnit(unit);
-      const restoreSizeInBytes = convertToBaseValue(value + unit);
-      const snapshotSizeInBytes = convertToBaseValue(resource?.status?.restoreSize);
-      const isValid = restoreSizeInBytes >= snapshotSizeInBytes;
-      setValidSize(isValid);
     };
 
     const handleStorageClass = (updatedStorageClass: StorageClassResourceKind) => {
@@ -125,8 +126,7 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
         },
       };
 
-      // eslint-disable-next-line promise/catch-or-return
-      handlePromise(
+      return handlePromise(
         k8sCreate(PersistentVolumeClaimModel, restorePVCTemplate, { ns: namespace }),
         (newPVC) => {
           close();
@@ -159,16 +159,18 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
               data-test="pvc-name"
               name="restore-pvc-modal__name"
               value={restorePVCName}
-              onChange={setPVCName}
+              onChange={(_event, value: string) => setPVCName(value)}
             />
           </FormGroup>
           <FormGroup fieldId="restore-storage-class" className="co-restore-pvc-modal__input">
-            {!snapshotClassResourceLoaded ? (
+            {!pvcStorageClassName || !scResourceLoaded ? (
               <div className="skeleton-text" />
             ) : (
               <StorageClassDropdown
                 onChange={handleStorageClass}
-                filter={onlyPvcSCs}
+                filter={(scObj: StorageClassResourceKind) =>
+                  onlyPvcSCs(scObj, scResourceLoadError, scResource)
+                }
                 id="restore-storage-class"
                 required
                 selectedKey={volumeSnapshotAnnotations?.[snapshotPVCStorageClassAnnotation]}
@@ -201,25 +203,31 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
             isRequired
             fieldId="pvc-size"
             className="co-restore-pvc-modal__input co-restore-pvc-modal__ocs-size"
-            helperTextInvalid={t(
-              'console-app~Size should be equal or greater than the restore size of snapshot',
-            )}
-            validated={validSize ? 'default' : 'error'}
           >
-            {snapshotClassResourceLoaded ? (
+            {!!pvcStorageClassName && scResourceLoaded ? (
               <RequestSizeInput
                 name="requestSize"
                 onChange={requestedSizeInputChange}
                 defaultRequestSizeUnit={requestedUnit}
                 defaultRequestSizeValue={requestedSize}
                 dropdownUnits={dropdownUnits}
-                isInputDisabled={
-                  snapshotClassResourceLoadError || isCephProvisioner(snapshotClassResource?.driver)
-                }
+                isInputDisabled={scResourceLoadError || isCephProvisioner(scResource?.provisioner)}
                 required
               />
             ) : (
               <div className="skeleton-text" />
+            )}
+
+            {!validSize && (
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem variant="error" icon={<RedExclamationCircleIcon />}>
+                    {t(
+                      'console-app~Size should be equal or greater than the restore size of snapshot.',
+                    )}
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
             )}
           </FormGroup>
           <div className="co-restore-pvc-modal__details-section">
@@ -242,7 +250,7 @@ const RestorePVCModal = withHandlePromise<RestorePVCModalProps>(
                 </div>
                 <div className="co-restore-pvc-modal__pvc-details">
                   <strong>{t('console-app~Size')}</strong>
-                  <p>{pvcRequestedSize}</p>
+                  <p>{humanizeBinaryBytes(snapshotBaseSize).string}</p>
                 </div>
               </GridItem>
               <GridItem span={6}>

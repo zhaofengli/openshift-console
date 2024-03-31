@@ -1,13 +1,23 @@
 import * as React from 'react';
-import { FormGroup } from '@patternfly/react-core';
+import { FormGroup, FormHelperText, HelperText, HelperTextItem } from '@patternfly/react-core';
 import { useField, useFormikContext, FormikValues } from 'formik';
 import * as _ from 'lodash';
 import { NumberSpinner } from '@console/internal/components/utils';
 import { useFormikValidationFix } from '../../hooks';
+import { RedExclamationCircleIcon } from '../status';
 import { FieldProps } from './field-types';
 import { getFieldId } from './field-utils';
 
-const NumberSpinnerField: React.FC<FieldProps> = ({ label, helpText, required, ...props }) => {
+interface NumberSpinnerFieldProps extends FieldProps {
+  setOutputAsIntegerFlag?: boolean;
+}
+
+const NumberSpinnerField: React.FC<NumberSpinnerFieldProps> = ({
+  label,
+  helpText,
+  required,
+  ...props
+}) => {
   const [field, { touched, error }] = useField(props.name);
   const { setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
   const fieldId = getFieldId(props.name, 'number-spinner');
@@ -19,25 +29,23 @@ const NumberSpinnerField: React.FC<FieldProps> = ({ label, helpText, required, .
   const handleChange: React.ReactEventHandler<HTMLInputElement> = React.useCallback(
     (event) => {
       field.onChange(event);
-      setFieldValue(props.name, event.currentTarget.value);
+      setFieldValue(
+        props.name,
+        props?.setOutputAsIntegerFlag
+          ? _.toInteger(event.currentTarget.value)
+          : event.currentTarget.value,
+      );
     },
-    [field, props.name, setFieldValue],
+    [field, props.name, setFieldValue, props?.setOutputAsIntegerFlag],
   );
 
   return (
-    <FormGroup
-      fieldId={fieldId}
-      label={label}
-      helperText={helpText}
-      helperTextInvalid={errorMessage}
-      validated={isValid ? 'default' : 'error'}
-      isRequired={required}
-    >
+    <FormGroup fieldId={fieldId} label={label} isRequired={required}>
       <NumberSpinner
         {...field}
         {...props}
         onChange={handleChange}
-        value={parseInt(field.value, 10)}
+        value={field.value ? parseInt(field.value, 10) : 0}
         id={fieldId}
         data-test-id="number-spinner-field"
         changeValueBy={(operation: number) => {
@@ -46,6 +54,18 @@ const NumberSpinnerField: React.FC<FieldProps> = ({ label, helpText, required, .
         }}
         aria-describedby={helpText ? `${fieldId}-helper` : undefined}
       />
+
+      <FormHelperText>
+        <HelperText>
+          {!isValid ? (
+            <HelperTextItem variant="error" icon={<RedExclamationCircleIcon />}>
+              {errorMessage}
+            </HelperTextItem>
+          ) : (
+            <HelperTextItem>{helpText}</HelperTextItem>
+          )}
+        </HelperText>
+      </FormHelperText>
     </FormGroup>
   );
 };

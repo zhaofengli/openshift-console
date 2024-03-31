@@ -2,10 +2,20 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { k8sPatch, K8sResourceKind, K8sKind } from '../../module/k8s';
-import { createModalLauncher, ModalTitle, ModalBody, ModalSubmitFooter } from '../factory/modal';
-import { NameValueEditorPair, withHandlePromise, HandlePromiseProps } from '../utils';
+import { k8sPatch } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-resource';
+import { K8sModel } from '@console/dynamic-plugin-sdk/src/api/common-types';
+import { K8sResourceCommon } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
+import {
+  createModalLauncher,
+  ModalTitle,
+  ModalBody,
+  ModalSubmitFooter,
+  ModalComponentProps,
+} from '../factory/modal';
+import { NameValueEditorPair } from '../utils/types';
+import { withHandlePromise, HandlePromiseProps } from '../utils/promise-component';
 import { AsyncComponent } from '../utils/async';
+import { useK8sWatchResource } from '../utils/k8s-watch-hook';
 
 /**
  * Set up an AsyncComponent to wrap the name-value-editor to allow on demand loading to reduce the
@@ -18,15 +28,26 @@ const NameValueEditorComponent = (props) => (
   />
 );
 
-export const TagsModal = withHandlePromise((props: TagsModalProps) => {
+export const TagsModal = withHandlePromise<TagsModalProps & HandlePromiseProps>((props) => {
   // Track tags as an array instead of an object / Map so we can preserve the order during editing and so we can have
   // duplicate keys during editing. However, the ordering and any duplicate keys are lost when the form is submitted.
   const [tags, setTags] = React.useState(
     _.isEmpty(props.tags) ? [['', '']] : _.toPairs(props.tags),
   );
   const [errorMessage, setErrorMessage] = React.useState(props.errorMessage);
-
+  const [watchedResource, watchedResourceLoaded] = useK8sWatchResource<K8sResourceCommon>({
+    kind: props.resource?.kind,
+    name: props.resource?.metadata?.name,
+    namespace: props.resource?.metadata?.namespace,
+  });
+  const [stale, setStale] = React.useState(false);
   const { t } = useTranslation();
+
+  React.useEffect(() => {
+    if (watchedResourceLoaded && !_.isEmpty(watchedResource)) {
+      setStale(!_.isEqual(props.tags, watchedResource?.metadata?.annotations));
+    }
+  }, [props.tags, watchedResource, watchedResourceLoaded]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -58,36 +79,42 @@ export const TagsModal = withHandlePromise((props: TagsModalProps) => {
       </ModalBody>
       <ModalSubmitFooter
         submitText={t('public~Save')}
+        submitDisabled={stale}
         cancel={props.cancel}
         errorMessage={props.errorMessage || errorMessage}
+        message={
+          stale
+            ? t('public~Annotations have been updated. Click Cancel and reapply your changes.')
+            : undefined
+        }
         inProgress={props.inProgress}
       />
     </form>
   );
 });
 
-export const annotationsModal = createModalLauncher((props: AnnotationsModalProps) => (
+export const AnnotationsModal: React.FC<AnnotationsModalProps> = (props) => (
   <TagsModal
     path="/metadata/annotations"
-    tags={props.resource.metadata.annotations}
+    tags={props.resource?.metadata?.annotations}
     // t('public~Edit annotations')
     titleKey="public~Edit annotations"
     {...props}
   />
-));
+);
 
-type TagsModalProps = {
-  tags?: { [key: string]: string };
-  path: string;
-  titleKey: string;
-  kind: K8sKind;
-  resource: K8sResourceKind;
-  inProgress: boolean;
-  errorMessage: string;
-  cancel?: () => void;
-  close?: () => void;
-} & HandlePromiseProps;
-
-type AnnotationsModalProps = Omit<TagsModalProps, 'path' | 'tags'>;
+export const annotationsModalLauncher = createModalLauncher<AnnotationsModalProps>(
+  AnnotationsModal,
+);
 
 TagsModal.displayName = 'TagsModal';
+
+export type TagsModalProps = {
+  kind: K8sModel;
+  path: string;
+  resource: K8sResourceCommon;
+  tags?: { [key: string]: string };
+  titleKey: string;
+} & ModalComponentProps;
+
+export type AnnotationsModalProps = Omit<TagsModalProps, 'path' | 'tags' | 'titleKey'>;

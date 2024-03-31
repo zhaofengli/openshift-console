@@ -38,7 +38,7 @@ const LazyMenuRenderer: React.FC<LazyMenuRendererProps> = ({
 
   const menu = (
     <Menu ref={menuRef} containsFlyout onSelect={restProps.onClick}>
-      <MenuContent data-test-id="action-items" translate="no">
+      <MenuContent data-test-id="action-items">
         <MenuList>
           <ActionMenuContent {...restProps} />
         </MenuList>
@@ -46,15 +46,7 @@ const LazyMenuRenderer: React.FC<LazyMenuRendererProps> = ({
     </Menu>
   );
 
-  return (
-    <Popper
-      reference={toggleRef}
-      popper={menu}
-      placement="bottom-end"
-      isVisible={isOpen}
-      popperMatchesTriggerWidth={false}
-    />
-  );
+  return <Popper triggerRef={toggleRef} popper={menu} placement="bottom-end" isVisible={isOpen} />;
 };
 
 const LazyActionMenu: React.FC<LazyActionMenuProps> = ({
@@ -62,7 +54,6 @@ const LazyActionMenu: React.FC<LazyActionMenuProps> = ({
   variant = ActionMenuVariant.KEBAB,
   label,
   isDisabled,
-  extra,
 }) => {
   const [isOpen, setIsOpen] = React.useState<boolean>(false);
   const [initActionLoader, setInitActionLoader] = React.useState<boolean>(false);
@@ -91,23 +82,19 @@ const LazyActionMenu: React.FC<LazyActionMenuProps> = ({
       />
       {initActionLoader && (
         <ActionServiceProvider context={context}>
-          {({ actions, options, loaded }) => {
-            const menuActions = [...actions, extra];
-            const menuOptions = [...options, extra];
-            return (
-              loaded && (
-                <LazyMenuRenderer
-                  isOpen={isOpen}
-                  actions={extra ? menuActions : actions}
-                  options={extra ? menuOptions : options}
-                  menuRef={menuRef}
-                  toggleRef={toggleRef}
-                  onClick={hideMenu}
-                  focusItem={options[0]}
-                />
-              )
-            );
-          }}
+          {({ actions, options, loaded }) =>
+            loaded && (
+              <LazyMenuRenderer
+                isOpen={isOpen}
+                actions={actions}
+                options={options}
+                menuRef={menuRef}
+                toggleRef={toggleRef}
+                onClick={hideMenu}
+                focusItem={options[0]}
+              />
+            )
+          }
         </ActionServiceProvider>
       )}
     </>

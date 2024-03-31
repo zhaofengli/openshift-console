@@ -11,20 +11,20 @@ import (
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion               string `yaml:"apiVersion"`
-	Kind                     string `yaml:"kind"`
-	ServingInfo              `yaml:"servingInfo"`
-	ClusterInfo              `yaml:"clusterInfo"`
-	Auth                     `yaml:"auth"`
-	Customization            `yaml:"customization"`
-	Providers                `yaml:"providers"`
-	Helm                     `yaml:"helm"`
-	MonitoringInfo           `yaml:"monitoringInfo,omitempty"`
-	Plugins                  MultiKeyValue `yaml:"plugins,omitempty"`
-	I18nNamespaces           []string      `yaml:"i18nNamespaces,omitempty"`
-	ManagedClusterConfigFile string        `yaml:"managedClusterConfigFile,omitempty"` // TODO remove multicluster
-	Proxy                    Proxy         `yaml:"proxy,omitempty"`
-	Telemetry                MultiKeyValue `yaml:"telemetry,omitempty"`
+	APIVersion     string `yaml:"apiVersion"`
+	Kind           string `yaml:"kind"`
+	ServingInfo    `yaml:"servingInfo"`
+	ClusterInfo    `yaml:"clusterInfo"`
+	Auth           `yaml:"auth"`
+	Session        `yaml:"session"`
+	Customization  `yaml:"customization"`
+	Providers      `yaml:"providers"`
+	Helm           `yaml:"helm"`
+	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
+	Plugins        MultiKeyValue `yaml:"plugins,omitempty"`
+	I18nNamespaces []string      `yaml:"i18nNamespaces,omitempty"`
+	Proxy          Proxy         `yaml:"proxy,omitempty"`
+	Telemetry      MultiKeyValue `yaml:"telemetry,omitempty"`
 }
 
 type Proxy struct {
@@ -80,11 +80,21 @@ type ClusterInfo struct {
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".
 type Auth struct {
-	ClientID                 string `yaml:"clientID,omitempty"`
-	ClientSecretFile         string `yaml:"clientSecretFile,omitempty"`
-	OAuthEndpointCAFile      string `yaml:"oauthEndpointCAFile,omitempty"`
-	LogoutRedirect           string `yaml:"logoutRedirect,omitempty"`
-	InactivityTimeoutSeconds int    `yaml:"inactivityTimeoutSeconds,omitempty"`
+	AuthType                 string   `yaml:"authType,omitempty"`
+	OIDCIssuer               string   `yaml:"oidcIssuer,omitempty"`
+	OIDCExtraScopes          []string `yaml:"oidcExtraScopes,omitempty"`
+	ClientID                 string   `yaml:"clientID,omitempty"`
+	ClientSecretFile         string   `yaml:"clientSecretFile,omitempty"`
+	OAuthEndpointCAFile      string   `yaml:"oauthEndpointCAFile,omitempty"`
+	LogoutRedirect           string   `yaml:"logoutRedirect,omitempty"`
+	InactivityTimeoutSeconds int      `yaml:"inactivityTimeoutSeconds,omitempty"`
+}
+
+// Session holds configuration for web-session related configuration
+type Session struct {
+	CookieEncryptionKeyFile     string `yaml:"cookieEncryptionKeyFile,omitempty"`
+	CookieAuthenticationKeyFile string `yaml:"cookieAuthenticationKeyFile,omitempty"`
+	// TODO: move InactivityTimeoutSeconds here
 }
 
 // Customization holds configuration such as what logo to use.
@@ -249,28 +259,4 @@ type HelmChartRepo struct {
 
 type Helm struct {
 	ChartRepo HelmChartRepo `yaml:"chartRepository"`
-}
-
-// TODO Remove this type once the console operator has been updated. It is obsolete now that we are using the MCE cluster proxy.
-// TODO remove multicluster
-type ManagedClusterAPIServerConfig struct {
-	URL    string `json:"url" yaml:"url"`
-	CAFile string `json:"caFile" yaml:"caFile"`
-}
-
-// ManagedClusterOauthConfig enables proxying managed cluster auth
-// TODO remove multicluster
-type ManagedClusterOAuthConfig struct {
-	ClientID     string `json:"clientID" yaml:"clientID"`
-	ClientSecret string `json:"clientSecret" yaml:"clientSecret"`
-	CAFile       string `json:"caFile" yaml:"caFile"`
-}
-
-// ManagedClusterConfig enables proxying to an ACM managed cluster
-// TODO remove multicluster
-type ManagedClusterConfig struct {
-	Name               string                        `json:"name" yaml:"name"`           // ManagedCluster name, provided through ACM
-	APIServer          ManagedClusterAPIServerConfig `json:"apiServer" yaml:"apiServer"` // TODO Remove this property once conosle operator has been updated
-	OAuth              ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
-	CopiedCSVsDisabled bool                          `json:"copiedCSVsDisabled" yaml:"copiedCSVsDisabled"`
 }

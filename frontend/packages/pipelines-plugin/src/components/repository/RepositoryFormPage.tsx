@@ -1,28 +1,32 @@
 import * as React from 'react';
-import { Formik, FormikHelpers } from 'formik';
+import { Formik } from 'formik';
 import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router-dom';
+import { useParams } from 'react-router-dom-v5-compat';
 import { history } from '@console/internal/components/utils';
 import { defaultRepositoryFormValues } from './consts';
-import { createRepositoryResources, repositoryValidationSchema } from './repository-form-utils';
+import { usePacInfo } from './hooks/pac-hook';
+import {
+  createRemoteWebhook,
+  createRepositoryResources,
+  repositoryValidationSchema,
+} from './repository-form-utils';
 import { RepositoryForm } from './RepositoryForm';
 import { RepositoryFormValues } from './types';
 
-type RepositoryFormPageProps = RouteComponentProps<{ ns?: string }>;
-
-const RepositoryFormPage: React.FC<RepositoryFormPageProps> = ({
-  match: {
-    params: { ns },
-  },
-}) => {
+const RepositoryFormPage: React.FC = () => {
   const { t } = useTranslation();
+  const [pac, loaded] = usePacInfo();
 
-  const handleSubmit = (
-    values: RepositoryFormValues,
-    actions: FormikHelpers<RepositoryFormValues>,
-  ): void => {
+  const { ns } = useParams();
+
+  const handleSubmit = (values: RepositoryFormValues, actions): void => {
     createRepositoryResources(values, ns)
-      .then(() => {
+      .then(async () => {
+        const isWebHookAttached = await createRemoteWebhook(values, pac, loaded);
+        if (isWebHookAttached) {
+          actions.setFieldValue('webhook.autoAttach', true);
+        }
+
         actions.setFieldValue('showOverviewPage', true);
         actions.setStatus({
           submitError: '',

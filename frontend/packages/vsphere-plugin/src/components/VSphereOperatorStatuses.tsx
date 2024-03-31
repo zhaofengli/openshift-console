@@ -1,18 +1,16 @@
 import * as React from 'react';
 import { ExpandableSection } from '@patternfly/react-core';
-import {
-  CheckCircleIcon,
-  InProgressIcon,
-  ExclamationCircleIcon,
-  UnknownIcon,
-} from '@patternfly/react-icons';
+import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon';
+import { ExclamationCircleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
+import { InProgressIcon } from '@patternfly/react-icons/dist/esm/icons/in-progress-icon';
+import { UnknownIcon } from '@patternfly/react-icons/dist/esm/icons/unknown-icon';
 import {
   global_palette_green_500 as okColor,
   global_palette_red_100 as errorColor,
 } from '@patternfly/react-tokens';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   StatusPopupItem,
   StatusPopupSection,
@@ -124,7 +122,7 @@ export const VSphereOperatorStatuses: React.FC = () => {
   const kubeApiServer = useOperatorHealth(t, 'kube-apiserver');
   const storage = useOperatorHealth(t, 'storage');
 
-  const onToggle = (value: boolean) => {
+  const onToggle = (_event, value: boolean) => {
     setIsExpanded(value);
   };
 

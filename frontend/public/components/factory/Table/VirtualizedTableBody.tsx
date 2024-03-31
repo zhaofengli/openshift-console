@@ -20,8 +20,20 @@ type VirtualizedTableBodyProps<D, R = {}> = {
   getRowClassName?: (obj: D) => string;
 };
 
-const RowMemo = React.memo<RowProps<any, any> & { Row: React.ComponentType<RowProps<any, any>> }>(
-  ({ Row, ...props }) => <Row {...props} />,
+const RowMemo = React.memo<
+  RowProps<any, any> & {
+    Row: React.ComponentType<RowProps<any, any>>;
+    isScrolling: boolean;
+    style: React.CSSProperties;
+  }
+>(
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+  ({ Row, isScrolling, style, ...props }) => <Row {...props} />,
+  (_, nextProps) => {
+    if (nextProps.isScrolling) {
+      return true;
+    }
+  },
 );
 
 const VirtualizedTableBody = <D extends any, R extends any = {}>({
@@ -73,7 +85,7 @@ const VirtualizedTableBody = <D extends any, R extends any = {}>({
           title={getRowTitle?.(rowArgs.obj)}
           className={getRowClassName?.(rowArgs.obj)}
         >
-          <RowMemo Row={Row} {...rowArgs} />
+          <RowMemo Row={Row} {...rowArgs} style={style} isScrolling={isScrolling} />
         </TableRow>
       </CellMeasurer>
     );
@@ -82,7 +94,7 @@ const VirtualizedTableBody = <D extends any, R extends any = {}>({
   return (
     <VirtualTableBody
       autoHeight
-      className="pf-c-table pf-m-compact pf-m-border-rows pf-c-virtualized pf-c-window-scroller"
+      className="pf-v5-c-table pf-m-compact pf-m-border-rows pf-v5-c-virtualized pf-v5-c-window-scroller"
       deferredMeasurementCache={cellMeasurementCache}
       rowHeight={cellMeasurementCache.rowHeight}
       height={height || 0}

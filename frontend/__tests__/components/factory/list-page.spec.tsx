@@ -17,10 +17,15 @@ jest.mock('react-redux', () => {
   };
 });
 
+jest.mock('react-router-dom-v5-compat', () => ({
+  ...require.requireActual('react-router-dom-v5-compat'),
+  useNavigate: jest.fn(),
+}));
+
 describe(TextFilter.displayName, () => {
   let wrapper: ReactWrapper;
   let placeholder: string;
-  let onChange: (value: string, event: React.FormEvent<HTMLInputElement>) => void;
+  let onChange: (event: React.FormEvent<HTMLInputElement>, value: string) => void;
   let defaultValue: string;
 
   it('renders text input without label', () => {
@@ -72,8 +77,8 @@ describe(FireMan.displayName, () => {
   let wrapper: ShallowWrapper<any>;
 
   beforeEach(() => {
-    const resources = [{ kind: 'Node' }];
-    wrapper = shallow(<FireMan.WrappedComponent resources={resources} />);
+    const resources = [{ kind: 'Node', prop: 'obj' }];
+    wrapper = shallow(<FireMan resources={resources} />);
   });
 
   it('renders `title` if given `title`', () => {

@@ -3,37 +3,41 @@ import {
   Tabs,
   Tab,
   TabProps,
-  Form,
   EmptyState,
   EmptyStateIcon,
   EmptyStateBody,
-  Title,
+  EmptyStateHeader,
+  TabContent,
+  TabContentProps,
+  TabTitleText,
 } from '@patternfly/react-core';
-import { LockIcon } from '@patternfly/react-icons';
+import { LockIcon } from '@patternfly/react-icons/dist/esm/icons/lock-icon';
 import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router';
+import { useParams } from 'react-router-dom-v5-compat';
 import { LoadingBox, history } from '@console/internal/components/utils';
 import { PageLayout, isModifiedEvent } from '@console/shared';
-import ClusterConfigurationField from './ClusterConfigurationField';
+import ClusterConfigurationForm from './ClusterConfigurationForm';
+import { getClusterConfigurationGroups } from './getClusterConfigurationGroups';
+import { ClusterConfigurationTabGroup } from './types';
 import useClusterConfigurationGroups from './useClusterConfigurationGroups';
 import useClusterConfigurationItems from './useClusterConfigurationItems';
+
 import './ClusterConfigurationPage.scss';
 
-export type ClusterConfigurationPageProps = RouteComponentProps<{ group: string }>;
-
-const ClusterConfigurationPage: React.FC<ClusterConfigurationPageProps> = ({ match }) => {
+const ClusterConfigurationPage: React.FC = () => {
   const { t } = useTranslation();
+  const params = useParams();
 
-  const groupId = match.params.group || 'general';
+  const initialGroupId = params.group || 'general';
+  const [activeTabId, setActiveTabId] = React.useState<string>(initialGroupId);
   const onSelect = (event: React.MouseEvent<HTMLElement>, newGroupId: string) => {
     if (isModifiedEvent(event)) {
       return;
     }
     event.preventDefault();
-    const path = match.path.includes(':group')
-      ? match.path.replace(':group', newGroupId)
-      : `${match.path}/${newGroupId}`;
+    setActiveTabId(newGroupId);
+    const path = `/cluster-configuration/${newGroupId}`;
     history.replace(path);
   };
 
@@ -49,24 +53,48 @@ const ClusterConfigurationPage: React.FC<ClusterConfigurationPageProps> = ({ mat
 
   const loaded = clusterConfigurationGroupsResolved && clusterConfigurationItemsResolved;
 
-  const tabs: React.ReactElement<TabProps>[] = clusterConfigurationGroups
-    .filter((group) => clusterConfigurationItems.some((item) => group.id === item.groupId))
-    .map((group) => {
-      const items =
-        groupId === group.id
-          ? clusterConfigurationItems
-              .filter((item) => item.groupId === group.id)
-              .map((item) => <ClusterConfigurationField key={item.id} item={item} />)
-          : null;
+  const [clusterConfigurationTabs, clusterConfigurationTabContents] = React.useMemo<
+    [React.ReactElement<TabProps>[], React.ReactElement<TabContentProps>[]]
+  >(() => {
+    const populatedClusterCongigurationGroups: ClusterConfigurationTabGroup[] = getClusterConfigurationGroups(
+      clusterConfigurationGroups,
+      clusterConfigurationItems,
+    );
+    const [tabs, tabContents] = populatedClusterCongigurationGroups.reduce(
+      (acc, currGroup) => {
+        const { id, label, items } = currGroup;
+        const ref = React.createRef<HTMLElement>();
+        acc[0].push(
+          <Tab
+            key={id}
+            eventKey={id}
+            title={<TabTitleText>{label}</TabTitleText>}
+            href={`/cluster-configuration/${id}`}
+            tabContentId={id}
+            tabContentRef={ref}
+            data-test={`tab ${id}`}
+          />,
+        );
+        acc[1].push(
+          <TabContent
+            key={id}
+            eventKey={id}
+            id={id}
+            ref={ref}
+            data-test={`tab-content ${id}`}
+            hidden={id !== activeTabId}
+          >
+            <ClusterConfigurationForm items={items} />
+          </TabContent>,
+        );
+        return acc;
+      },
+      [[], []],
+    );
+    return [tabs, tabContents];
+  }, [activeTabId, clusterConfigurationGroups, clusterConfigurationItems]);
 
-      return (
-        <Tab key={group.id} eventKey={group.id} title={group.label} translate="no">
-          <Form onSubmit={(event) => event.preventDefault()}>{items}</Form>
-        </Tab>
-      );
-    });
-
-  const groupNotFound = !clusterConfigurationGroups.some((group) => group.id === groupId);
+  const groupNotFound = !clusterConfigurationGroups.some((group) => group.id === activeTabId);
 
   return (
     <div className="co-cluster-configuration-page">
@@ -81,12 +109,13 @@ const ClusterConfigurationPage: React.FC<ClusterConfigurationPageProps> = ({ mat
       >
         {!loaded ? (
           <LoadingBox />
-        ) : tabs.length === 0 ? (
+        ) : clusterConfigurationTabs.length === 0 ? (
           <EmptyState>
-            <EmptyStateIcon icon={LockIcon} />
-            <Title headingLevel="h1" size="lg">
-              {t('console-app~Insufficient permissions')}
-            </Title>
+            <EmptyStateHeader
+              titleText={<>{t('console-app~Insufficient permissions')}</>}
+              icon={<EmptyStateIcon icon={LockIcon} />}
+              headingLevel="h1"
+            />
             <EmptyStateBody>
               {t(
                 'console-app~You do not have sufficient permissions to read any cluster configuration.',
@@ -95,13 +124,25 @@ const ClusterConfigurationPage: React.FC<ClusterConfigurationPageProps> = ({ mat
           </EmptyState>
         ) : (
           <>
-            <Tabs isVertical activeKey={groupId} onSelect={onSelect}>
-              {tabs}
-            </Tabs>
+            <div className="co-cluster-configuration-page-content">
+              <div className="co-cluster-configuration-page-content__tabs">
+                <Tabs
+                  activeKey={activeTabId}
+                  onSelect={onSelect}
+                  isVertical
+                  data-test="user-preferences tabs"
+                >
+                  <>{clusterConfigurationTabs}</>
+                </Tabs>
+              </div>
+              <div className="co-cluster-configuration-page-content__tab-content">
+                {clusterConfigurationTabContents}
+              </div>
+            </div>
             {groupNotFound ? (
               /* Similar to a TabContent */
-              <section className="co-cluster-configuration-page pf-c-tab-content">
-                <h1>{t('console-app~{{section}} not found', { section: groupId })}</h1>
+              <section className="co-cluster-configuration-page pf-v5-c-tab-content">
+                <h1>{t('console-app~{{section}} not found', { section: activeTabId })}</h1>
               </section>
             ) : null}
           </>

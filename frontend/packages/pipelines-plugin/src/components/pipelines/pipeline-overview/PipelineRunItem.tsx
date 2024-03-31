@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Grid, GridItem } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { resourcePath } from '@console/internal/components/utils';
 import { fromNow } from '@console/internal/components/utils/datetime';
 import { referenceForModel } from '@console/internal/module/k8s';
@@ -50,7 +50,7 @@ const PipelineRunItem: React.FC<PipelineRunItemProps> = ({ pipelineRun }) => {
         <GridItem span={3}>
           <Status status={pipelineRunStatus(pipelineRun) || 'Pending'} />
         </GridItem>
-        <GridItem span={3} className="pf-u-text-align-right">
+        <GridItem span={3} className="pf-v5-u-text-align-right">
           <Link to={`${path}/logs`}>{t('pipelines-plugin~View logs')}</Link>
         </GridItem>
         {logDetails && (

@@ -26,7 +26,8 @@ Given('user has installed helm release {string}', (helmReleaseName: string) => {
 When(
   'user right clicks on the helm release {string} to open the context menu',
   (helmReleaseName: string) => {
-    topologyPage.rightClickOnGroup(helmReleaseName);
+    topologyPage.verifyWorkloadInTopologyPage(helmReleaseName);
+    topologyPage.rightClickOnHelmWorkload(helmReleaseName);
   },
 );
 
@@ -41,7 +42,7 @@ Then(
 );
 
 Then('user is able to see the context menu with actions Upgrade and Delete Helm Release', () => {
-  cy.get('ul[role="menu"]').should('be.visible');
+  cy.get('div.odc-topology-context-menu').should('be.visible');
   cy.byTestActionID('Upgrade').should('be.visible');
   cy.byTestActionID('Delete Helm Release').should('be.visible');
 });

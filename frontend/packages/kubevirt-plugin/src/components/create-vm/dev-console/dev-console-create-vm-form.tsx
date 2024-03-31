@@ -6,13 +6,13 @@ import {
   EmptyStateBody,
   Stack,
   StackItem,
-  Title,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import Helmet from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router';
 import {
   ButtonBar,
   ExternalLink,
@@ -55,24 +55,27 @@ const DevConsoleCreateVmFormEmptyState: React.FC<{ templateParam: string; t: TFu
   const isVMTemplateTypeEnabled = isCatalogTypeEnabled(VM_TEMPLATE_CATALOG_TYPE_ID);
   return (
     <EmptyState>
-      <Title headingLevel="h4" size="lg">
-        {t('kubevirt-plugin~Error Loading Template')}
-      </Title>
+      <EmptyStateHeader
+        titleText={<>{t('kubevirt-plugin~Error Loading Template')}</>}
+        headingLevel="h4"
+      />
       <EmptyStateBody>
         {t('kubevirt-plugin~Virtual machine template {{ templateParam }} not found.', {
           templateParam,
         })}
       </EmptyStateBody>
-      {isVMTemplateTypeEnabled ? (
-        <Button variant="primary" onClick={() => history.push('/catalog?catalogType=VmTemplate')}>
-          {t('kubevirt-plugin~Back to templates catalog')}
-        </Button>
-      ) : null}
+      <EmptyStateFooter>
+        {isVMTemplateTypeEnabled ? (
+          <Button variant="primary" onClick={() => history.push('/catalog?catalogType=VmTemplate')}>
+            {t('kubevirt-plugin~Back to templates catalog')}
+          </Button>
+        ) : null}
+      </EmptyStateFooter>
     </EmptyState>
   );
 };
 
-export const DevConsoleCreateVmForm: React.FC<RouteComponentProps> = () => {
+export const DevConsoleCreateVmForm: React.FC = () => {
   const { t } = useTranslation();
   const urlParams = new URLSearchParams(window.location.search);
   const templateParam = urlParams.get('template');
@@ -273,7 +276,7 @@ export const DevConsoleCreateVmForm: React.FC<RouteComponentProps> = () => {
                             : undefined)
                         }
                       >
-                        <ActionGroup className="pf-c-form">
+                        <ActionGroup className="pf-v5-c-form">
                           <Button
                             type="submit"
                             variant="primary"

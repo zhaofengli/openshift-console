@@ -2,7 +2,7 @@ import * as React from 'react';
 import { CatalogItemHeader } from '@patternfly/react-catalog-view-extension';
 import { Split, SplitItem } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { CatalogItem } from '@console/dynamic-plugin-sdk/src/extensions';
 import { Modal } from '../../modal';
 import CatalogBadges from '../CatalogBadges';
@@ -46,7 +46,7 @@ const CatalogDetailsModal: React.FC<CatalogDetailsModalProps> = ({ item, onClose
           {to && (
             <div className="co-catalog-page__overlay-actions">
               <Link
-                className="pf-c-button pf-m-primary co-catalog-page__overlay-action"
+                className="pf-v5-c-button pf-m-primary co-catalog-page__overlay-action"
                 to={to}
                 role="button"
                 onClick={onClose}

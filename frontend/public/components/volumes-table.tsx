@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import * as _ from 'lodash-es';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
@@ -91,8 +91,8 @@ const ContainerLink: React.FC<ContainerLinkProps> = ({ name, pod }) => (
 ContainerLink.displayName = 'ContainerLink';
 
 const volumeRowColumnClasses = [
-  'pf-u-w-25-on-2xl',
-  'pf-u-w-25-on-2xl',
+  'pf-v5-u-w-25-on-2xl',
+  'pf-v5-u-w-25-on-2xl',
   'pf-m-hidden pf-m-visible-on-md',
   'pf-m-hidden pf-m-visible-on-lg',
   'pf-m-hidden pf-m-visible-on-lg',
@@ -250,7 +250,9 @@ const VolumeKebab = connectToModel((props: VolumeKebabProps) => {
   return (
     <Kebab
       options={options}
-      isDisabled={isDisabled !== undefined ? isDisabled : resource?.metadata?.deletionTimestamp}
+      isDisabled={
+        isDisabled !== undefined ? isDisabled : resource?.metadata?.deletionTimestamp?.length > 0
+      }
     />
   );
 });

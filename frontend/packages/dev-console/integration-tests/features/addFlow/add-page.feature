@@ -1,4 +1,4 @@
-@add-flow
+@add-flow @dev-console
 Feature: Add page on Developer Console
               As a user, I should be able select a way to create an Application, component or service from one of the options provided on Add page
 
@@ -46,14 +46,10 @@ Feature: Add page on Developer Console
 
 
         @smoke
-        Scenario: Hide Getting Started Resources from View: A-11-TC06
+        Scenario: Hide/Show Getting Started Resources from View: A-11-TC06
             Given user has hidden Getting Started Resources from View
              When user selects Hide from view option from kebab menu
              Then user will not see Getting started resources card
-
-
-        @smoke
-        Scenario: Show Getting Started Resources: A-11-TC07
              When user clicks on Show getting started resources link
              Then user will see Getting started resources card
 

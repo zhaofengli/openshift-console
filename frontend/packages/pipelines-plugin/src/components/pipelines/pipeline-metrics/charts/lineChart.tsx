@@ -13,6 +13,8 @@ import {
 import * as _ from 'lodash';
 import { DEFAULT_CHART_HEIGHT } from '../../const';
 
+import './lineChart.scss';
+
 type LineChartProps = {
   tickValues?: string[];
   hiddenSeries?: Set<number>;
@@ -31,7 +33,6 @@ export const LineChart: React.FC<LineChartProps> = ({
   hiddenSeries,
   yTickFormatter,
   legendComponent,
-  legendPosition,
   events,
   tickValues,
 }) => {
@@ -59,7 +60,7 @@ export const LineChart: React.FC<LineChartProps> = ({
       fontSize: 10,
       textAnchor: 'end',
       verticalAnchor: 'end',
-      fill: 'var(--pf-global--Color--100)',
+      fill: 'var(--pf-v5-global--Color--100)',
     },
   };
 
@@ -72,8 +73,6 @@ export const LineChart: React.FC<LineChartProps> = ({
       height={height || DEFAULT_CHART_HEIGHT}
       domain={domain}
       events={events}
-      legendComponent={legendComponent}
-      legendPosition={legendPosition}
       domainPadding={{ x: 10, y: 10 }}
       padding={{
         bottom: 80,
@@ -91,7 +90,7 @@ export const LineChart: React.FC<LineChartProps> = ({
         tickCount={4}
         tickFormat={yTickFormat}
         style={{
-          tickLabels: { fill: 'var(--pf-global--Color--100)' },
+          tickLabels: { fill: 'var(--pf-v5-global--Color--100)' },
         }}
       />
       <ChartGroup>
@@ -118,6 +117,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           />
         ))}
       </ChartGroup>
+      {legendComponent}
     </Chart>
   );
 

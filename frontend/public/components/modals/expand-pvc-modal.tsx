@@ -1,27 +1,31 @@
 import * as React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom-v5-compat';
 
 import { createModalLauncher, ModalTitle, ModalBody, ModalSubmitFooter } from '../factory/modal';
 import {
   RequestSizeInput,
   resourceObjPath,
-  history,
   validate,
   withHandlePromise,
   HandlePromiseProps,
+  convertToBaseValue,
+  humanizeBinaryBytesWithoutB,
 } from '../utils';
 import { k8sPatch, referenceFor, K8sKind, K8sResourceKind } from '../../module/k8s/';
 import { getRequestedPVCSize } from '@console/shared';
 
 // Modal for expanding persistent volume claims
 const ExpandPVCModal = withHandlePromise((props: ExpandPVCModalProps) => {
-  const defaultSize = validate.split(getRequestedPVCSize(props.resource));
+  const baseValue = convertToBaseValue(getRequestedPVCSize(props.resource));
+  const defaultSize = validate.split(humanizeBinaryBytesWithoutB(baseValue).string);
   const [requestSizeValue, setRequestSizeValue] = React.useState(defaultSize[0] || '');
   const [requestSizeUnit, setRequestSizeUnit] = React.useState(defaultSize[1] || 'Gi');
   const [errorMessage, setErrorMessage] = React.useState<string>();
   const [inProgress, setInProgress] = React.useState(false);
 
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const handleRequestSizeInputChange = (obj) => {
     setRequestSizeValue(obj.value);
@@ -42,7 +46,7 @@ const ExpandPVCModal = withHandlePromise((props: ExpandPVCModalProps) => {
       .then((resource) => {
         setInProgress(false);
         props.close();
-        history.push(resourceObjPath(resource, referenceFor(resource)));
+        navigate(resourceObjPath(resource, referenceFor(resource)));
       })
       .catch((err) => {
         setErrorMessage(err.message);

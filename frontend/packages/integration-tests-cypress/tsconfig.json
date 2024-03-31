@@ -1,9 +1,7 @@
 {
-  "extends": "../../tsconfig",
   "compilerOptions": {
-    "types": ["cypress"]
+    "types": ["cypress"],
+    "jsx": "react"
   },
-  "include": [
-    "**/*.ts"
-  ]
+  "include": ["../../node_modules/cypress", "**/*.ts"]
 }

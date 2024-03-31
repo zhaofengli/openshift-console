@@ -4,7 +4,8 @@ import Linkify from 'react-linkify';
 import { useTranslation } from 'react-i18next';
 import { CopyToClipboard as CTC } from 'react-copy-to-clipboard';
 import { Tooltip } from '@patternfly/react-core';
-import { CopyIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
+import { CopyIcon } from '@patternfly/react-icons/dist/esm/icons/copy-icon';
+import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon';
 import { ALL_NAMESPACES_KEY } from '@console/shared/src/constants';
 
 // Kubernetes "dns-friendly" names match
@@ -109,12 +110,14 @@ export const ExternalLinkWithCopy: React.FC<ExternalLinkWithCopyProps> = ({
     <div className={classNames(additionalClassName)}>
       <a href={link} target="_blank" rel="noopener noreferrer" data-test-id={dataTestID}>
         {text ?? link}
+        <span className="co-icon-nowrap">
+          &nbsp;
+          <span className="co-external-link-with-copy__icon co-external-link-with-copy__externallinkicon">
+            <ExternalLinkAltIcon />
+          </span>
+        </span>
       </a>
       <span className="co-icon-nowrap">
-        &nbsp;
-        <span className="co-external-link-with-copy__icon co-external-link-with-copy__externallinkicon">
-          <ExternalLinkAltIcon />
-        </span>
         <Tooltip content={tooltipContent} trigger="click mouseenter focus" exitDelay={1250}>
           <CTC text={link} onCopy={() => setCopied(true)}>
             <span
@@ -122,7 +125,7 @@ export const ExternalLinkWithCopy: React.FC<ExternalLinkWithCopyProps> = ({
               className="co-external-link-with-copy__icon co-external-link-with-copy__copyicon"
             >
               <CopyIcon />
-              <span className="sr-only">{t('public~Copy to clipboard')}</span>
+              <span className="pf-v5-u-screen-reader">{t('public~Copy to clipboard')}</span>
             </span>
           </CTC>
         </Tooltip>

@@ -1,4 +1,4 @@
-@monitoring @odc-3698
+@monitoring @dev-console @odc-3698
 Feature: Changing context in Observe Dashboard
               As a user, I should be able to change the filter in the Observe Dashboard
 
@@ -10,10 +10,10 @@ Feature: Changing context in Observe Dashboard
 
 
         @regression
-        Scenario: Charts display in observe dashboard for specific workload: M-01-TC01
+        Scenario: Charts display in observe dashboards for specific workload: M-01-TC01
             Given user is at the Topology page
              When user selects the workload "nodejs-ex-git" to open the topology sidebar
-              And user navigates to observe dashboard from toplogy sidebar
+              And user navigates to observe dashboards from toplogy sidebar
              Then user is able to see the workload "nodejs-ex-git" in workloads dropdown
               And user will see "CPU Usage" chart
               And user will see "CPU Quota" chart

@@ -1,12 +1,12 @@
 import * as React from 'react';
-import { TextInputTypes } from '@patternfly/react-core';
+import { DropEvent, FileUpload, TextInputTypes } from '@patternfly/react-core';
 import { FormikValues, useFormikContext } from 'formik';
 import { useTranslation } from 'react-i18next';
 import {
   FileUploadContext,
   FileUploadContextType,
 } from '@console/app/src/components/file-upload/file-upload-context';
-import { FileUploadField, InputField } from '@console/shared/src';
+import { InputField } from '@console/shared/src';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import FormSection from '../../section/FormSection';
 import { getAppName } from '../../upload-jar-validation-utils';
@@ -28,12 +28,12 @@ const JarSection: React.FunctionComponent = () => {
   const { name: nameTouched } = touched;
 
   const updatedJarFile = React.useCallback(
-    (value: File, filename: string): void => {
-      if (filename) {
-        const appName = getAppName(filename);
-        setFieldValue('fileUpload.name', filename);
+    (_event: DropEvent, file: File): void => {
+      if (file.name) {
+        const appName = getAppName(file.name);
+        setFieldValue('fileUpload.name', file.name);
         setFieldTouched('fileUpload.name', true);
-        value && setFieldValue('fileUpload.value', value);
+        file && setFieldValue('fileUpload.value', file);
         appName && !nameTouched && !name && setFieldValue('name', appName);
         !name && setFieldValue('name', appName);
         appName &&
@@ -50,28 +50,39 @@ const JarSection: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     if (fileUpload) {
-      updatedJarFile(fileUpload, fileUpload.name);
+      updatedJarFile(null, fileUpload);
       if (fileName) {
         setFileUpload(undefined);
       }
     }
   }, [fileUpload, updatedJarFile, setFileUpload, fileName]);
 
+  const handleClear = () => {
+    setFieldValue('fileUpload.value', '');
+    setFieldValue('fileUpload.name', '');
+    setTimeout(() => {
+      setFieldTouched('fileUpload.name', true);
+    }, 0);
+  };
+
   return (
     <FormSection title={t('devconsole~JAR')}>
-      <FileUploadField
+      <FileUpload
         id="upload-jar-field"
         name="fileUpload.name"
         value={fileValue}
         filename={fileName}
         label={t('devconsole~JAR file')}
         filenamePlaceholder={t('devconsole~Drag a file here or browse to upload')}
-        onChange={updatedJarFile}
+        browseButtonText={t('devconsole~Browse...')}
+        clearButtonText={t('devconsole~Clear')}
+        onFileInputChange={updatedJarFile}
         hideDefaultPreview
         dropzoneProps={{
-          accept: '.jar,.JAR',
+          accept: { 'application/java-archive': ['.jar', '.JAR'] },
         }}
-        required
+        isRequired
+        onClearClick={handleClear}
       />
       <InputField
         type={TextInputTypes.text}

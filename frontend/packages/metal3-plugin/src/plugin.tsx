@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { MaintenanceIcon } from '@patternfly/react-icons';
+import { MaintenanceIcon } from '@patternfly/react-icons/dist/esm/icons/maintenance-icon';
 import * as _ from 'lodash';
 import '@console/internal/i18n.js';
 import { MachineModel, NodeModel, CertificateSigningRequestModel } from '@console/internal/models';
@@ -227,33 +227,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'Page/Route',
-    properties: {
-      exact: true,
-      path: [`/k8s/cluster/${referenceForModel(NodeModel)}`],
-      loader: () =>
-        import(
-          './components/baremetal-nodes/BareMetalNodesPage' /* webpackChunkName: "node" */
-        ).then((m) => m.default),
-    },
-    flags: {
-      required: [BAREMETAL_FLAG, METAL3_FLAG],
-    },
-  },
-  {
-    type: 'Page/Route',
-    properties: {
-      path: ['/k8s/cluster/nodes/:name'],
-      loader: () =>
-        import(
-          './components/baremetal-nodes/BareMetalNodeDetailsPage' /* webpackChunkName: "node" */
-        ).then((m) => m.default),
-    },
-    flags: {
-      required: [BAREMETAL_FLAG, METAL3_FLAG],
-    },
-  },
-  {
     type: 'Dashboards/Overview/Activity/Resource',
     properties: {
       k8sResource: {
@@ -336,41 +309,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [BAREMETAL_FLAG, METAL3_FLAG],
-    },
-  },
-  {
-    type: 'HorizontalNavTab',
-    properties: {
-      page: {
-        href: 'nics',
-        name: '%metal3-plugin~Network Interfaces%',
-      },
-      model: NodeModel,
-      loader: () =>
-        import('./components/baremetal-nodes/NICsPage').then(
-          (m) => m.default,
-        ) /* webpackChunkName: "metal3-bmn-nics" */,
-    },
-    flags: {
-      required: [BAREMETAL_FLAG, METAL3_FLAG],
-    },
-  },
-  {
-    type: 'HorizontalNavTab',
-    properties: {
-      page: {
-        href: 'disks',
-        name: '%metal3-plugin~Disks%',
-      },
-      model: NodeModel,
-      loader: () =>
-        import('./components/baremetal-nodes/DisksPage').then(
-          (m) => m.default,
-        ) /* webpackChunkName: "metal3-bmn-disks" */,
-    },
-    flags: {
-      required: [BAREMETAL_FLAG, METAL3_FLAG],
-      disallowed: ['LSO_DEVICE_DISCOVERY'],
     },
   },
 ];

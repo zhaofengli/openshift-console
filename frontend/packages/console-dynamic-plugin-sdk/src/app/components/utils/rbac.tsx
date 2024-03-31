@@ -7,7 +7,7 @@ import {
 } from '../../../extensions/console-types';
 import { ProjectModel, SelfSubjectAccessReviewModel } from '../../../models';
 import { k8sCreate } from '../../../utils/k8s/k8s-resource';
-import { getActiveCluster, getImpersonate } from '../../core/reducers/coreSelectors';
+import { getImpersonate } from '../../core/reducers/coreSelectors';
 import { ImpersonateKind } from '../../redux-types';
 import storeHandler from '../../storeHandler';
 import { useSafetyFirst } from '../safety-first';
@@ -65,7 +65,7 @@ const checkAccessInternal = _.memoize(
     };
     return k8sCreate(SelfSubjectAccessReviewModel, ssar);
   },
-  (...args) => [...args, getActiveCluster(storeHandler.getStore().getState())].join('~'), // TODO remove multicluster
+  (...args) => args.join('~'),
 );
 
 /**
@@ -102,7 +102,7 @@ export const checkAccess = (
  * Hook that provides information about user access to a given resource.
  * @param resourceAttributes resource attributes for access review
  * @param impersonate impersonation details
- * @returns Array with isAllowed and loading values.
+ * @returns Array with `isAllowed` and `loading` values.
  */
 export const useAccessReview = (
   resourceAttributes: AccessReviewResourceAttributes,

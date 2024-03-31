@@ -10,6 +10,130 @@
       "importRedirectURL": { "$codeRef": "perspective.getImportRedirectURL" }
     }
   },
+
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "console.openshift.io",
+        "version": "v1",
+        "kind": "ConsoleSample"
+      },
+      "flag": "CONSOLESAMPLE"
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "console.openshift.io",
+        "version": "v1",
+        "kind": "ConsoleQuickStart"
+      },
+      "flag": "CONSOLE_QUICKSTART"
+    }
+  },
+
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "OPENSHIFT_BUILD",
+      "model": {
+        "group": "build.openshift.io",
+        "version": "v1",
+        "kind": "Build"
+      }
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "OPENSHIFT_BUILDCONFIG",
+      "model": {
+        "group": "build.openshift.io",
+        "version": "v1",
+        "kind": "BuildConfig"
+      }
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "apps.openshift.io",
+        "version": "v1",
+        "kind": "DeploymentConfig"
+      },
+      "flag": "OPENSHIFT_DEPLOYMENTCONFIG"
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "image.openshift.io",
+        "version": "v1",
+        "kind": "ImageStream"
+      },
+      "flag": "OPENSHIFT_IMAGESTREAM"
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "template.openshift.io",
+        "version": "v1",
+        "kind": "Template"
+      },
+      "flag": "OPENSHIFT_TEMPLATE"
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "project.openshift.io",
+        "version": "v1",
+        "kind": "Project"
+      },
+      "flag": "OPENSHIFT_PROJECT"
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "OPENSHIFT_USER_API",
+      "model": {
+        "group": "user.openshift.io",
+        "version": "v1",
+        "kind": "User"
+      }
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "OPENSHIFT_GROUP_API",
+      "model": {
+        "group": "user.openshift.io",
+        "version": "v1",
+        "kind": "Group"
+      }
+    }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "OPENSHIFT_OAUTH_API",
+      "model": {
+        "group": "config.openshift.io",
+        "version": "v1",
+        "kind": "OAuth"
+      }
+    }
+  },
+
   {
     "type": "console.flag/model",
     "properties": {
@@ -30,6 +154,37 @@
         "version": "v1alpha2",
         "kind": "DevWorkspace"
       }
+    }
+  },
+
+  {
+    "type": "console.global-config",
+    "properties": {
+      "id": "oauth-config",
+      "name": "oauth-config",
+      "model": {
+        "group": "config.openshift.io",
+        "version": "v1",
+        "kind": "OAuth"
+      },
+      "namespace": ""
+    },
+    "flags": {
+      "required": ["OPENSHIFT_OAUTH_API"]
+    }
+  },
+  {
+    "type": "console.page/resource/details",
+    "properties": {
+      "model": {
+        "group": "config.openshift.io",
+        "version": "v1",
+        "kind": "OAuth"
+      },
+      "component": { "$codeRef": "oauthConfigDetailsPage.default" }
+    },
+    "flags": {
+      "required": ["OPENSHIFT_OAUTH_API"]
     }
   },
   {
@@ -134,6 +289,9 @@
         "kind": "DeploymentConfig"
       },
       "provider": { "$codeRef": "actions.useDeploymentConfigActionsProvider" }
+    },
+    "flags": {
+      "required": ["OPENSHIFT_DEPLOYMENTCONFIG"]
     }
   },
   {
@@ -209,6 +367,15 @@
         "kind": "ReplicationController"
       },
       "provider": { "$codeRef": "actions.useReplicationControllerActionsProvider" }
+    }
+  },
+
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": ["/cluster-configuration", "/cluster-configuration/:group"],
+      "component": { "$codeRef": "clusterConfiguration.ClusterConfigurationPage" }
     }
   },
 
@@ -430,7 +597,8 @@
         "label": "%console-app~Enable exact string match%",
         "trueValue": true,
         "falseValue": false,
-        "defaultValue": false      }
+        "defaultValue": false
+      }
     }
   },
   {
@@ -671,7 +839,7 @@
         "kind": "DeploymentConfig"
       }
     },
-    "flags": { "required": ["OPENSHIFT"] }
+    "flags": { "required": ["OPENSHIFT_DEPLOYMENTCONFIG"] }
   },
   {
     "type": "console.navigation/resource-ns",
@@ -974,7 +1142,8 @@
         "version": "v1",
         "kind": "BuildConfig"
       }
-    }
+    },
+    "flags": { "required": ["OPENSHIFT_BUILDCONFIG"] }
   },
   {
     "type": "console.navigation/resource-ns",
@@ -989,7 +1158,8 @@
         "version": "v1",
         "kind": "Build"
       }
-    }
+    },
+    "flags": { "required": ["OPENSHIFT_BUILD"] }
   },
   {
     "type": "console.navigation/resource-ns",
@@ -1124,7 +1294,7 @@
         "kind": "User"
       }
     },
-    "flags": { "required": ["OPENSHIFT", "CAN_LIST_USERS"] }
+    "flags": { "required": ["OPENSHIFT", "OPENSHIFT_USER_API", "CAN_LIST_USERS"] }
   },
   {
     "type": "console.navigation/resource-cluster",
@@ -1140,7 +1310,7 @@
         "kind": "Group"
       }
     },
-    "flags": { "required": ["OPENSHIFT", "CAN_LIST_GROUPS"] }
+    "flags": { "required": ["OPENSHIFT", "OPENSHIFT_GROUP_API", "CAN_LIST_GROUPS"] }
   },
   {
     "type": "console.navigation/resource-ns",
@@ -1731,6 +1901,44 @@
             "required": { "$codeRef": "storageProvisioners.isStorageOsAdminSecretNSRequired" }
           }
         }
+      }
+    }
+  },
+  {
+    "type": "console.node/status",
+    "properties": {
+      "title": "%console-app~Scheduling disabled%",
+      "PopoverContent": { "$codeRef": "nodeStatus.MarkAsSchedulablePopover" },
+      "isActive": { "$codeRef": "nodeStatus.isUnschedulableActive" }
+    }
+  },
+  {
+    "type": "console.node/status",
+    "properties": {
+      "title": "%console-app~Approval required%",
+      "PopoverContent": { "$codeRef": "nodeStatus.ServerCSRPopoverContent" },
+      "isActive": { "$codeRef": "nodeStatus.isCSRActive" },
+      "resources": {
+        "csrs": {
+          "groupVersionKind": {
+            "group": "certificates.k8s.io",
+            "kind": "CertificateSigningRequest",
+            "version": "v1"
+          },
+          "isList": true
+        }
+      }
+    }
+  },
+  {
+    "type": "console.action/resource-provider",
+    "properties": {
+      "model": {
+        "version": "v1",
+        "kind": "Node"
+      },
+      "provider": {
+        "$codeRef": "nodeActions.useNodeActions"
       }
     }
   }

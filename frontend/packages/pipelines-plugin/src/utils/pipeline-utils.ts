@@ -18,6 +18,7 @@ import {
   K8sKind,
   K8sResourceKind,
   PersistentVolumeClaimKind,
+  K8sModel,
 } from '@console/internal/module/k8s';
 import {
   PIPELINE_SERVICE_ACCOUNT,
@@ -40,6 +41,9 @@ import {
   TaskModel,
   EventListenerModel,
   RepositoryModel,
+  PipelineModelV1Beta1,
+  PipelineRunModelV1Beta1,
+  TaskModelV1Beta1,
 } from '../models';
 import {
   ComputedStatus,
@@ -51,6 +55,8 @@ import {
   TaskRunKind,
   TektonParam,
   TaskRunStatus,
+  TaskKind,
+  PLRTaskRunData,
 } from '../types';
 import { getLatestRun } from './pipeline-augment';
 import {
@@ -501,4 +507,68 @@ export const getEventListeners = (
     return acc;
   }, []);
   return resourceEventListeners;
+};
+
+export const returnValidPipelineModel = (pipeline: PipelineKind): K8sModel => {
+  if (pipeline.apiVersion === 'tekton.dev/v1beta1') {
+    return PipelineModelV1Beta1;
+  }
+  return PipelineModel;
+};
+
+export const returnValidPipelineRunModel = (pipelineRun: PipelineRunKind): K8sModel => {
+  if (pipelineRun.apiVersion === 'tekton.dev/v1beta1') {
+    return PipelineRunModelV1Beta1;
+  }
+  return PipelineRunModel;
+};
+
+export const returnValidTaskModel = (task: TaskKind): K8sModel => {
+  if (task.apiVersion === 'tekton.dev/v1beta1') {
+    return TaskModelV1Beta1;
+  }
+  return TaskModel;
+};
+
+export enum TaskRunResultsAnnotations {
+  KEY = 'task.results.key',
+  TYPE = 'task.results.type',
+}
+
+export enum TaskRunResultsAnnotationValue {
+  EXTERNAL_LINK = 'external-link',
+}
+
+export enum TaskRunResults {
+  IMAGE_REPOSITORY = 'IMAGE_URL',
+  SBOM = 'LINK_TO_SBOM',
+  SCAN_OUTPUT = 'SCAN_OUTPUT',
+  TEST_OUTPUT = 'TEST_OUTPUT',
+}
+
+export const getSbomTaskRun = (taskruns: TaskRunKind[]): TaskRunKind =>
+  taskruns?.find(
+    (tr) => tr?.metadata?.annotations?.[TaskRunResultsAnnotations.KEY] === TaskRunResults.SBOM,
+  );
+
+export const hasExternalLink = (sbomTaskRun: TaskRunKind): boolean =>
+  sbomTaskRun?.metadata?.annotations?.[TaskRunResultsAnnotations.TYPE] ===
+  TaskRunResultsAnnotationValue.EXTERNAL_LINK;
+
+export const getSbomLink = (sbomTaskRun: TaskRunKind): string | undefined =>
+  (sbomTaskRun?.status?.results || sbomTaskRun?.status?.taskResults)?.find(
+    (r) => r.name === TaskRunResults.SBOM,
+  )?.value;
+
+export const getImageUrl = (PipelineRun: PipelineRunKind): string | undefined =>
+  (PipelineRun?.status?.results || PipelineRun?.status?.pipelineResults)?.find(
+    (r) => r.name === TaskRunResults.IMAGE_REPOSITORY,
+  )?.value;
+
+export const taskRunStatus = (taskRun: TaskRunKind | PLRTaskRunData): ComputedStatus => {
+  if (!taskRun?.status?.conditions?.length) {
+    return ComputedStatus.Pending;
+  }
+  const status: ComputedStatus = pipelineRunStatus(taskRun);
+  return status;
 };

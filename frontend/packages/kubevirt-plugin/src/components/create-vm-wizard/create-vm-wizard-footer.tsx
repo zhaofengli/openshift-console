@@ -1,12 +1,10 @@
 /* eslint-disable no-underscore-dangle */
 import * as React from 'react';
+import { Alert, Button, ButtonVariant } from '@patternfly/react-core';
 import {
-  Alert,
-  Button,
-  ButtonVariant,
-  WizardContextConsumer,
-  WizardStep,
-} from '@patternfly/react-core';
+  WizardContextConsumer as WizardContextConsumerDeprecated,
+  WizardStep as WizardStepDeprecated,
+} from '@patternfly/react-core/deprecated';
 import { css } from '@patternfly/react-styles';
 import styles from '@patternfly/react-styles/css/components/Wizard/wizard';
 import * as _ from 'lodash';
@@ -14,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
 import { Prompt } from 'react-router';
 import { getActiveNamespace } from '@console/internal/actions/ui';
-import { useActiveNamespace } from '@console/shared';
+import { useActiveNamespace } from '@console/shared/src/hooks/useActiveNamespace';
 import { useShowErrorToggler } from '../../hooks/use-show-error-toggler';
 import { getDialogUIError, getSimpleDialogUIError } from '../../utils';
 import { iGetIsLoaded, iGetLoadError } from '../../utils/immutable';
@@ -40,7 +38,7 @@ type WizardContext = {
   onNext: () => void;
   onBack: () => void;
   onClose: () => void;
-  activeStep: WizardStep;
+  activeStep: WizardStepDeprecated;
   goToStepById: (id: number | string) => void;
 };
 type CreateVMWizardFooterComponentProps = {
@@ -77,7 +75,7 @@ const CreateVMWizardFooterComponent: React.FC<CreateVMWizardFooterComponentProps
   const prevNS = prevNamespaceRef.current;
 
   return (
-    <WizardContextConsumer>
+    <WizardContextConsumerDeprecated>
       {({ onNext, onBack, onClose, activeStep, goToStepById }: WizardContext) => {
         const activeStepID = activeStep.id as VMWizardTab;
         const isAnyStepLocked = ALL_VM_WIZARD_TABS.some((tab) => steps[tab].isLocked);
@@ -253,7 +251,7 @@ const CreateVMWizardFooterComponent: React.FC<CreateVMWizardFooterComponentProps
           </footer>
         );
       }}
-    </WizardContextConsumer>
+    </WizardContextConsumerDeprecated>
   );
 };
 

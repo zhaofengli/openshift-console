@@ -3,12 +3,13 @@ import { Formik } from 'formik';
 import * as _ from 'lodash';
 import Helmet from 'react-helmet';
 import { useTranslation, Trans } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   documentationURLs,
   ExternalLink,
   getDocumentationURL,
   history,
+  isManaged,
   LoadingBox,
   PageHeading,
   StatusBox,
@@ -62,7 +63,7 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({
     let removeRoles = getRemovedRoles(initialValues.projectAccess, values.projectAccess);
     const updateRoles = getRolesToUpdate(newRoles, removeRoles);
 
-    const updateRolesWithMultipleSubjects = getRolesWithMultipleSubjects(
+    const { updateRolesWithMultipleSubjects, removeRoleSubjectFlag } = getRolesWithMultipleSubjects(
       newRoles,
       removeRoles,
       updateRoles,
@@ -78,15 +79,20 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({
     }
     updateRoles.push(...updateRolesWithMultipleSubjects);
     const roleBindingRequests = [];
-
     if (updateRoles.length > 0) {
-      roleBindingRequests.push(...sendRoleBindingRequest(Verb.Patch, updateRoles, namespace));
+      roleBindingRequests.push(
+        ...sendRoleBindingRequest(Verb.Patch, updateRoles, namespace, removeRoleSubjectFlag),
+      );
     }
     if (newRoles.length > 0) {
-      roleBindingRequests.push(...sendRoleBindingRequest(Verb.Create, newRoles, namespace));
+      roleBindingRequests.push(
+        ...sendRoleBindingRequest(Verb.Create, newRoles, namespace, removeRoleSubjectFlag),
+      );
     }
     if (removeRoles.length > 0) {
-      roleBindingRequests.push(...sendRoleBindingRequest(Verb.Remove, removeRoles, namespace));
+      roleBindingRequests.push(
+        ...sendRoleBindingRequest(Verb.Remove, removeRoles, namespace, removeRoleSubjectFlag),
+      );
     }
 
     return Promise.all(roleBindingRequests)
@@ -118,10 +124,15 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({
             "Project access allows you to add or remove a user's access to the project. More advanced management of role-based access control appear in "
           }
           <Link to={`/k8s/ns/${namespace}/${RoleModel.plural}`}>Roles</Link> and{' '}
-          <Link to={`/k8s/ns/${namespace}/${RoleBindingModel.plural}`}>Role Bindings</Link>. For
-          more information, see the{' '}
-          <ExternalLink href={rbacURL}>role-based access control documentation</ExternalLink>.
+          <Link to={`/k8s/ns/${namespace}/${RoleBindingModel.plural}`}>Role Bindings</Link>.
         </Trans>
+        {!isManaged() && (
+          <Trans t={t} ns="devconsole">
+            {' '}
+            For more information, see the{' '}
+            <ExternalLink href={rbacURL}>role-based access control documentation</ExternalLink>.
+          </Trans>
+        )}
       </PageHeading>
       {roleBindings.loadError ? (
         <StatusBox loaded={roleBindings.loaded} loadError={roleBindings.loadError} />

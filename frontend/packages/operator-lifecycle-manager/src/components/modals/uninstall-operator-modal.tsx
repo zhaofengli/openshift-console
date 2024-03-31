@@ -114,8 +114,7 @@ export const UninstallOperatorModal: React.FC<UninstallOperatorModalProps> = ({
   const isSubmitFinished =
     !isSubmitInProgress && (!deleteOperands || operandsDeleteFinished) && operatorUninstallFinished;
 
-  const hasSubmitErrors =
-    operandDeletionErrors.length > 0 || operatorUninstallErrorMessage.length > 0;
+  const hasSubmitErrors = operandDeletionErrors.length > 0 || operatorUninstallErrorMessage !== '';
 
   // Skip loading the operands if we are not going to delete them if they opted Out
   const optOutAnnotation = 'console.openshift.io/disable-operand-delete';
@@ -144,7 +143,7 @@ export const UninstallOperatorModal: React.FC<UninstallOperatorModalProps> = ({
         });
         return true;
       } catch (err) {
-        if (err.json.code !== 404) {
+        if (err.response.status !== 404) {
           setClusterServiceVersionExistsError(err.message);
         }
         return false;
@@ -461,8 +460,8 @@ const OperandsLoadedErrorAlert: React.FC<{ operandsLoadedErrorMessage: string }>
         {t(
           'olm~There was an error loading operands for this operator. Operands will need to be deleted manually.',
         )}
-        <div>{operandsLoadedErrorMessage}</div>
       </p>
+      <p>{operandsLoadedErrorMessage}</p>
     </Alert>
   );
 };
@@ -570,39 +569,40 @@ const OperandsTable: React.FC<OperandsTableProps> = ({ operands, loaded, csvName
       data={operands}
       loaded={loaded}
     >
-      <table className="pf-c-table pf-m-compact pf-m-border-rows">
-        <thead>
-          <tr key="operand-table-header-row">
-            <th className="pf-m-width-35">{t('olm~Name')}</th>
-            <th>{t('olm~Kind')}</th>
-            <th>{t('olm~Namespace')}</th>
+      <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+        <thead className="pf-v5-c-table__thead">
+          <tr className="pf-v5-c-table__tr" key="operand-table-header-row">
+            <th className="pf-m-width-35 pf-v5-c-table__th">{t('olm~Name')}</th>
+            <th className="pf-v5-c-table__th">{t('olm~Kind')}</th>
+            <th className="pf-v5-c-table__th">{t('olm~Namespace')}</th>
           </tr>
         </thead>
         <tbody>
           {operands
             .sort((a, b) => a.metadata.name.localeCompare(b.metadata.name))
             .map((operand) => (
-              <>
-                <tr key={operand.metadata.uid}>
-                  <td>
-                    <OperandLink obj={operand} csvName={csvName} onClick={cancel} />
-                  </td>
-                  <td className="co-break-word" data-test-operand-kind={operand.kind}>
-                    {operand.kind}
-                  </td>
-                  <td>
-                    {operand.metadata.namespace ? (
-                      <ResourceLink
-                        kind="Namespace"
-                        name={operand.metadata.namespace}
-                        onClick={cancel}
-                      />
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                </tr>
-              </>
+              <tr className="pf-v5-c-table__tr" key={operand.metadata.uid}>
+                <td className="pf-v5-c-table__td">
+                  <OperandLink obj={operand} csvName={csvName} onClick={cancel} />
+                </td>
+                <td
+                  className="pf-v5-c-table__td pf-m-break-word"
+                  data-test-operand-kind={operand.kind}
+                >
+                  {operand.kind}
+                </td>
+                <td className="pf-v5-c-table__td">
+                  {operand.metadata.namespace ? (
+                    <ResourceLink
+                      kind="Namespace"
+                      name={operand.metadata.namespace}
+                      onClick={cancel}
+                    />
+                  ) : (
+                    '-'
+                  )}
+                </td>
+              </tr>
             ))}
         </tbody>
       </table>
@@ -617,7 +617,7 @@ const OperandErrorList: React.FC<OperandErrorListProps> = ({ operandErrors, csvN
       {_.map(operandErrors, (operandError) => (
         <li
           key={operandError.operand.metadata.uid}
-          className="pf-c-list pf-m-plain co-operator-uninstall-alert__list-item"
+          className="pf-v5-c-list pf-m-plain co-operator-uninstall-alert__list-item"
         >
           <OperandLink obj={operandError.operand} csvName={csvName} onClick={cancel} />{' '}
           {operandError.operand.kind}
@@ -643,7 +643,7 @@ export type UninstallOperatorModalProps = {
     resource: K8sResourceKind,
     data: { op: string; path: string; value: any }[],
   ) => Promise<any>;
-  subscription: SubscriptionKind;
+  subscription: SubscriptionKind | K8sResourceKind;
   csv?: ClusterServiceVersionKind;
   blocking?: boolean;
 };

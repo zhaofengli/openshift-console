@@ -10,9 +10,9 @@ import {
   PageToggleButton,
 } from '@patternfly/react-core';
 import { BarsIcon } from '@patternfly/react-icons/dist/esm/icons/bars-icon';
+import { useNavigate } from 'react-router-dom-v5-compat';
 
 import { MastheadToolbar } from './masthead-toolbar';
-import { history } from './utils';
 import okdLogoImg from '../imgs/okd-logo.svg';
 import openshiftLogoImg from '../imgs/openshift-logo.svg';
 import onlineLogoImg from '../imgs/openshift-online-logo.svg';
@@ -62,25 +62,26 @@ export const getBrandingDetails = () => {
 
 export const Masthead = React.memo(({ isMastheadStacked, isNavOpen, onNavToggle }) => {
   const details = getBrandingDetails();
+  const navigate = useNavigate();
   const defaultRoute = '/';
   const logoProps = {
     href: defaultRoute,
     // use onClick to prevent browser reload
     onClick: (e) => {
       e.preventDefault();
-      history.push(defaultRoute);
+      navigate(defaultRoute);
     },
   };
 
   return (
     <PfMasthead id="page-main-header" display={{ default: isMastheadStacked ? 'stack' : 'inline' }}>
       <MastheadToggle>
-        <PageToggleButton onNavToggle={onNavToggle} isNavOpen={isNavOpen}>
+        <PageToggleButton onSidebarToggle={onNavToggle} isSidebarOpen={isNavOpen}>
           <BarsIcon />
         </PageToggleButton>
       </MastheadToggle>
       <MastheadMain>
-        <MastheadBrand {...logoProps}>
+        <MastheadBrand component="a" {...logoProps}>
           <Brand src={details.logoImg} alt={details.productName} />
         </MastheadBrand>
       </MastheadMain>

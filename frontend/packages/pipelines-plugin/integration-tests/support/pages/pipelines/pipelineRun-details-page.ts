@@ -68,9 +68,10 @@ export const pipelineRunDetailsPage = {
     cy.get(pipelineRunDetailsPO.detailsTab).should('be.visible');
     cy.get(pipelineRunDetailsPO.yamlTab).should('be.visible');
     cy.get(pipelineRunDetailsPO.taskRunsTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.parametersTab).should('be.visible');
     cy.get(pipelineRunDetailsPO.logsTab).should('be.visible');
     cy.get(pipelineRunDetailsPO.eventsTab).should('be.visible');
-    cy.get(pipelineRunDetailsPO.parametersTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.outputTab).should('be.visible');
   },
   verifyFields: () => {
     cy.byLegacyTestID('resource-summary').within(() => {
@@ -139,6 +140,11 @@ export const pipelineRunDetailsPage = {
         cy.url().should('include', 'parameters');
         break;
       }
+      case 'Output': {
+        cy.get(pipelineRunDetailsPO.outputTab).click();
+        cy.url().should('include', 'output');
+        break;
+      }
       default: {
         throw new Error('operator is not available');
       }
@@ -156,8 +162,11 @@ export const pipelineRunsPage = {
     cy.get(pipelineRunsPO.pipelineRunsTable.table).should('exist');
     cy.log(`user selects the kebab menu of pipeline : "${pipelineRunName}"`);
     cy.get(pipelineRunsPO.pipelineRunsTable.pipelineRunName).then(() => {
-      cy.get('tbody tr').first().find('td:nth-child(6) button').click({ force: true });
+      cy.get('tbody tr').first().find('td:nth-child(7) button').click({ force: true });
     });
+  },
+  verifyVulnerabilities: (pipelineRunName: string) => {
+    cy.byTestID(`${pipelineRunName}-vulnerabilities`).should('be.visible');
   },
   verifyPipelineRunsTableDisplay: () =>
     cy.get(pipelineRunsPO.pipelineRunsTable.table).should('be.visible'),

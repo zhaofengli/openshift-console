@@ -1,6 +1,10 @@
 import * as React from 'react';
-import { Dropdown, DropdownItem, DropdownToggle } from '@patternfly/react-core';
-import { CheckCircleIcon } from '@patternfly/react-icons';
+import {
+  Dropdown as DropdownDeprecated,
+  DropdownItem as DropdownItemDeprecated,
+  DropdownToggle as DropdownToggleDeprecated,
+} from '@patternfly/react-core/deprecated';
+import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon';
 import { global_palette_green_500 as greenColor } from '@patternfly/react-tokens';
 import i18n from 'i18next';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
@@ -23,23 +27,24 @@ const PipelineQuickSearchVersionDropdown: React.FC<PipelineQuickSearchVersionDro
   const [isOpen, setOpen] = React.useState(false);
   const toggleIsOpen = React.useCallback(() => setOpen((v) => !v), []);
 
-  if (!versions || versions?.length === 0) {
+  if (!versions || !versions.length) {
     return null;
   }
   const versionItems = versions.reduce((acc, { version }) => {
-    acc[version.toString()] =
-      version === item.data?.latestVersion?.version
-        ? i18n.t('pipelines-plugin~{{version}} (latest)', { version })
-        : version;
+    if (version) {
+      acc[version.toString()] =
+        version === item.data?.latestVersion?.version
+          ? i18n.t('pipelines-plugin~{{version}} (latest)', { version })
+          : version;
+    }
     return acc;
   }, {});
-
   return (
-    <Dropdown
+    <DropdownDeprecated
       data-test="task-version"
       className="opp-quick-search-details__version-dropdown"
       dropdownItems={Object.keys(versionItems).map((key) => (
-        <DropdownItem
+        <DropdownItemDeprecated
           component="button"
           key={key}
           label={versionItems[key]}
@@ -53,17 +58,17 @@ const PipelineQuickSearchVersionDropdown: React.FC<PipelineQuickSearchVersionDro
             {versionItems[key]}
             {isSelectedVersionInstalled(item, key) && <CheckCircleIcon color={greenColor.value} />}
           </div>
-        </DropdownItem>
+        </DropdownItemDeprecated>
       ))}
       isOpen={isOpen}
       toggle={
-        <DropdownToggle
+        <DropdownToggleDeprecated
           isDisabled={versions.length === 1}
           data-test="task-version-toggle"
           onToggle={toggleIsOpen}
         >
           {versionItems[selectedVersion]}
-        </DropdownToggle>
+        </DropdownToggleDeprecated>
       }
     />
   );

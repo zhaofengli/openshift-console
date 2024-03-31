@@ -5,6 +5,7 @@ import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
 import { serverlessInitialValues } from '../__mocks__/serverless-mock';
 import {
+  BuildOptions,
   DevfileData,
   GitImportFormData,
   InsecureTrafficType,
@@ -134,6 +135,7 @@ export const defaultData: GitImportFormData = {
       config: true,
     },
     strategy: 'Source',
+    option: BuildOptions.BUILDS,
   },
   deployment: {
     env: [],
@@ -895,13 +897,13 @@ export const sampleClusterTriggerBinding = {
   metadata: {
     annotations: {
       'kubectl.kubernetes.io/last-applied-configuration':
-        '{"apiVersion":"triggers.tekton.dev/v1alpha1","kind":"ClusterTriggerBinding","metadata":{"name":"github-push","namespace":"openshift-pipelines","ownerReferences":[{"apiVersion":"operator.tekton.dev/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"TektonInstallerSet","name":"addon-triggers-k74bh","uid":"fe29d5cd-2580-48fa-b6de-a236c518e2e8"}]},"spec":{"params":[{"name":"git-revision","value":"$(body.head_commit.id)"},{"name":"git-commit-message","value":"$(body.head_commit.message)"},{"name":"git-repo-url","value":"$(body.repository.url)"},{"name":"git-repo-name","value":"$(body.repository.name)"},{"name":"content-type","value":"$(header.Content-Type)"},{"name":"pusher-name","value":"$(body.pusher.name)"}]}}\n',
+        '{"apiVersion":"triggers.tekton.dev/v1beta1","kind":"ClusterTriggerBinding","metadata":{"name":"github-push","namespace":"openshift-pipelines","ownerReferences":[{"apiVersion":"operator.tekton.dev/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"TektonInstallerSet","name":"addon-triggers-k74bh","uid":"fe29d5cd-2580-48fa-b6de-a236c518e2e8"}]},"spec":{"params":[{"name":"git-revision","value":"$(body.head_commit.id)"},{"name":"git-commit-message","value":"$(body.head_commit.message)"},{"name":"git-repo-url","value":"$(body.repository.url)"},{"name":"git-repo-name","value":"$(body.repository.name)"},{"name":"content-type","value":"$(header.Content-Type)"},{"name":"pusher-name","value":"$(body.pusher.name)"}]}}\n',
     },
     creationTimestamp: '2021-12-15T04:29:42Z',
     generation: 1,
     managedFields: [
       {
-        apiVersion: 'triggers.tekton.dev/v1alpha1',
+        apiVersion: 'triggers.tekton.dev/v1beta1',
         fieldsType: 'FieldsV1',
         fieldsV1: {
           'f:metadata': {

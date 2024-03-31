@@ -7,10 +7,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/openshift/console/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	authv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic/fake"
+
+	consolev1 "github.com/openshift/api/console/v1"
+
+	"github.com/openshift/console/pkg/metrics"
 )
 
 func createPluginConfiguration(pluginNames []string) *Config {
@@ -71,8 +76,9 @@ func TestPluginMetrics(t *testing.T) {
 			configuredPlugins: []string{"acm", "kubevirt-plugin", "my-plugin"},
 			consolePlugins:    []string{"acm", "kubevirt-plugin", "my-plugin"},
 			expectedMetrics: `
+			console_plugins_info{name="acm",state="enabled"} 1
 			console_plugins_info{name="demo",state="enabled"} 1
-			console_plugins_info{name="redhat",state="enabled"} 2
+			console_plugins_info{name="kubevirt",state="enabled"} 1
 			`,
 		},
 
@@ -82,7 +88,7 @@ func TestPluginMetrics(t *testing.T) {
 			configuredPlugins: []string{"an-enabled-plugin", "another-enabled-plugin"},
 			consolePlugins:    []string{"an-enabled-plugin", "another-enabled-plugin"},
 			expectedMetrics: `
-			console_plugins_info{name="other",state="enabled"} 2
+			console_plugins_info{name="unknown",state="enabled"} 2
 			`,
 		},
 
@@ -92,7 +98,7 @@ func TestPluginMetrics(t *testing.T) {
 			configuredPlugins: []string{},
 			consolePlugins:    []string{"a-disabed-plugin", "another-disabed-plugin"},
 			expectedMetrics: `
-			console_plugins_info{name="other",state="disabled"} 2
+			console_plugins_info{name="unknown",state="disabled"} 2
 			`,
 		},
 
@@ -102,7 +108,7 @@ func TestPluginMetrics(t *testing.T) {
 			configuredPlugins: []string{"a-missing-plugin", "another-missing-plugin"},
 			consolePlugins:    []string{},
 			expectedMetrics: `
-			console_plugins_info{name="other",state="notfound"} 2
+			console_plugins_info{name="unknown",state="notfound"} 2
 			`,
 		},
 	}
@@ -111,6 +117,18 @@ func TestPluginMetrics(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			configuredPlugins := createPluginConfiguration(testcase.configuredPlugins)
 			consolePlugins := createConsolePluginList(testcase.consolePlugins)
+
+			testScheme := runtime.NewScheme()
+			consolev1.Install(testScheme)
+
+			objs := []runtime.Object{}
+			for _, p := range consolePlugins.Items {
+				objs = append(objs,
+					&consolev1.ConsolePlugin{
+						ObjectMeta: p.ObjectMeta,
+					},
+				)
+			}
 
 			testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				fmt.Printf("Mock testserver handles: %s\n", r.URL.Path)
@@ -131,7 +149,7 @@ func TestPluginMetrics(t *testing.T) {
 			defer testserver.Close()
 
 			m := NewMetrics(configuredPlugins)
-			m.updatePluginMetric(&http.Client{}, testserver.URL, "ignored-service-account-token")
+			m.updatePluginMetric(fake.NewSimpleDynamicClient(testScheme, objs...))
 
 			assert.Equal(t,
 				metrics.RemoveComments(testcase.expectedMetrics),
@@ -156,14 +174,17 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			consolePluginsInitially: []string{"acm", "kubevirt-plugin", "my-plugin"},
 			consolePluginsUpdated:   []string{},
 			expectedMetricsInitially: `
+			console_plugins_info{name="acm",state="enabled"} 1
 			console_plugins_info{name="demo",state="enabled"} 1
-			console_plugins_info{name="redhat",state="enabled"} 2
+			console_plugins_info{name="kubevirt",state="enabled"} 1
 			`,
 			expectedMetricsAfterUpdate: `
+			console_plugins_info{name="acm",state="enabled"} 0
+			console_plugins_info{name="acm",state="notfound"} 1
 			console_plugins_info{name="demo",state="enabled"} 0
 			console_plugins_info{name="demo",state="notfound"} 1
-			console_plugins_info{name="redhat",state="enabled"} 0
-			console_plugins_info{name="redhat",state="notfound"} 2
+			console_plugins_info{name="kubevirt",state="enabled"} 0
+			console_plugins_info{name="kubevirt",state="notfound"} 1
 			`,
 		},
 
@@ -173,11 +194,11 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			consolePluginsInitially: []string{"an-enabled-plugin", "another-enabled-plugin"},
 			consolePluginsUpdated:   []string{"an-enabled-plugin"},
 			expectedMetricsInitially: `
-			console_plugins_info{name="other",state="enabled"} 2
+			console_plugins_info{name="unknown",state="enabled"} 2
 			`,
 			expectedMetricsAfterUpdate: `
-			console_plugins_info{name="other",state="enabled"} 1
-			console_plugins_info{name="other",state="notfound"} 1
+			console_plugins_info{name="unknown",state="enabled"} 1
+			console_plugins_info{name="unknown",state="notfound"} 1
 			`,
 		},
 
@@ -187,10 +208,10 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			consolePluginsInitially: []string{"a-disabed-plugin", "another-disabed-plugin"},
 			consolePluginsUpdated:   []string{"a-disabed-plugin"},
 			expectedMetricsInitially: `
-			console_plugins_info{name="other",state="disabled"} 2
+			console_plugins_info{name="unknown",state="disabled"} 2
 			`,
 			expectedMetricsAfterUpdate: `
-			console_plugins_info{name="other",state="disabled"} 1
+			console_plugins_info{name="unknown",state="disabled"} 1
 			`,
 		},
 
@@ -200,11 +221,11 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			consolePluginsInitially: []string{},
 			consolePluginsUpdated:   []string{"another-plugin"},
 			expectedMetricsInitially: `
-			console_plugins_info{name="other",state="notfound"} 2
+			console_plugins_info{name="unknown",state="notfound"} 2
 			`,
 			expectedMetricsAfterUpdate: `
-			console_plugins_info{name="other",state="enabled"} 1
-			console_plugins_info{name="other",state="notfound"} 1
+			console_plugins_info{name="unknown",state="enabled"} 1
+			console_plugins_info{name="unknown",state="notfound"} 1
 			`,
 		},
 
@@ -214,16 +235,16 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			consolePluginsInitially: []string{"an-first-enabled-plugin", "acm", "another-disabled-plugin"},
 			consolePluginsUpdated:   []string{"another-disabled-plugin", "acm", "my-plugin"},
 			expectedMetricsInitially: `
-			console_plugins_info{name="other",state="disabled"} 1
-			console_plugins_info{name="other",state="enabled"} 1
-			console_plugins_info{name="redhat",state="enabled"} 1
+			console_plugins_info{name="acm",state="enabled"} 1
+			console_plugins_info{name="unknown",state="disabled"} 1
+			console_plugins_info{name="unknown",state="enabled"} 1
 			`,
 			expectedMetricsAfterUpdate: `
+			console_plugins_info{name="acm",state="enabled"} 1
 			console_plugins_info{name="demo",state="disabled"} 1
-			console_plugins_info{name="other",state="disabled"} 1
-			console_plugins_info{name="other",state="enabled"} 0
-			console_plugins_info{name="other",state="notfound"} 1
-			console_plugins_info{name="redhat",state="enabled"} 1
+			console_plugins_info{name="unknown",state="disabled"} 1
+			console_plugins_info{name="unknown",state="enabled"} 0
+			console_plugins_info{name="unknown",state="notfound"} 1
 			`,
 		},
 	}
@@ -233,6 +254,29 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 			configuredPlugins := createPluginConfiguration(testcase.configuredPlugins)
 			consolePluginsInitially := createConsolePluginList(testcase.consolePluginsInitially)
 			consolePluginsUpdated := createConsolePluginList(testcase.consolePluginsUpdated)
+
+			testScheme := runtime.NewScheme()
+			consolev1.Install(testScheme)
+
+			objs := []runtime.Object{}
+			for _, p := range consolePluginsInitially.Items {
+				objs = append(objs,
+					&consolev1.ConsolePlugin{
+						ObjectMeta: p.ObjectMeta,
+					},
+				)
+			}
+			initialClient := fake.NewSimpleDynamicClient(testScheme, objs...)
+
+			updatedObjs := []runtime.Object{}
+			for _, p := range consolePluginsUpdated.Items {
+				updatedObjs = append(updatedObjs,
+					&consolev1.ConsolePlugin{
+						ObjectMeta: p.ObjectMeta,
+					},
+				)
+			}
+			updatedClient := fake.NewSimpleDynamicClient(testScheme, updatedObjs...)
 
 			m := NewMetrics(configuredPlugins)
 			{
@@ -253,7 +297,7 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 					}
 				}))
 				defer testserver.Close()
-				m.updatePluginMetric(&http.Client{}, testserver.URL, "ignored-service-account-token")
+				m.updatePluginMetric(initialClient)
 			}
 			assert.Equal(t,
 				metrics.RemoveComments(testcase.expectedMetricsInitially),
@@ -278,7 +322,7 @@ func TestPluginMetricsRunningTwice(t *testing.T) {
 					}
 				}))
 				defer testserver.Close()
-				m.updatePluginMetric(&http.Client{}, testserver.URL, "ignored-service-account-token")
+				m.updatePluginMetric(updatedClient)
 			}
 			assert.Equal(t,
 				metrics.RemoveComments(testcase.expectedMetricsAfterUpdate),

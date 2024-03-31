@@ -1,4 +1,3 @@
-import i18next from 'i18next';
 import * as _ from 'lodash';
 import { NodeKind } from '@console/internal/module/k8s';
 import { NodeAddress, NodeCondition } from '../types';
@@ -54,14 +53,6 @@ export const isNodeReady = (node: NodeKind): boolean => {
   return readyState && readyState.status === 'True';
 };
 
-export const getNodeSecondaryStatus = (node: NodeKind): string[] => {
-  const states = [];
-  if (isNodeUnschedulable(node)) {
-    states.push(i18next.t('console-shared~Scheduling disabled'));
-  }
-  return states;
-};
-
 export const getNodeCPUCapacity = (node: NodeKind): string => _.get(node.status, 'capacity.cpu');
 
 export const getNodeAllocatableMemory = (node: NodeKind): string =>
@@ -72,3 +63,6 @@ export const getNodeTaints = (node: NodeKind) => node?.spec?.taints;
 export const isWindowsNode = (node) =>
   node?.metadata?.labels?.['node.openshift.io/os_id'] === 'Windows' ||
   node?.metadata?.labels?.['corev1.LabelOSStable'] === 'windows';
+
+export const getNodeUptime = (node: NodeKind) =>
+  _.find(node?.status?.conditions, { type: 'Ready', status: 'True' })?.lastTransitionTime;

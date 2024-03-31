@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Form, Button } from '@patternfly/react-core';
-import { ExternalLinkAltIcon } from '@patternfly/react-icons';
+import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon';
 import { FormikProps, FormikValues } from 'formik';
 import * as _ from 'lodash';
 import Helmet from 'react-helmet';
@@ -10,6 +10,7 @@ import {
   documentationURLs,
   getDocumentationURL,
   history,
+  isManaged,
   PageHeading,
   ResourceLink,
 } from '@console/internal/components/utils';
@@ -84,9 +85,11 @@ const AddHealthChecks: React.FC<FormikProps<FormikValues> & AddHealthChecksProps
         title={
           <>
             {pageTitle}
-            <Button variant="link" component="a" href={healthURL} target="_blank">
-              {t('devconsole~Learn more')} <ExternalLinkAltIcon />
-            </Button>
+            {!isManaged() && (
+              <Button variant="link" component="a" href={healthURL} target="_blank">
+                {t('devconsole~Learn more')} <ExternalLinkAltIcon />
+              </Button>
+            )}
           </>
         }
       />

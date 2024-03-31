@@ -1,18 +1,15 @@
 import * as React from 'react';
+import { Alert, AlertActionCloseButton, AlertVariant, Button } from '@patternfly/react-core';
 import {
-  Alert,
-  AlertActionCloseButton,
-  AlertVariant,
-  Button,
-  Wizard,
-  WizardContextConsumer,
-  WizardContextType,
-} from '@patternfly/react-core';
+  Wizard as WizardDeprecated,
+  WizardContextConsumer as WizardContextConsumerDeprecated,
+  WizardContextType as WizardContextTypeDeprecated,
+} from '@patternfly/react-core/deprecated';
 import styles from '@patternfly/react-styles/css/components/Wizard/wizard';
 import * as classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
 import { history, LoadingBox } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { ProjectModel } from '@console/internal/models';
@@ -64,7 +61,7 @@ enum WizardStep {
   REVIEW = 'Review',
 }
 
-type FooterProps = WizardContextType & {
+type FooterProps = WizardContextTypeDeprecated & {
   formIsValid: boolean;
   onFinish: VoidFunction;
   onCustomize: VoidFunction;
@@ -178,12 +175,14 @@ const Footer: React.FC<FooterProps> = ({
   );
 };
 
-export const CreateVM: React.FC<RouteComponentProps<{ ns: string }>> = ({ match, location }) => {
+export const CreateVM: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const params = useParams();
   const searchParams = new URLSearchParams(location && location.search);
   const initData = parseVMWizardInitialData(searchParams);
   const templateNS = initData.commonTemplateName ? NAMESPACE_OPENSHIFT : initData.userTemplateNs;
-  const [namespace, setNamespace] = React.useState(match?.params?.ns);
+  const [namespace, setNamespace] = React.useState(params?.ns);
   const [state, dispatch] = React.useReducer(formReducer, initFormState(namespace));
   const [isCreating, setCreating] = React.useState(false);
   const [created, setCreated] = React.useState(false);
@@ -423,7 +422,7 @@ export const CreateVM: React.FC<RouteComponentProps<{ ns: string }>> = ({ match,
     }
 
     body = (
-      <Wizard
+      <WizardDeprecated
         hasNoBodyPadding
         onClose={history.goBack}
         steps={steps}
@@ -435,7 +434,7 @@ export const CreateVM: React.FC<RouteComponentProps<{ ns: string }>> = ({ match,
             : 1
         }
         footer={
-          <WizardContextConsumer>
+          <WizardContextConsumerDeprecated>
             {(footerProps) => (
               <Footer
                 {...footerProps}
@@ -490,7 +489,7 @@ export const CreateVM: React.FC<RouteComponentProps<{ ns: string }>> = ({ match,
                 {selectTemplateAlert}
               </Footer>
             )}
-          </WizardContextConsumer>
+          </WizardContextConsumerDeprecated>
         }
       />
     );

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { sortable } from '@patternfly/react-table';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom-v5-compat';
 import {
   MultiListPage,
   Table,
@@ -34,7 +34,7 @@ import {
 } from '@console/internal/module/k8s';
 import { Status } from '@console/shared';
 import { RouteParams } from '@console/shared/src/types';
-import { CRDDescription, ClusterServiceVersionKind, ProvidedAPI } from '../types';
+import { CRDDescription, ProvidedAPI } from '../types';
 import { OperandLink } from './operand/operand-link';
 import { providedAPIForReference } from './index';
 
@@ -50,8 +50,8 @@ const DEFAULT_RESOURCES: CRDDescription['resources'] = [
 
 const tableColumnClasses = [
   '',
-  'pf-u-w-16-on-md',
-  'pf-m-hidden pf-m-visible-on-lg pf-u-w-16-on-lg',
+  'pf-v5-u-w-16-on-md',
+  'pf-m-hidden pf-m-visible-on-lg pf-v5-u-w-16-on-lg',
   'pf-m-hidden pf-m-visible-on-sm',
 ];
 
@@ -155,7 +155,7 @@ type ResourcesPageRouteParams = RouteParams<'plural'>;
 export const Resources: React.FC<ResourcesProps> = (props) => {
   const { t } = useTranslation();
   const { plural } = useParams<ResourcesPageRouteParams>();
-  const providedAPI = providedAPIForReference(props.csv, plural);
+  const providedAPI = providedAPIForReference(props.customData, plural);
 
   const firehoseResources = (providedAPI?.resources ?? DEFAULT_RESOURCES).map(
     ({ name, kind, version }): FirehoseResource => {
@@ -203,7 +203,7 @@ export const Resources: React.FC<ResourcesProps> = (props) => {
 
 export type ResourcesProps = {
   obj: K8sResourceKind;
-  csv: ClusterServiceVersionKind;
+  customData: any;
 };
 
 export type ResourceListProps = {};

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 export const CONST = Object.freeze({
   // http://kubernetes.io/docs/user-guide/images/#bypassing-kubectl-create-secrets
   PULL_SECRET_TYPE: 'kubernetes.io/dockerconfigjson',
@@ -32,7 +34,6 @@ export const STORAGE_PREFIX = 'bridge';
 
 export const USERSETTINGS_PREFIX = 'console';
 
-export const LAST_CLUSTER_USER_SETTINGS_KEY = `${USERSETTINGS_PREFIX}.lastCluster`; // TODO remove multicluster
 // This localStorage key predates the storage prefix.
 export const NAMESPACE_USERSETTINGS_PREFIX = `${USERSETTINGS_PREFIX}.namespace`;
 export const NAMESPACE_LOCAL_STORAGE_KEY = 'dropdown-storage-namespaces';
@@ -48,6 +49,7 @@ export const COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY = `${STORAGE_PREFIX}/table-colu
 export const LOG_WRAP_LINES_USERSETTINGS_KEY = `${USERSETTINGS_PREFIX}.log.wrapLines`;
 export const SHOW_YAML_EDITOR_TOOLTIPS_USER_SETTING_KEY = `${USERSETTINGS_PREFIX}.showYAMLEditorTooltips`;
 export const SHOW_YAML_EDITOR_TOOLTIPS_LOCAL_STORAGE_KEY = `${STORAGE_PREFIX}/showYAMLEditorTooltips`;
+export const SHOW_FULL_LOG_USERSETTINGS_KEY = `${USERSETTINGS_PREFIX}.show.full.log`;
 // Bootstrap user for OpenShift 4.0 clusters (kube:admin)
 export const KUBE_ADMIN_USERNAMES = ['kube:admin'];
 
@@ -62,6 +64,7 @@ export enum FLAGS {
   PROMETHEUS = 'PROMETHEUS',
   OPENSHIFT = 'OPENSHIFT',
   MONITORING = 'MONITORING',
+  CAN_CREATE_NS = 'CAN_CREATE_NS',
   CAN_GET_NS = 'CAN_GET_NS',
   CAN_LIST_NS = 'CAN_LIST_NS',
   CAN_LIST_NODE = 'CAN_LIST_NODE',
@@ -85,6 +88,7 @@ export enum FLAGS {
   CONSOLE_NOTIFICATION = 'CONSOLE_NOTIFICATION',
   CONSOLE_EXTERNAL_LOG_LINK = 'CONSOLE_EXTERNAL_LOG_LINK',
   CONSOLE_YAML_SAMPLE = 'CONSOLE_YAML_SAMPLE',
+  CONSOLE_QUICKSTART = 'CONSOLE_QUICKSTART',
 }
 
 export const CONFIG_STORAGE_CONSOLE = 'console';
@@ -100,7 +104,23 @@ export enum REQUESTER_FILTER {
   SYSTEM = 'system',
 }
 
+export enum USER_TELEMETRY_ANALYTICS {
+  ALLOW = 'allow',
+  DENY = 'deny',
+}
+
+export enum CLUSTER_TELEMETRY_ANALYTICS {
+  OPTIN = 'OPT-IN',
+  OPTOUT = 'OPT-OUT',
+  DISABLED = 'DISABLED',
+  ENFORCE = 'ENFORCE',
+}
+
 export const CLUSTER_VERSION_DEFAULT_UPSTREAM_SERVER_URL_PLACEHOLDER =
   'https://api.openshift.com/api/upgrades_info/v1/graph';
 
-export const HUB_CLUSTER_NAME = 'local-cluster'; // TODO remove multicluster
+export const GETTING_STARTED_USER_SETTINGS_KEY_ADD_PAGE =
+  'devconsole.addPage.gettingStarted.expanded';
+export const GETTING_STARTED_USER_SETTINGS_KEY_CLUSTER_DASHBOARD =
+  'console.clusterDashboard.gettingStarted.expanded';
+export const PREFERRED_TELEMETRY_USER_SETTING_KEY = 'telemetry.analytics';

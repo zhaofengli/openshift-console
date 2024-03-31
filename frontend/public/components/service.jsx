@@ -85,7 +85,7 @@ const ServiceLocation = ({ s }) => {
 const kind = 'Service';
 
 const tableColumnClasses = [
-  'pf-u-w-25-on-xl',
+  'pf-v5-u-w-25-on-xl',
   'pf-m-hidden pf-m-visible-on-md',
   'pf-m-hidden pf-m-visible-on-lg',
   'pf-m-hidden pf-m-visible-on-xl',
@@ -273,12 +273,11 @@ const Details = ({ obj: s }) => {
   );
 };
 
-const { details, pods, editYaml } = navFactory;
 const ServicesDetailsPage = (props) => (
   <DetailsPage
     {...props}
     menuActions={menuActions}
-    pages={[details(Details), editYaml(), pods()]}
+    pages={[navFactory.details(Details), navFactory.editYaml(), navFactory.pods()]}
   />
 );
 

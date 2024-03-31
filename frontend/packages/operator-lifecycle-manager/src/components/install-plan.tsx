@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useSelector } from 'react-redux';
-import { match, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom-v5-compat';
 import { getUser } from '@console/dynamic-plugin-sdk';
 import { Conditions } from '@console/internal/components/conditions';
 import {
@@ -40,7 +40,7 @@ import {
   referenceForOwnerRef,
   k8sPatch,
   apiVersionForReference,
-  UserKind,
+  UserInfo,
 } from '@console/internal/module/k8s';
 import { RootState } from '@console/internal/redux';
 import { FLAGS, GreenCheckCircleIcon, Status, useFlag } from '@console/shared';
@@ -57,19 +57,19 @@ import { requireOperatorGroup } from './operator-group';
 import { InstallPlanReview, referenceForStepResource } from './index';
 
 const tableColumnClasses = [
-  '',
-  '',
-  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-u-w-16-on-lg'),
-  classNames('pf-m-hidden', 'pf-m-visible-on-lg'),
-  classNames('pf-m-hidden', 'pf-m-visible-on-xl'),
+  'pf-v5-c-table__td',
+  'pf-v5-c-table__td',
+  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-v5-u-w-16-on-lg', 'pf-v5-c-table__td'),
+  classNames('pf-m-hidden', 'pf-m-visible-on-lg', 'pf-v5-c-table__td'),
+  classNames('pf-m-hidden', 'pf-m-visible-on-xl', 'pf-v5-c-table__td'),
   Kebab.columnClass,
 ];
 
 const componentsTableColumnClasses = [
-  '',
-  '',
-  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-u-w-16-on-lg'),
-  classNames('pf-m-hidden', 'pf-m-visible-on-lg'),
+  'pf-v5-c-table__td',
+  'pf-v5-c-table__td',
+  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-v5-u-w-16-on-lg', 'pf-v5-c-table__td'),
+  classNames('pf-m-hidden', 'pf-m-visible-on-lg', 'pf-v5-c-table__td'),
 ];
 
 export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj }) => {
@@ -98,7 +98,7 @@ export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj }) => {
 
       {/* Components */}
       <TableData className={tableColumnClasses[3]}>
-        <ul className="pf-c-list pf-m-plain">
+        <ul className="pf-v5-c-list pf-m-plain">
           {obj.spec.clusterServiceVersionNames.map((csvName) => (
             <li key={csvName}>
               {obj.status?.phase === 'Complete' ? (
@@ -124,7 +124,7 @@ export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj }) => {
         {(obj.metadata.ownerReferences || [])
           .filter((ref) => referenceForOwnerRef(ref) === referenceForModel(SubscriptionModel))
           .map((ref) => (
-            <ul key={ref.uid} className="pf-c-list pf-m-plain">
+            <ul key={ref.uid} className="pf-v5-c-list pf-m-plain">
               <li>
                 <ResourceLink
                   kind={referenceForModel(SubscriptionModel)}
@@ -221,7 +221,8 @@ const getCatalogSources = (
 
 export const InstallPlansPage: React.FC<InstallPlansPageProps> = (props) => {
   const { t } = useTranslation();
-  const namespace = props.namespace || props.match?.params?.ns;
+  const params = useParams();
+  const namespace = props.namespace || params?.ns;
   return (
     <MultiListPage
       {...props}
@@ -248,18 +249,18 @@ export const InstallPlansPage: React.FC<InstallPlansPageProps> = (props) => {
   );
 };
 
-const updateUser = (isOpenShift: boolean, user: UserKind): string => {
+const updateUser = (isOpenShift: boolean, user: UserInfo): string => {
   if (!isOpenShift) {
     return authSvc.name();
   }
-  return user.fullName || user.metadata?.name;
+  return user?.username;
 };
 
 export const NeedInstallPlanPermissions: React.FC<NeedInstallPlanPermissionsProps> = ({
   installPlan,
 }) => {
   const isOpenShift = useFlag(FLAGS.OPENSHIFT);
-  const user = useSelector<RootState, object>(getUser);
+  const user: UserInfo = useSelector<RootState, object>(getUser);
 
   const [username, setUsername] = React.useState(updateUser(isOpenShift, user));
 
@@ -433,8 +434,8 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
         <div className="co-m-pane__body">
           <HintBlock title={t('olm~Review manual InstallPlan')}>
             <InstallPlanReview installPlan={obj} />
-            <div className="pf-c-form">
-              <div className="pf-c-form__actions">
+            <div className="pf-v5-c-form">
+              <div className="pf-v5-c-form__actions">
                 <Button variant="primary" isDisabled={!needsApproval} onClick={() => approve()}>
                   {needsApproval ? t('olm~Approve') : t('olm~Approved')}
                 </Button>
@@ -460,18 +461,21 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
         <div key={steps[0].resolving} className="co-m-pane__body">
           <SectionHeading text={steps[0].resolving} />
           <div className="co-table-container">
-            <table className="pf-c-table pf-m-compact pf-m-border-rows">
-              <thead>
-                <tr>
+            <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+              <thead className="pf-v5-c-table__thead">
+                <tr className="pf-v5-c-table__tr">
                   <th className={componentsTableColumnClasses[0]}>{t('olm~Name')}</th>
                   <th className={componentsTableColumnClasses[1]}>{t('olm~Kind')}</th>
                   <th className={componentsTableColumnClasses[2]}>{t('olm~Status')}</th>
                   <th className={componentsTableColumnClasses[3]}>{t('olm~API version')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="pf-v5-c-table__tbody">
                 {steps.map((step) => (
-                  <tr key={`${referenceForStepResource(step.resource)}-${step.resource.name}`}>
+                  <tr
+                    key={`${referenceForStepResource(step.resource)}-${step.resource.name}`}
+                    className="pf-v5-c-table__tr"
+                  >
                     <td className={componentsTableColumnClasses[0]}>
                       {['Present', 'Created'].includes(step.status) ? (
                         <ResourceLink
@@ -516,35 +520,36 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
   );
 };
 
-export const InstallPlanDetailsPage: React.FC<InstallPlanDetailsPageProps> = (props) => (
-  <DetailsPage
-    {...props}
-    namespace={props.match.params.ns}
-    kind={referenceForModel(InstallPlanModel)}
-    name={props.match.params.name}
-    pages={[
-      navFactory.details(InstallPlanDetails),
-      navFactory.editYaml(),
-      // t('olm~Components')
-      { href: 'components', nameKey: 'olm~Components', component: InstallPlanPreview },
-    ]}
-    menuActions={[...Kebab.getExtensionsActionsForKind(InstallPlanModel), ...Kebab.factory.common]}
-  />
-);
+export const InstallPlanDetailsPage: React.FC = (props) => {
+  const params = useParams();
+  return (
+    <DetailsPage
+      {...props}
+      namespace={params.ns}
+      kind={referenceForModel(InstallPlanModel)}
+      name={params.name}
+      pages={[
+        navFactory.details(InstallPlanDetails),
+        navFactory.editYaml(),
+        // t('olm~Components')
+        { href: 'components', nameKey: 'olm~Components', component: InstallPlanPreview },
+      ]}
+      menuActions={[
+        ...Kebab.getExtensionsActionsForKind(InstallPlanModel),
+        ...Kebab.factory.common,
+      ]}
+    />
+  );
+};
 
 export type InstallPlansListProps = {};
 
 export type InstallPlansPageProps = {
   namespace?: string;
-  match?: match<{ ns?: string }>;
 };
 
 export type InstallPlanDetailsProps = {
   obj: InstallPlanKind;
-};
-
-export type InstallPlanDetailsPageProps = {
-  match: match<{ ns: string; name: string }>;
 };
 
 export type InstallPlanPreviewProps = {
@@ -559,7 +564,7 @@ export type InstallPlanPreviewState = {
 
 export type NeedInstallPlanPermissionsProps = {
   installPlan: InstallPlanKind;
-  user?: UserKind;
+  user?: UserInfo;
 };
 
 InstallPlansPage.displayName = 'InstallPlansPage';

@@ -1,6 +1,10 @@
 import * as _ from 'lodash';
 import { getActiveUserName } from '@console/internal/actions/ui';
 import { getRandomChars } from '@console/shared';
+import {
+  DELETED_RESOURCE_IN_K8S_ANNOTATION,
+  RESOURCE_LOADED_FROM_RESULTS_ANNOTATION,
+} from '../../../../const';
 import { PipelineRunModel } from '../../../../models';
 import {
   PipelineKind,
@@ -68,6 +72,14 @@ export const getPipelineName = (pipeline?: PipelineKind, latestRun?: PipelineRun
   return null;
 };
 
+export const getPipelineRunGenerateName = (pipelineRun: PipelineRunKind): string => {
+  if (pipelineRun.metadata.generateName) {
+    return pipelineRun.metadata.generateName;
+  }
+
+  return `${pipelineRun.metadata.name?.replace(/-[a-z0-9]{5,6}$/, '')}-`;
+};
+
 export const getPipelineRunData = (
   pipeline: PipelineKind = null,
   latestRun?: PipelineRunKind,
@@ -102,6 +114,11 @@ export const getPipelineRunData = (
   );
   delete annotations['kubectl.kubernetes.io/last-applied-configuration'];
   delete annotations['tekton.dev/v1beta1TaskRuns'];
+  delete annotations['results.tekton.dev/log'];
+  delete annotations['results.tekton.dev/record'];
+  delete annotations['results.tekton.dev/result'];
+  delete annotations[DELETED_RESOURCE_IN_K8S_ANNOTATION];
+  delete annotations[RESOURCE_LOADED_FROM_RESULTS_ANNOTATION];
 
   const newPipelineRun = {
     apiVersion: pipeline ? pipeline.apiVersion : latestRun.apiVersion,
@@ -112,7 +129,10 @@ export const getPipelineRunData = (
             generateName: `${pipelineName}-`,
           }
         : {
-            name: `${pipelineName}-${getRandomChars()}`,
+            name:
+              latestRun?.metadata?.name !== undefined
+                ? `${getPipelineRunGenerateName(latestRun)}${getRandomChars()}`
+                : `${pipelineName}-${getRandomChars()}`,
           }),
       annotations,
       namespace: pipeline ? pipeline.metadata.namespace : latestRun.metadata.namespace,

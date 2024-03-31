@@ -139,6 +139,7 @@ export type ClusterServiceVersionKind = {
   status?: {
     phase: ClusterServiceVersionPhase;
     reason: CSVConditionReason;
+    message?: string;
     requirementStatus?: RequirementStatus[];
   };
 } & K8sResourceKind;
@@ -182,6 +183,11 @@ export type InstallPlanKind = {
   };
 } & K8sResourceCommon;
 
+export type Env = {
+  name: string;
+  value: string;
+};
+
 export type SubscriptionKind = {
   apiVersion: 'operators.coreos.com/v1alpha1';
   kind: 'Subscription';
@@ -192,6 +198,9 @@ export type SubscriptionKind = {
     startingCSV?: string;
     sourceNamespace?: string;
     installPlanApproval?: InstallPlanApproval;
+    config?: {
+      env?: Env[];
+    };
   };
   status?: {
     catalogHealth?: {

@@ -1,20 +1,25 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper } from 'enzyme';
+import { mount } from 'enzyme';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom-v5-compat';
+import store from '@console/internal/redux';
 
 import { ListInput } from '../../../public/components/utils';
 import { IDPNameInput } from '../../../public/components/cluster-settings/idp-name-input';
 import { IDPCAFileInput } from '../../../public/components/cluster-settings/idp-cafile-input';
-import {
-  AddGitHubPage,
-  AddGitHubPageState,
-} from '../../../public/components/cluster-settings/github-idp-form';
+import { AddGitHubPage } from '../../../public/components/cluster-settings/github-idp-form';
 import { controlButtonTest } from './basicauth-idp-form.spec';
 
 describe('Add Identity Provider: GitHub', () => {
-  let wrapper: ShallowWrapper<{}, AddGitHubPageState>;
-
+  let wrapper;
   beforeEach(() => {
-    wrapper = shallow(<AddGitHubPage />).dive();
+    wrapper = mount(
+      <Provider store={store}>
+        <BrowserRouter>
+          <AddGitHubPage />
+        </BrowserRouter>
+      </Provider>,
+    );
   });
 
   it('should render AddGitHubPage component', () => {
@@ -39,7 +44,7 @@ describe('Add Identity Provider: GitHub', () => {
   });
 
   it('should prefill github in name field by default', () => {
-    expect(wrapper.find(IDPNameInput).props().value).toEqual(wrapper.state().name);
+    expect(wrapper.find(IDPNameInput).props().value).toEqual('github');
   });
 
   it('should prefill GitHub list input default values as empty', () => {

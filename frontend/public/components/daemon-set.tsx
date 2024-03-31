@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,7 @@ const kind = 'DaemonSet';
 const tableColumnClasses = [
   '',
   '',
-  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-u-w-16-on-lg'),
+  classNames('pf-m-hidden', 'pf-m-visible-on-sm', 'pf-v5-u-w-16-on-lg'),
   classNames('pf-m-hidden', 'pf-m-visible-on-lg'),
   classNames('pf-m-hidden', 'pf-m-visible-on-lg'),
   Kebab.columnClass,
@@ -236,7 +236,7 @@ const DaemonSetPods: React.FC<DaemonSetPodsProps> = (props) => (
   <PodsComponent {...props} showNodes />
 );
 
-export const DaemonSetsDetailsPage: React.FC<DaemonSetsDetailsPageProps> = (props) => {
+export const DaemonSetsDetailsPage: React.FC = (props) => {
   const prometheusIsAvailable = usePrometheusGate();
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
@@ -295,8 +295,4 @@ type DaemonSetsPageProps = {
 
 type DaemonSetPodsProps = {
   obj: K8sResourceKind;
-};
-
-type DaemonSetsDetailsPageProps = {
-  match: any;
 };

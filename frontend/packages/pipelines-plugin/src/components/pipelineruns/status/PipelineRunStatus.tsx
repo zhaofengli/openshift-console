@@ -1,11 +1,10 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { LoadingInline, resourcePathFromModel } from '@console/internal/components/utils';
 import { DASH } from '@console/shared';
 import { PipelineRunModel } from '../../../models';
-import { PipelineRunKind } from '../../../types';
-import { useTaskRuns } from '../../taskruns/useTaskRuns';
+import { PipelineRunKind, TaskRunKind } from '../../../types';
 import { getPLRLogSnippet } from '../logs/pipelineRunLogSnippet';
 import PipelineResourceStatus from './PipelineResourceStatus';
 import StatusPopoverContent from './StatusPopoverContent';
@@ -14,15 +13,19 @@ type PipelineRunStatusProps = {
   status: string;
   pipelineRun: PipelineRunKind;
   title?: string;
+  taskRuns: TaskRunKind[];
+  taskRunsLoaded?: boolean;
 };
-const PipelineRunStatus: React.FC<PipelineRunStatusProps> = ({ status, pipelineRun, title }) => {
+const PipelineRunStatus: React.FC<PipelineRunStatusProps> = ({
+  status,
+  pipelineRun,
+  title,
+  taskRuns,
+  taskRunsLoaded,
+}) => {
   const { t } = useTranslation();
-  const [taskRuns, taskRunsLoaded] = useTaskRuns(
-    pipelineRun?.metadata?.namespace,
-    pipelineRun?.metadata?.name,
-  );
   return pipelineRun ? (
-    taskRunsLoaded ? (
+    taskRuns.length > 0 || (taskRunsLoaded && taskRuns.length === 0) ? (
       <PipelineResourceStatus status={status} title={title}>
         <StatusPopoverContent
           logDetails={getPLRLogSnippet(pipelineRun, taskRuns)}

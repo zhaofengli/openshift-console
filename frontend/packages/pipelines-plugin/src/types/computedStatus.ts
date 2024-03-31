@@ -13,3 +13,18 @@ export enum ComputedStatus {
   Idle = 'Idle',
   Other = '-',
 }
+
+export enum ApprovalStatus {
+  Idle = 'idle',
+  RequestSent = 'wait',
+  PartiallyApproved = 'partiallyApproved',
+  AlmostApproved = 'almostApproved',
+  Accepted = 'true',
+  Rejected = 'false',
+  TimedOut = 'timeout',
+  Unknown = 'unknown',
+}
+
+export enum CustomRunStatus {
+  RunCancelled = 'RunCancelled',
+}

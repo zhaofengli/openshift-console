@@ -5,13 +5,15 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateVariant,
-  Title,
+  EmptyStateHeader,
+  EmptyStateFooter,
+  Truncate,
 } from '@patternfly/react-core';
-import { ExternalLinkAltIcon } from '@patternfly/react-icons';
+import { ExternalLinkAltIcon } from '@patternfly/react-icons/dist/esm/icons/external-link-alt-icon';
 import * as classNames from 'classnames';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { ExternalLink, getQueryArgument } from '@console/internal/components/utils';
 import { history } from '@console/internal/components/utils/router';
 import { TileViewPage } from '@console/internal/components/utils/tile-view-page';
@@ -22,8 +24,6 @@ import {
   GreenCheckCircleIcon,
   Modal,
   useUserSettingsCompatibility,
-  useActiveCluster, // TODO remove multicluster
-  HUB_CLUSTER_NAME, // TODO remove multicluster
 } from '@console/shared';
 import { getURLWithParams } from '@console/shared/src/components/catalog/utils';
 import { isModifiedEvent } from '@console/shared/src/utils';
@@ -31,6 +31,7 @@ import { DefaultCatalogSource, DefaultCatalogSourceDisplayName } from '../../con
 import { SubscriptionModel } from '../../models';
 import { communityOperatorWarningModal } from './operator-hub-community-provider-modal';
 import { OperatorHubItemDetails } from './operator-hub-item-details';
+import { isAWSSTSCluster, isAzureWIFCluster } from './operator-hub-utils';
 import {
   OperatorHubItem,
   InstalledState,
@@ -92,8 +93,8 @@ const filterByArchAndOS = (items: OperatorHubItem[]): OperatorHubItem[] => {
 };
 
 const Badge = ({ text }) => (
-  <span key={text} className="pf-c-badge pf-m-read">
-    {text}
+  <span key={text} className="pf-v5-c-badge pf-m-read">
+    <Truncate className="pf-v5-c-truncate--no-min-width" content={text} />
   </span>
 );
 
@@ -216,8 +217,12 @@ const infraFeaturesSort = (infrastructure) => {
       return 1;
     case InfraFeatures.FipsMode:
       return 2;
-    default:
+    case InfraFeatures.TokenAuth:
       return 3;
+    case InfraFeatures.tlsProfiles:
+      return 4;
+    default:
+      return 5;
   }
 };
 
@@ -371,6 +376,7 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
     <CatalogTile
       className="co-catalog-tile"
       key={uid}
+      id={uid}
       title={name}
       badges={badges}
       icon={icon}
@@ -396,7 +402,6 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
 
 export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) => {
   const { t } = useTranslation();
-  const [activeCluster] = useActiveCluster(); // TODO remove multicluster
   const [detailsItem, setDetailsItem] = React.useState(null);
   const [showDetails, setShowDetails] = React.useState(false);
   const [ignoreOperatorWarning, setIgnoreOperatorWarning, loaded] = useUserSettingsCompatibility<
@@ -404,9 +409,9 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
   >(userSettingsKey, storeKey, false);
   const [updateChannel, setUpdateChannel] = React.useState('');
   const [updateVersion, setUpdateVersion] = React.useState('');
+  const [tokenizedAuth, setTokenizedAuth] = React.useState(null);
   const installVersion = getQueryArgument('version');
-  const filteredItems =
-    activeCluster === HUB_CLUSTER_NAME ? filterByArchAndOS(props.items) : props.items; // TODO remove multicluster
+  const filteredItems = filterByArchAndOS(props.items);
 
   React.useEffect(() => {
     const detailsItemID = new URLSearchParams(window.location.search).get('details-item');
@@ -415,6 +420,28 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
     });
     setDetailsItem(currentItem);
     setShowDetails(!_.isNil(currentItem));
+    if (
+      currentItem &&
+      isAWSSTSCluster(
+        currentItem.cloudCredentials,
+        currentItem.infrastructure,
+        currentItem.authentication,
+      ) &&
+      currentItem.infraFeatures?.find((i) => i === InfraFeatures.TokenAuth)
+    ) {
+      setTokenizedAuth('AWS');
+    }
+    if (
+      currentItem &&
+      isAzureWIFCluster(
+        currentItem.cloudCredentials,
+        currentItem.infrastructure,
+        currentItem.authentication,
+      ) &&
+      currentItem.infraFeatures?.find((i) => i === InfraFeatures.TokenAuth)
+    ) {
+      setTokenizedAuth('Azure');
+    }
   }, [filteredItems]);
 
   const showCommunityOperator = (item: OperatorHubItem) => (ignoreWarning = false) => {
@@ -440,6 +467,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
     // reset version and channel state so that switching between operator cards does not carry over previous selections
     setUpdateChannel('');
     setUpdateVersion('');
+    setTokenizedAuth('');
   };
 
   const openOverlay = (item: OperatorHubItem) => {
@@ -462,7 +490,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
 
   const createLink =
     detailsItem &&
-    `/operatorhub/subscribe?pkg=${detailsItem.obj.metadata.name}&catalog=${detailsItem.catalogSource}&catalogNamespace=${detailsItem.catalogSourceNamespace}&targetNamespace=${props.namespace}&channel=${updateChannel}&version=${updateVersion}`;
+    `/operatorhub/subscribe?pkg=${detailsItem.obj.metadata.name}&catalog=${detailsItem.catalogSource}&catalogNamespace=${detailsItem.catalogSourceNamespace}&targetNamespace=${props.namespace}&channel=${updateChannel}&version=${updateVersion}&tokenizedAuth=${tokenizedAuth}`;
 
   const uninstallLink = () =>
     detailsItem &&
@@ -486,20 +514,20 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
     return (
       <>
         <EmptyState variant={EmptyStateVariant.full} className="co-status-card__alerts-msg">
-          <Title headingLevel="h5" size="lg">
-            {t('olm~No Operators available')}
-          </Title>
-          {window.SERVER_FLAGS.GOOS && window.SERVER_FLAGS.GOARCH && (
-            <EmptyStateBody>
-              {t(
-                'olm~There are no Operators that match operating system {{os}} and architecture {{arch}}.',
-                {
-                  os: window.SERVER_FLAGS.GOOS,
-                  arch: window.SERVER_FLAGS.GOARCH,
-                },
-              )}
-            </EmptyStateBody>
-          )}
+          <EmptyStateHeader titleText={<>{t('olm~No Operators available')}</>} headingLevel="h5" />
+          <EmptyStateFooter>
+            {window.SERVER_FLAGS.GOOS && window.SERVER_FLAGS.GOARCH && (
+              <EmptyStateBody>
+                {t(
+                  'olm~There are no Operators that match operating system {{os}} and architecture {{arch}}.',
+                  {
+                    os: window.SERVER_FLAGS.GOOS,
+                    arch: window.SERVER_FLAGS.GOARCH,
+                  },
+                )}
+              </EmptyStateBody>
+            )}
+          </EmptyStateFooter>
         </EmptyState>
       </>
     );
@@ -553,7 +581,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
               <div className="co-catalog-page__overlay-actions">
                 {remoteWorkflowUrl && (
                   <ExternalLink
-                    additionalClassName="pf-c-button pf-m-primary co-catalog-page__overlay-action"
+                    additionalClassName="pf-v5-c-button pf-m-primary co-catalog-page__overlay-action"
                     href={remoteWorkflowUrl}
                     text={
                       <>
@@ -568,7 +596,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
                 {!detailsItem.installed ? (
                   <Link
                     className={classNames(
-                      'pf-c-button',
+                      'pf-v5-c-button',
                       {
                         'pf-m-secondary': remoteWorkflowUrl,
                       },

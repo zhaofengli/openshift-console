@@ -26,8 +26,8 @@ describe('knatify-utils', () => {
           metadata: {
             ...ksvcData.spec.template.metadata,
             annotations: {
-              'autoscaling.knative.dev/minScale': '1',
-              'autoscaling.knative.dev/maxScale': '3',
+              'autoscaling.knative.dev/min-scale': '1',
+              'autoscaling.knative.dev/max-scale': '3',
             },
           },
         },
@@ -46,7 +46,7 @@ describe('knatify-utils', () => {
     const knatifyFormInitialVal = {
       ...knatifyFormCommonInitialValues,
       runtimeIcon: null,
-      searchTerm: 'openshift/hello-openshift',
+      searchTerm: 'quay.io/openshift-knative/showcase',
       registry: 'external',
       allowInsecureRegistry: false,
       imageStream: { image: '', tag: '', namespace: '' },

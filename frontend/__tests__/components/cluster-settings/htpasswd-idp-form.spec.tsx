@@ -1,19 +1,26 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper } from 'enzyme';
+import { mount } from 'enzyme';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom-v5-compat';
+import store from '@console/internal/redux';
 
 import { IDPNameInput } from '../../../public/components/cluster-settings/idp-name-input';
 import {
   AddHTPasswdPage,
-  AddHTPasswdPageState,
   DroppableFileInput as HTDroppableInput,
 } from '../../../public/components/cluster-settings/htpasswd-idp-form';
 import { controlButtonTest } from './basicauth-idp-form.spec';
 
 describe('Add Identity Provider: HTPasswd', () => {
-  let wrapper: ShallowWrapper<{}, AddHTPasswdPageState>;
-
+  let wrapper;
   beforeEach(() => {
-    wrapper = shallow(<AddHTPasswdPage />).dive();
+    wrapper = mount(
+      <Provider store={store}>
+        <BrowserRouter>
+          <AddHTPasswdPage />
+        </BrowserRouter>
+      </Provider>,
+    );
   });
 
   it('should render AddHTPasswdPage component', () => {
@@ -34,6 +41,6 @@ describe('Add Identity Provider: HTPasswd', () => {
   });
 
   it('should prefill htpasswd in name field by default', () => {
-    expect(wrapper.find(IDPNameInput).props().value).toEqual(wrapper.state().name);
+    expect(wrapper.find(IDPNameInput).props().value).toEqual('htpasswd');
   });
 });

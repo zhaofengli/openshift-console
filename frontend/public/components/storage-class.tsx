@@ -33,9 +33,9 @@ export const isDefaultClass = (storageClass: K8sResourceKind) => {
 };
 
 const tableColumnClasses = [
-  'pf-u-w-42-on-md',
-  'pf-u-w-42-on-md',
-  'pf-m-hidden pf-m-visible-on-md pf-u-w-16-on-md',
+  'pf-v5-u-w-42-on-md',
+  'pf-v5-u-w-42-on-md',
+  'pf-m-hidden pf-m-visible-on-md pf-v5-u-w-16-on-md',
   Kebab.columnClass,
 ];
 
@@ -151,7 +151,7 @@ export const StorageClassPage: React.FC<StorageClassPageProps> = (props) => {
     />
   );
 };
-export const StorageClassDetailsPage: React.FC<StorageClassDetailsPageProps> = (props) => {
+export const StorageClassDetailsPage: React.FC = (props) => {
   const pages = [navFactory.details(detailsPage(StorageClassDetails)), navFactory.editYaml()];
   return (
     <DetailsPage {...props} kind={StorageClassReference} menuActions={menuActions} pages={pages} />
@@ -166,8 +166,4 @@ export type StorageClassDetailsProps = {
 export type StorageClassPageProps = {
   filterLabel: string;
   namespace: string;
-};
-
-export type StorageClassDetailsPageProps = {
-  match: any;
 };

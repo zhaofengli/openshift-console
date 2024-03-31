@@ -6,7 +6,7 @@ import * as _ from 'lodash';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { Alert, AlertStates, Rule, Silence } from '@console/dynamic-plugin-sdk';
 import {
   alertingErrored,
@@ -155,9 +155,9 @@ export const useAlertManagerSilencesDispatch = ({ namespace }) => {
   const dispatch = useDispatch();
   React.useEffect(() => {
     if (loadError) {
-      dispatch(alertingErrored('silences', loadError));
+      dispatch(alertingErrored('devSilences', loadError, 'dev'));
     } else if (loading) {
-      dispatch(alertingLoading('silences'));
+      dispatch(alertingLoading('devSilences', 'dev'));
     } else {
       const silencesWithAlertsName = _.map(response, (s: Silence) => {
         const alertName = _.get(_.find(s.matchers, { name: 'alertname' }), 'value');
@@ -168,7 +168,7 @@ export const useAlertManagerSilencesDispatch = ({ namespace }) => {
             s.matchers.map((m) => `${m.name}${m.isRegex ? '=~' : '='}${m.value}`).join(', '),
         };
       });
-      dispatch(alertingLoaded('silences', silencesWithAlertsName));
+      dispatch(alertingLoaded('devSilences', silencesWithAlertsName, 'dev'));
     }
   }, [dispatch, loadError, loading, response]);
 };

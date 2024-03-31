@@ -1,13 +1,11 @@
 import * as React from 'react';
-import {
-  GitAltIcon,
-  OsImageIcon,
-  CatalogIcon,
-  DatabaseIcon,
-  LaptopCodeIcon,
-  BoltIcon,
-  FileUploadIcon,
-} from '@patternfly/react-icons';
+import { BoltIcon } from '@patternfly/react-icons/dist/esm/icons/bolt-icon';
+import { CatalogIcon } from '@patternfly/react-icons/dist/esm/icons/catalog-icon';
+import { DatabaseIcon } from '@patternfly/react-icons/dist/esm/icons/database-icon';
+import { FileUploadIcon } from '@patternfly/react-icons/dist/esm/icons/file-upload-icon';
+import { GitAltIcon } from '@patternfly/react-icons/dist/esm/icons/git-alt-icon';
+import { LaptopCodeIcon } from '@patternfly/react-icons/dist/esm/icons/laptop-code-icon';
+import { OsImageIcon } from '@patternfly/react-icons/dist/esm/icons/os-image-icon';
 import i18next from 'i18next';
 import { Action } from '@console/dynamic-plugin-sdk/src';
 import { eventIconStyle, ServerlessFunctionIcon } from '@console/knative-plugin/src/utils/icons';
@@ -159,6 +157,7 @@ export const AddActions: { [name: string]: ActionFactory } = {
     path,
     disabled: accessReviewDisabled,
   }),
+  // Tech debt: ODC-7413: Move Serverless specific actions and providers from devconsole into knative-pluigin
   CreateServerlessFunction: (
     namespace,
     application,
@@ -172,6 +171,27 @@ export const AddActions: { [name: string]: ActionFactory } = {
     cta: {
       href: resolvedURLWithParams(
         '/serverless-function/ns/:namespace',
+        namespace,
+        application,
+        contextSource,
+      ),
+    },
+    path,
+    disabled: accessReviewDisabled,
+  }),
+  CreateServerlessFunctionUsingSamples: (
+    namespace,
+    application,
+    contextSource,
+    path,
+    accessReviewDisabled,
+  ) => ({
+    id: 'create-serverless-function-samples',
+    label: i18next.t('devconsole~Serverless function using Samples'),
+    icon: <ServerlessFunctionIcon style={eventIconStyle} />,
+    cta: {
+      href: resolvedURLWithParams(
+        '/samples/ns/:namespace?sampleType=Serverless function',
         namespace,
         application,
         contextSource,

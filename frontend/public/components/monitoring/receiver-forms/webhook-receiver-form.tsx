@@ -14,7 +14,7 @@ export const Form: React.FC<FormProps> = ({ formValues, dispatchFormChange }) =>
         {t('public~URL')}
       </label>
       <input
-        className="pf-c-form-control"
+        className="pf-v5-c-form-control"
         type="text"
         aria-describedby="webhook-url-help"
         id="webhook-url"
@@ -34,6 +34,7 @@ export const Form: React.FC<FormProps> = ({ formValues, dispatchFormChange }) =>
         <ExpandCollapse
           textCollapsed={t('public~Show advanced configuration')}
           textExpanded={t('public~Hide advanced configuration')}
+          dataTest="advanced-configuration"
         >
           <div className="co-form-subsection">
             <div className="form-group">

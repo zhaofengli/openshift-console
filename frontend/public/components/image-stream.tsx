@@ -5,7 +5,7 @@ import * as semver from 'semver';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { AlertVariant, Button, Popover } from '@patternfly/react-core';
-import { QuestionCircleIcon } from '@patternfly/react-icons';
+import { QuestionCircleIcon } from '@patternfly/react-icons/dist/esm/icons/question-circle-icon';
 
 import { K8sResourceKind, K8sResourceKindReference } from '../module/k8s';
 import { ImageStreamModel } from '../models';
@@ -298,7 +298,7 @@ const pages = [
   navFactory.editYaml(),
   navFactory.history(ImageStreamHistory),
 ];
-export const ImageStreamsDetailsPage: React.SFC<ImageStreamsDetailsPageProps> = (props) => (
+export const ImageStreamsDetailsPage: React.SFC = (props) => (
   <DetailsPage {...props} kind={ImageStreamsReference} menuActions={menuActions} pages={pages} />
 );
 ImageStreamsDetailsPage.displayName = 'ImageStreamsDetailsPage';
@@ -428,8 +428,4 @@ export type ImageStreamsDetailsProps = {
 
 export type ImageStreamsPageProps = {
   filterLabel: string;
-};
-
-export type ImageStreamsDetailsPageProps = {
-  match: any;
 };

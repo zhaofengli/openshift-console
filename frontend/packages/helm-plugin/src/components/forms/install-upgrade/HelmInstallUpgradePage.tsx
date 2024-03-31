@@ -1,12 +1,11 @@
 import * as React from 'react';
-import * as Ajv from 'ajv';
 import { Formik } from 'formik';
 import { safeDump, safeLoad } from 'js-yaml';
 import { JSONSchema7 } from 'json-schema';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
 import NamespacedPage, {
   NamespacedPageVariants,
 } from '@console/dev-console/src/components/NamespacedPage';
@@ -33,21 +32,15 @@ import { getHelmActionValidationSchema } from '../../../utils/helm-validation-ut
 import HelmChartMetaDescription from './HelmChartMetaDescription';
 import HelmInstallUpgradeForm, { HelmInstallUpgradeFormData } from './HelmInstallUpgradeForm';
 
-export type HelmInstallUpgradePageProps = RouteComponentProps<{
-  ns?: string;
-  releaseName?: string;
-}>;
-
-const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProps> = ({
-  location,
-  match,
-}) => {
+const HelmInstallUpgradePage: React.FunctionComponent = () => {
+  const location = useLocation();
+  const params = useParams();
   const searchParams = new URLSearchParams(location.search);
 
-  const namespace = match.params.ns || searchParams.get('preselected-ns');
+  const namespace = params.ns || searchParams.get('preselected-ns');
   const initialChartURL = searchParams.get('chartURL');
   const indexEntry = searchParams.get('indexEntry');
-  const initialReleaseName = match.params.releaseName || '';
+  const initialReleaseName = params.releaseName || '';
   const helmChartName = searchParams.get('chartName');
   const helmChartRepoName = searchParams.get('chartRepoName');
   const helmActionOrigin = searchParams.get('actionOrigin') as HelmActionOrigins;
@@ -141,26 +134,18 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
       chartIndexEntry,
       yamlData,
       formData,
-      formSchema,
       editorType,
     }: HelmInstallUpgradeFormData = values;
     let valuesObj;
 
     if (editorType === EditorType.Form) {
-      const ajv = new Ajv({ schemaId: 'auto' });
-      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      ajv.addMetaSchema(require('ajv/lib/refs/json-schema-draft-06.json'));
       try {
-        const validSchema = ajv.validateSchema(formSchema);
         const prunedFormData = prune(formData);
-        const validFormData = validSchema && ajv.validate(formSchema, prunedFormData);
-        if (validFormData) {
+        if (prunedFormData) {
           valuesObj = prunedFormData;
         } else {
           actions.setStatus({
-            submitError: t('helm-plugin~Errors in the form - {{errorsText}}', {
-              errorsText: ajv.errorsText(),
-            }),
+            submitError: t('helm-plugin~Errors in the form data.'),
           });
           return Promise.resolve();
         }
@@ -170,7 +155,7 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
             errorText: err.toString(),
           }),
         });
-        return Promise.reject(err);
+        return Promise.resolve();
       }
     } else if (yamlData) {
       try {
@@ -179,7 +164,7 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
         actions.setStatus({
           submitError: t('helm-plugin~Invalid YAML - {{errorText}}', { errorText: err.toString() }),
         });
-        return Promise.reject(err);
+        return Promise.resolve();
       }
     }
 

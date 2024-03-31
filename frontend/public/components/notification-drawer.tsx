@@ -5,7 +5,7 @@ import i18next from 'i18next';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { connect, useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   NotificationDrawer,
   NotificationEntry,
@@ -21,6 +21,7 @@ import {
 } from '@console/internal/actions/observe';
 import * as UIActions from '@console/internal/actions/ui';
 import { RootState } from '@console/internal/redux';
+import { history, resourcePath } from '@console/internal/components/utils';
 
 import { getClusterID } from '../module/k8s/cluster-settings';
 
@@ -46,9 +47,10 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
-  EmptyStateSecondaryActions,
   EmptyStateVariant,
-  Title,
+  EmptyStateActions,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import { useClusterVersion } from '@console/shared/src/hooks/version';
 import { usePrevious } from '@console/shared/src/hooks/previous';
@@ -60,7 +62,6 @@ import {
   useResolvedExtensions,
   ResolvedExtension,
 } from '@console/dynamic-plugin-sdk';
-import { history, resourcePath } from '@console/internal/components/utils';
 import { coFetchJSON } from '../co-fetch';
 import { ConsolePluginModel } from '../models';
 import {
@@ -83,11 +84,16 @@ const AlertErrorState: React.FC<AlertErrorProps> = ({ errorText }) => {
   const { t } = useTranslation();
   return (
     <EmptyState variant={EmptyStateVariant.full}>
-      <EmptyStateIcon className="co-status-card__alerts-icon" icon={RedExclamationCircleIcon} />
-      <Title headingLevel="h5" size="lg">
-        {t('public~Alerts could not be loaded')}
-      </Title>
-      {errorText && <EmptyStateBody>{errorText}</EmptyStateBody>}
+      <EmptyStateHeader
+        titleText={<>{t('public~Alerts could not be loaded')}</>}
+        icon={
+          <EmptyStateIcon className="co-status-card__alerts-icon" icon={RedExclamationCircleIcon} />
+        }
+        headingLevel="h5"
+      />
+      <EmptyStateFooter>
+        {errorText && <EmptyStateBody>{errorText}</EmptyStateBody>}
+      </EmptyStateFooter>
     </EmptyState>
   );
 };
@@ -96,19 +102,19 @@ const AlertEmptyState: React.FC<AlertEmptyProps> = ({ drawerToggle }) => {
   const { t } = useTranslation();
   return (
     <EmptyState variant={EmptyStateVariant.full} className="co-status-card__alerts-msg">
-      <Title headingLevel="h5" size="lg">
-        {t('public~No critical alerts')}
-      </Title>
+      <EmptyStateHeader titleText={<>{t('public~No critical alerts')}</>} headingLevel="h5" />
       <EmptyStateBody>
         {t(
           'public~There are currently no critical alerts firing. There may be firing alerts of other severities or silenced critical alerts however.',
         )}
       </EmptyStateBody>
-      <EmptyStateSecondaryActions>
-        <Link to="/monitoring/alerts" onClick={drawerToggle}>
-          {t('public~View all alerts')}
-        </Link>
-      </EmptyStateSecondaryActions>
+      <EmptyStateFooter>
+        <EmptyStateActions>
+          <Link to="/monitoring/alerts" onClick={drawerToggle}>
+            {t('public~View all alerts')}
+          </Link>
+        </EmptyStateActions>
+      </EmptyStateFooter>
     </EmptyState>
   );
 };

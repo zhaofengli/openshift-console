@@ -8,13 +8,14 @@ import {
   Popover,
   CardTitle,
 } from '@patternfly/react-core';
-import { AddCircleOIcon, PencilAltIcon } from '@patternfly/react-icons';
+import { AddCircleOIcon } from '@patternfly/react-icons/dist/esm/icons/add-circle-o-icon';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import { sortable, wrappable } from '@patternfly/react-table';
 import * as classNames from 'classnames';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { Link, match as RouterMatch, useParams } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom-v5-compat';
 import {
   WatchK8sResource,
   ResourceStatus,
@@ -40,6 +41,7 @@ import {
   ExternalLink,
   FirehoseResult,
   getDocumentationURL,
+  isManaged,
   Kebab,
   KebabAction,
   KebabOption,
@@ -75,9 +77,7 @@ import { consolePluginModal } from '@console/shared/src/components/modals';
 import { RedExclamationCircleIcon } from '@console/shared/src/components/status/icons';
 import { CONSOLE_OPERATOR_CONFIG_NAME } from '@console/shared/src/constants';
 import { useActiveNamespace } from '@console/shared/src/hooks/redux-selectors';
-import { useActiveCluster } from '@console/shared/src/hooks/useActiveCluster'; // TODO remove multicluster
 import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
-import { RouteParams } from '@console/shared/src/types';
 import { isPluginEnabled } from '@console/shared/src/utils';
 import { GLOBAL_OPERATOR_NAMESPACES, GLOBAL_COPIED_CSV_NAMESPACE } from '../const';
 import {
@@ -108,7 +108,7 @@ import { useClusterServiceVersion } from '../utils/useClusterServiceVersion';
 import { useClusterServiceVersionPath } from '../utils/useClusterServiceVersionPath';
 import { createUninstallOperatorModal } from './modals/uninstall-operator-modal';
 import { ProvidedAPIsPage, ProvidedAPIPage, ProvidedAPIPageProps } from './operand';
-import { operatorGroupFor, operatorNamespaceFor } from './operator-group';
+import { operatorGroupFor, operatorNamespaceFor, targetNamespacesFor } from './operator-group';
 import { CreateInitializationResourceButton } from './operator-install-page';
 import {
   SourceMissingStatus,
@@ -228,19 +228,28 @@ const ClusterServiceVersionStatus: React.FC<ClusterServiceVersionStatusProps> = 
 
 const ManagedNamespaces: React.FC<ManagedNamespacesProps> = ({ obj }) => {
   const { t } = useTranslation();
-  const olmTargetNamespaces = obj?.metadata?.annotations?.['olm.targetNamespaces'] ?? '';
-  const managedNamespaces = olmTargetNamespaces?.split(',') || [];
-
-  if (managedNamespaces.length === 1 && managedNamespaces[0] === '') {
-    return t('olm~All Namespaces');
+  const managedNamespaces = targetNamespacesFor(obj)?.split(',') || [];
+  if (isCopiedCSV(obj)) {
+    return (
+      <>
+        <ResourceLink
+          kind="Namespace"
+          title={obj.metadata.namespace}
+          name={obj.metadata.namespace}
+        />
+        <span className="text-muted">{obj.status.message}</span>
+      </>
+    );
   }
 
   switch (managedNamespaces.length) {
     case 0:
-      return <span className="text-muted">{t('olm~All Namespaces')}</span>;
+      return t('olm~All Namespaces');
     case 1:
-      return (
+      return managedNamespaces[0] ? (
         <ResourceLink kind="Namespace" title={managedNamespaces[0]} name={managedNamespaces[0]} />
+      ) : (
+        t('olm~All Namespaces')
       );
     default:
       return (
@@ -302,7 +311,7 @@ const ConsolePlugins: React.FC<ConsolePluginsProps> = ({ csvPlugins, trusted }) 
                   {isPluginEnabled(consoleOperatorConfig, plugin)
                     ? t('olm~Enabled')
                     : t('olm~Disabled')}{' '}
-                  <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+                  <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
                 </>
               </Button>
             </dd>
@@ -582,7 +591,6 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
 }) => {
   const { t } = useTranslation();
   const activeNamespace = useActiveNamespace();
-  const [cluster] = useActiveCluster(); // TODO remove multicluster
   const nameHeader: Header = {
     title: t('olm~Name'),
     sortField: 'metadata.name',
@@ -656,7 +664,7 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
       }
 
       if (
-        window.SERVER_FLAGS.copiedCSVsDisabled[cluster] && // TODO remove multicluster
+        window.SERVER_FLAGS.copiedCSVsDisabled &&
         operator.metadata.namespace === GLOBAL_COPIED_CSV_NAMESPACE &&
         activeNamespace !== GLOBAL_COPIED_CSV_NAMESPACE
       ) {
@@ -670,20 +678,22 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
     if (obj.kind === 'Subscription') {
       return t('olm~None');
     }
-    const namespaces = obj.metadata.annotations?.['olm.targetNamespaces']?.split(',') || [];
-    if (namespaces.length === 1 && namespaces[0] === '') {
-      return t('olm~All Namespaces');
+
+    if (isCopiedCSV(obj)) {
+      return obj.metadata.namespace;
     }
 
-    switch (namespaces.length) {
+    const targetNamespaces = targetNamespacesFor(obj)?.split(',') ?? [];
+    switch (targetNamespaces.length) {
       case 0:
         return t('olm~All Namespaces');
       case 1:
-        return namespaces[0];
+        return targetNamespaces[0];
       default:
-        return t('olm~{{count}} Namespaces', { count: namespaces.length });
+        return t('olm~{{count}} Namespaces', { count: targetNamespaces.length });
     }
   };
+
   const getOperatorNamespace = (
     obj: ClusterServiceVersionKind | SubscriptionKind,
   ): string | null => {
@@ -724,7 +734,6 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
 
 export const ClusterServiceVersionsPage: React.FC<ClusterServiceVersionsPageProps> = (props) => {
   const { t } = useTranslation();
-  const [cluster] = useActiveCluster(); // TODO remove multicluster
   const [canListAllSubscriptions] = useAccessReview({
     group: SubscriptionModel.apiGroup,
     resource: SubscriptionModel.plural,
@@ -733,13 +742,20 @@ export const ClusterServiceVersionsPage: React.FC<ClusterServiceVersionsPageProp
   const title = t('olm~Installed Operators');
   const olmURL = getDocumentationURL(documentationURLs.operators);
   const helpText = (
-    <Trans ns="olm">
-      Installed Operators are represented by ClusterServiceVersions within this Namespace. For more
-      information, see the{' '}
-      <ExternalLink href={olmURL}>Understanding Operators documentation</ExternalLink>. Or create an
-      Operator and ClusterServiceVersion using the{' '}
-      <ExternalLink href={DOC_URL_OPERATORFRAMEWORK_SDK}>Operator SDK</ExternalLink>.
-    </Trans>
+    <>
+      {t(
+        'olm~Installed Operators are represented by ClusterServiceVersions within this Namespace.',
+      )}
+      {!isManaged() && (
+        <Trans ns="olm">
+          {' '}
+          For more information, see the{' '}
+          <ExternalLink href={olmURL}>Understanding Operators documentation</ExternalLink>. Or
+          create an Operator and ClusterServiceVersion using the{' '}
+          <ExternalLink href={DOC_URL_OPERATORFRAMEWORK_SDK}>Operator SDK</ExternalLink>.
+        </Trans>
+      )}
+    </>
   );
 
   const flatten: Flatten<{
@@ -760,7 +776,7 @@ export const ClusterServiceVersionsPage: React.FC<ClusterServiceVersionsPageProp
         isCSV(obj) ||
         _.isUndefined(
           all.find(({ metadata }) =>
-            [obj?.status?.currentCSV, obj?.spec?.startingCSV].includes(metadata.name),
+            [obj?.status?.currentCSV, obj?.spec?.startingCSV].includes(metadata?.name),
           ),
         ),
     );
@@ -774,7 +790,7 @@ export const ClusterServiceVersionsPage: React.FC<ClusterServiceVersionsPageProp
         {...props}
         resources={[
           ...(!GLOBAL_OPERATOR_NAMESPACES.includes(props.namespace) &&
-          window.SERVER_FLAGS.copiedCSVsDisabled[cluster] // TODO remove multicluster
+          window.SERVER_FLAGS.copiedCSVsDisabled
             ? [
                 {
                   kind: referenceForModel(ClusterServiceVersionModel),
@@ -945,9 +961,9 @@ export const ClusterServiceVersionDetails: React.FC<ClusterServiceVersionDetails
   const { spec, metadata, status } = props.obj;
   const { subscription } = props.customData;
   const providedAPIs = providedAPIsForCSV(props.obj);
+  // TODO (jon) remove annotation destructuring and use helper functions
   const {
     'marketplace.openshift.io/support-workflow': marketplaceSupportWorkflow,
-    'olm.targetNamespaces': olmTargetNamespaces = '',
     'operatorframework.io/initialization-resource': initializationResourceJSON,
   } = metadata.annotations || {};
 
@@ -1108,11 +1124,7 @@ export const ClusterServiceVersionDetails: React.FC<ClusterServiceVersionDetails
                   </Popover>
                 </dt>
                 <dd>
-                  {olmTargetNamespaces === '' ? (
-                    t('olm~All Namespaces')
-                  ) : (
-                    <ResourceLink kind="Namespace" name={props.obj.metadata.namespace} />
-                  )}
+                  <ManagedNamespaces obj={props.obj} />
                 </dd>
               </ResourceSummary>
             </div>
@@ -1210,14 +1222,11 @@ export const CSVSubscription: React.FC<CSVSubscriptionProps> = ({ obj, customDat
   );
 };
 
-type ClusterServiceVersionDetailsPageRouteParams = RouteParams<'name' | 'ns'>;
-
-export const ClusterServiceVersionDetailsPage: React.FC<ClusterServiceVersionsDetailsPageProps> = (
-  props,
-) => {
+export const ClusterServiceVersionDetailsPage: React.FC = (props) => {
   const { t } = useTranslation();
-  const { name, ns } = useParams<ClusterServiceVersionDetailsPageRouteParams>();
-  const [csv, csvLoaded, csvLoadError] = useClusterServiceVersion(name, ns);
+  const params = useParams();
+  const location = useLocation();
+  const [csv, csvLoaded, csvLoadError] = useClusterServiceVersion(params.name, params.ns);
   const namespace = operatorNamespaceFor(csv);
   const [subscriptions, subscriptionsLoaded, subscriptionsLoadError] = useK8sWatchResource<
     SubscriptionKind[]
@@ -1231,6 +1240,11 @@ export const ClusterServiceVersionDetailsPage: React.FC<ClusterServiceVersionsDe
         }
       : null,
   );
+  const [canListClusterScopeInstallPlans] = useAccessReview({
+    group: InstallPlanModel?.apiGroup,
+    resource: InstallPlanModel?.plural,
+    verb: 'list',
+  });
 
   const subscription = React.useMemo(
     () => (subscriptions ?? []).find((s) => s.status.installedCSV === csv?.metadata?.name),
@@ -1289,13 +1303,18 @@ export const ClusterServiceVersionDetailsPage: React.FC<ClusterServiceVersionsDe
       breadcrumbsFor={() => [
         {
           name: t('olm~Installed Operators'),
-          path: getBreadcrumbPath(props.match),
+          path: getBreadcrumbPath(params),
         },
-        { name: t('olm~Operator details'), path: props.match.url },
+        { name: t('olm~Operator details'), path: location.pathname },
       ]}
       resources={[
         { kind: referenceForModel(PackageManifestModel), isList: true, prop: 'packageManifests' },
-        { kind: referenceForModel(InstallPlanModel), isList: true, prop: 'installPlans' },
+        {
+          kind: referenceForModel(InstallPlanModel),
+          isList: true,
+          prop: 'installPlans',
+          ...(canListClusterScopeInstallPlans ? {} : { namespace }),
+        },
       ]}
       icon={({ obj }) => (
         <ClusterServiceVersionLogo
@@ -1305,9 +1324,9 @@ export const ClusterServiceVersionDetailsPage: React.FC<ClusterServiceVersionsDe
           version={obj?.spec?.version}
         />
       )}
-      namespace={props.match.params.ns}
+      namespace={params.ns}
       kind={referenceForModel(ClusterServiceVersionModel)}
-      name={props.match.params.name}
+      name={params.name}
       pagesFor={pagesFor}
       menuActions={menuActions}
       createRedirect
@@ -1349,10 +1368,6 @@ export type CRDCardRowProps = {
 
 export type CRDCardRowState = {
   expand: boolean;
-};
-
-export type ClusterServiceVersionsDetailsPageProps = {
-  match: RouterMatch<any>;
 };
 
 export type ClusterServiceVersionDetailsProps = {

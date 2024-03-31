@@ -14,11 +14,6 @@
   },
   "consolePlugin": {
     "entry": "src/plugin.tsx",
-    "integrationTestSuites": {
-      "pipelinesPlugin": [
-        "integration-tests/**/*.scenario.ts"
-      ]
-    },
     "exposedModules": {
       "icons": "src/utils/icons.ts",
       "yamlTemplates": "src/templates/pipelines.ts",
@@ -28,7 +23,8 @@
       "pipelinesComponent": "src/components/pipelines-index.ts",
       "tasksComponent": "src/components/tasks-index.ts",
       "triggersComponent": "src/components/triggers-index.ts",
-      "pacComponent": "src/components/pac/index.ts"
+      "pacComponent": "src/components/pac/index.ts",
+      "resultsComponent": "src/components/shared/results"
     }
   }
 }

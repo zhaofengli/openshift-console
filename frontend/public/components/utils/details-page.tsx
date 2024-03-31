@@ -2,9 +2,10 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import * as _ from 'lodash-es';
 import { Button } from '@patternfly/react-core';
-import { PencilAltIcon } from '@patternfly/react-icons';
-import { useCanClusterUpgrade } from '@console/shared';
-
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
+import { useCanClusterUpgrade } from '@console/shared/src/hooks/useCanClusterUpgrade';
+import { useAnnotationsModal } from '@console/shared/src/hooks/useAnnotationsModal';
+import { useLabelsModal } from '@console/shared/src/hooks/useLabelsModal';
 import { DetailsItem } from './details-item';
 import { Kebab } from './kebab';
 import { LabelList } from './label-list';
@@ -21,12 +22,7 @@ import {
   referenceFor,
   Toleration,
 } from '../../module/k8s';
-import { configureClusterUpstreamModal, labelsModal } from '../modals';
-
-export const editLabelsModal = (e, props) => {
-  e.preventDefault();
-  labelsModal(props);
-};
+import { configureClusterUpstreamModal } from '../modals';
 
 export const pluralize = (
   i: number,
@@ -67,6 +63,8 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
   const model = modelFor(reference);
   const tolerationsPath = getTolerationsPath(resource);
   const tolerations: Toleration[] = _.get(resource, tolerationsPath);
+  const annotationsModalLauncher = useAnnotationsModal(resource);
+  const labelsModalLauncher = useLabelsModal(resource);
   const canUpdateAccess = useAccessReview({
     group: model.apiGroup,
     resource: model.plural,
@@ -98,7 +96,7 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
         obj={resource}
         path="metadata.labels"
         valueClassName="details-item__value--labels"
-        onEdit={(e) => editLabelsModal(e, { resource, kind: model })}
+        onEdit={labelsModalLauncher}
         canEdit={showLabelEditor && canUpdate}
         editAsGroup
       >
@@ -127,7 +125,7 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
               variant="link"
             >
               {t('public~{{count}} toleration', { count: _.size(tolerations) })}
-              <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+              <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
             </Button>
           ) : (
             t('public~{{count}} toleration', { count: _.size(tolerations) })
@@ -141,11 +139,11 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
               data-test="edit-annotations"
               type="button"
               isInline
-              onClick={Kebab.factory.ModifyAnnotations(model, resource).callback}
+              onClick={annotationsModalLauncher}
               variant="link"
             >
               {t('public~{{count}} annotation', { count: _.size(metadata.annotations) })}
-              <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+              <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
             </Button>
           ) : (
             t('public~{{count}} annotation', { count: _.size(metadata.annotations) })
@@ -206,7 +204,7 @@ export const UpstreamConfigDetailsItem: React.SFC<UpstreamConfigDetailsItemProps
         <Button
           type="button"
           isInline
-          data-test-id="cluster-version-upstream-server-url"
+          data-test-id="cv-upstream-server-url"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -216,7 +214,7 @@ export const UpstreamConfigDetailsItem: React.SFC<UpstreamConfigDetailsItemProps
           isDisabled={!canUpgrade}
         >
           {resource?.spec?.upstream || t('public~Default update server')}
-          {canUpgrade && <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />}
+          {canUpgrade && <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />}
         </Button>
       </div>
     </DetailsItem>

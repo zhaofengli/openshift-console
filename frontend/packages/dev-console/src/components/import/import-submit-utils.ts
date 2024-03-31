@@ -72,8 +72,8 @@ import {
   RouteData,
   ServerlessData,
   DeploymentData,
+  BuildOptions,
 } from './import-types';
-import { createResourceName } from './import-validation-utils';
 
 export const generateSecret = () => {
   // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
@@ -375,7 +375,7 @@ export const createOrUpdateDeployment = (
         spec: {
           containers: [
             {
-              name: createResourceName(name),
+              name,
               image: `${name}:latest`,
               ports,
               env,
@@ -442,7 +442,7 @@ export const createOrUpdateDeploymentConfig = (
         spec: {
           containers: [
             {
-              name: createResourceName(name),
+              name,
               image: `${name}:latest`,
               ports,
               env,
@@ -679,6 +679,7 @@ export const createOrUpdateResources = async (
     build: {
       strategy: buildStrategy,
       triggers: { webhook: webhookTrigger },
+      option: buildOption,
     },
     deployment: {
       triggers: { image: imageChange },
@@ -711,7 +712,7 @@ export const createOrUpdateResources = async (
     return createDevfileResources(formData, dryRun, appResources, generatedImageStreamName);
   }
 
-  if (pipeline.type === PipelineType.PAC) {
+  if (pipeline.type === PipelineType.PAC && formData?.pipeline?.enabled) {
     const pacRepository = formData?.pac?.repository;
     const labels = formData?.labels;
     const repo = await createRepositoryResources(pacRepository, namespace, labels, dryRun);
@@ -736,7 +737,7 @@ export const createOrUpdateResources = async (
       );
       responses.push(...pipelineResources);
     }
-  } else {
+  } else if (buildOption === BuildOptions.BUILDS) {
     responses.push(
       await createOrUpdateBuildConfig(
         formData,

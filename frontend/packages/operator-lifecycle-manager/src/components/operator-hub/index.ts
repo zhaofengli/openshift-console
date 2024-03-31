@@ -1,4 +1,10 @@
-import { K8sResourceKind, ObjectMetadata } from '@console/internal/module/k8s';
+import {
+  InfrastructureKind,
+  CloudCredentialKind,
+  AuthenticationKind,
+  K8sResourceKind,
+  ObjectMetadata,
+} from '@console/internal/module/k8s';
 import { PackageManifestKind, SubscriptionKind } from '../../types';
 
 export enum InstalledState {
@@ -21,10 +27,14 @@ export enum InfraFeatures {
   'proxy-aware' = 'Proxy-aware',
   FipsMode = 'FIPS Mode',
   fips = 'FIPS Mode',
+  tlsProfiles = 'Configurable TLS ciphers',
   cnf = 'Cloud-Native Network Function',
   cni = 'Container Network Interface',
   csi = 'Container Storage Interface',
   sno = 'Single Node Clusters',
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  TokenAuth = 'Short-lived token authentication',
+  tokenAuthGCP = 'Auth Token GCP',
 }
 
 export enum ValidSubscriptionValue {
@@ -54,6 +64,9 @@ export type OperatorHubItem = {
   [key: string]: any;
   validSubscription: string[];
   infraFeatures: InfraFeatures[];
+  cloudCredentials: CloudCredentialKind;
+  infrastructure: InfrastructureKind;
+  authentication: AuthenticationKind;
 };
 
 export enum OperatorHubCSVAnnotationKey {
@@ -72,6 +85,16 @@ export enum OperatorHubCSVAnnotationKey {
   infrastructureFeatures = 'operators.openshift.io/infrastructure-features',
   validSubscription = 'operators.openshift.io/valid-subscription',
   tags = 'tags',
+  disconnected = 'features.operators.openshift.io/disconnected',
+  fipsCompliant = 'features.operators.openshift.io/fips-compliant',
+  proxyAware = 'features.operators.openshift.io/proxy-aware',
+  cnf = 'features.operators.openshift.io/cnf',
+  cni = 'features.operators.openshift.io/cni',
+  csi = 'features.operators.openshift.io/csi',
+  tlsProfiles = 'features.operators.openshift.io/tls-profiles',
+  tokenAuthAWS = 'features.operators.openshift.io/token-auth-aws',
+  tokenAuthAzure = 'features.operators.openshift.io/token-auth-azure',
+  tokenAuthGCP = 'features.operators.openshift.io/token-auth-gcp',
 }
 
 export type OperatorHubCSVAnnotations = {
@@ -90,6 +113,17 @@ export type OperatorHubCSVAnnotations = {
   [OperatorHubCSVAnnotationKey.infrastructureFeatures]?: string;
   [OperatorHubCSVAnnotationKey.validSubscription]?: string;
   [OperatorHubCSVAnnotationKey.tags]?: string[];
+  [OperatorHubCSVAnnotationKey.disconnected]?: string;
+  [OperatorHubCSVAnnotationKey.fipsCompliant]?: string;
+  [OperatorHubCSVAnnotationKey.proxyAware]?: string;
+  [OperatorHubCSVAnnotationKey.tlsProfiles]?: string;
+  [OperatorHubCSVAnnotationKey.cnf]?: string;
+  [OperatorHubCSVAnnotationKey.cni]?: string;
+  [OperatorHubCSVAnnotationKey.csi]?: string;
+  [OperatorHubCSVAnnotationKey.tlsProfiles]?: string;
+  [OperatorHubCSVAnnotationKey.tokenAuthAWS]?: string;
+  [OperatorHubCSVAnnotationKey.tokenAuthAzure]?: string;
+  [OperatorHubCSVAnnotationKey.tokenAuthGCP]?: string;
 } & ObjectMetadata['annotations'];
 
 type OperatorHubSpec = {

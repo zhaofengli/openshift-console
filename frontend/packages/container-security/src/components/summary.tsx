@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { ChartDonut } from '@patternfly/react-charts';
 import { Stack, StackItem, pluralize } from '@patternfly/react-core';
-import { ExclamationTriangleIcon } from '@patternfly/react-icons';
+import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { WatchK8sResults } from '@console/dynamic-plugin-sdk';
 import { ExternalLink } from '@console/internal/components/utils/link';
 import { referenceForModel } from '@console/internal/module/k8s';
@@ -31,20 +31,21 @@ export const securityHealthHandler: ResourceHealthHandler<WatchImageVuln> = ({
   if (!_.isEmpty(data)) {
     return {
       state: HealthState.ERROR,
-      message: pluralize(_.uniqBy(data, 'metadata.name').length, 'vulnerable image'),
+      message: pluralize(data.length, 'vulnerable image'),
     };
   }
   return { state: HealthState.OK, message: '0 vulnerable images' };
 };
 
-export const quayURLFor = (vuln: ImageManifestVuln) => {
-  const base = vuln.spec.image
-    .replace('@sha256', '')
-    .split('/')
-    .reduce((url, part, i) => [...url, part, ...(i === 0 ? ['repository'] : [])], [])
-    .join('/');
-  return `//${base}/manifest/${vuln.spec.manifest}?tab=vulnerabilities`;
-};
+export const quayURLFor = (vuln: ImageManifestVuln) =>
+  // The first part of the url is the base
+  vuln?.spec?.image
+    ? `//${vuln.spec.image
+        .replace('@sha256', '')
+        .split('/')
+        .reduce((url, part, i) => [...url, part, ...(i === 0 ? ['repository'] : [])], [])
+        .join('/')}/manifest/${vuln.spec?.manifest}?tab=vulnerabilities`
+    : '';
 
 export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
   imageManifestVuln,
@@ -109,8 +110,7 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
                             title={priority.title}
                           />
                           &nbsp;
-                          {_.uniqBy(vulnsFor(priority.value), 'metadata.name').length}{' '}
-                          {priority.title}
+                          {vulnsFor(priority.value).length} {priority.title}
                         </div>
                       </div>
                     ) : null,
@@ -125,11 +125,11 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
                       .map((priority) => ({
                         label: priority.title,
                         x: priority.value,
-                        y: _.uniqBy(vulnsFor(priority.value), 'metadata.name').length,
+                        y: vulnsFor(priority.value).length,
                       }))
                       .toArray()}
                     title={t('container-security~{{vulnImageCount, number}} total', {
-                      vulnImageCount: _.uniqBy(resource, 'metadata.name').length,
+                      vulnImageCount: resource.length,
                     })}
                   />
                 </Link>
@@ -185,7 +185,11 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
                     </Link>
                   </span>
                   <div className="text-secondary">
-                    <ExternalLink href={quayURLFor(v)} text={getVulnerabilityCountText(v)} />
+                    {quayURLFor(v) ? (
+                      <ExternalLink href={quayURLFor(v)} text={getVulnerabilityCountText(v)} />
+                    ) : (
+                      <span className="small text-muted">-</span>
+                    )}
                   </div>
                 </div>
               ))}

@@ -34,6 +34,7 @@ export enum PipelineExampleNames {
   EMBEDDED_PIPELINE_SPEC = 'embedded-pipeline-spec',
   PIPELINE_WITH_FINALLY = 'pipeline-with-finally',
   RESULTS = 'results-pipeline',
+  CUSTOM_TASK_PIPELINE = 'custom-task-pipeline',
 }
 
 type CombinedPipelineTestData = {
@@ -54,42 +55,88 @@ const pipelineSpec: PipelineSpecData = {
     tasks: [
       {
         name: 'hello-world-1',
-        taskRef: { name: 'hello-world-1' },
+        taskRef: { kind: 'Task', name: 'hello-world-1' },
       },
       {
         name: 'hello-world-truncate-more-than-20-char',
-        taskRef: { name: 'hello-world-truncate-more-than-20-char' },
+        taskRef: { kind: 'Task', name: 'hello-world-truncate-more-than-20-char' },
       },
     ],
   },
   [PipelineExampleNames.PARTIAL_PIPELINE]: {
     tasks: [
-      { name: 'hello-world-1', taskRef: { name: 'hello-world-1' } },
+      { name: 'hello-world-1', taskRef: { kind: 'Task', name: 'hello-world-1' } },
       {
         name: 'hello-world-truncate-more-than-20-char',
-        taskRef: { name: 'hello-world-truncate-more-than-20-char' },
+        taskRef: { kind: 'Task', name: 'hello-world-truncate-more-than-20-char' },
       },
-      { name: 'hello-world-3', taskRef: { name: 'hello-world-3' } },
+      { name: 'hello-world-3', taskRef: { kind: 'Task', name: 'hello-world-3' } },
+    ],
+  },
+  [PipelineExampleNames.CUSTOM_TASK_PIPELINE]: {
+    tasks: [
+      { name: 'hello-world-1', taskRef: { kind: 'Task', name: 'hello-world-1' } },
+      {
+        name: 'hello-world-custom-task-2',
+        taskRef: { kind: 'ApprovalTask', name: 'hello-world-custom-task-2' },
+      },
+      { name: 'hello-world-3', taskRef: { kind: 'Task', name: 'hello-world-3' } },
     ],
   },
   [PipelineExampleNames.COMPLEX_PIPELINE]: {
     tasks: [
-      { name: 'build-app', taskRef: { name: 'noop-task' } },
-      { name: 'analyse-code', runAfter: ['build-app'], taskRef: { name: 'noop-task' } },
-      { name: 'style-checks', runAfter: ['build-app'], taskRef: { name: 'noop-task' } },
-      { name: 'find-bugs', runAfter: ['build-app'], taskRef: { name: 'noop-task' } },
+      { name: 'build-app', taskRef: { kind: 'Task', name: 'noop-task' } },
+      {
+        name: 'analyse-code',
+        runAfter: ['build-app'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'style-checks',
+        runAfter: ['build-app'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      { name: 'find-bugs', runAfter: ['build-app'], taskRef: { kind: 'Task', name: 'noop-task' } },
       {
         name: 'build-image',
         runAfter: ['find-bugs', 'style-checks', 'analyse-code'],
-        taskRef: { name: 'noop-task' },
+        taskRef: { kind: 'Task', name: 'noop-task' },
       },
-      { name: 'deploy-image', runAfter: ['build-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-1', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-2', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-3', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-4', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-5', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
-      { name: 'test-suite-6', runAfter: ['deploy-image'], taskRef: { name: 'noop-task' } },
+      {
+        name: 'deploy-image',
+        runAfter: ['build-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-1',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-2',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-3',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-4',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-5',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
+      {
+        name: 'test-suite-6',
+        runAfter: ['deploy-image'],
+        taskRef: { kind: 'Task', name: 'noop-task' },
+      },
       {
         name: 'verify',
         runAfter: [
@@ -100,7 +147,7 @@ const pipelineSpec: PipelineSpecData = {
           'test-suite-5',
           'test-suite-6',
         ],
-        taskRef: { name: 'noop-task' },
+        taskRef: { kind: 'Task', name: 'noop-task' },
       },
     ],
     finally: [],
@@ -388,17 +435,17 @@ const pipelineSpec: PipelineSpecData = {
     tasks: [
       {
         name: 'hello-world-1',
-        taskRef: { name: 'hello-world-1' },
+        taskRef: { kind: 'Task', name: 'hello-world-1' },
       },
       {
         name: 'hello-world-2',
-        taskRef: { name: 'hello-world-2' },
+        taskRef: { kind: 'Task', name: 'hello-world-2' },
       },
     ],
     finally: [
       {
         name: 'run-anyway',
-        taskRef: { name: 'run-anyway' },
+        taskRef: { kind: 'Task', name: 'run-anyway' },
       },
     ],
   },
@@ -726,6 +773,41 @@ export const pipelineTestData: PipelineTestData = {
           conditions: [
             {
               status: 'False',
+              type: 'Succeeded',
+            },
+          ],
+        },
+      },
+    },
+  },
+  [PipelineExampleNames.CUSTOM_TASK_PIPELINE]: {
+    dataSource: 'custom-task-pipeline',
+    pipeline: {
+      apiVersion: 'tekton.dev/v1alpha1',
+      kind: 'Pipeline',
+      metadata: {
+        name: 'custom-task-pipeline',
+        namespace: 'tekton-pipelines',
+      },
+      spec: pipelineSpec[PipelineExampleNames.CUSTOM_TASK_PIPELINE],
+    },
+    pipelineRuns: {
+      [DataState.PIPELINE_RUN_PENDING]: {
+        apiVersion: 'tekton.dev/v1alpha1',
+        kind: 'PipelineRun',
+        metadata: {
+          name: 'custom-task-pipeline-3tt7aw',
+          namespace: 'tekton-pipelines',
+          labels: { [TektonResourceLabel.pipeline]: 'custom-task-pipeline' },
+        },
+        spec: {
+          pipelineRef: { name: 'custom-task-pipeline' },
+        },
+        status: {
+          pipelineSpec: pipelineSpec[PipelineExampleNames.CUSTOM_TASK_PIPELINE],
+          conditions: [
+            {
+              status: 'True',
               type: 'Succeeded',
             },
           ],
@@ -3203,6 +3285,427 @@ export const PipeLineRunWithRepoMetadata: Record<string, PipelineRunKind> = {
       namespace: 'test',
     },
     spec: {},
+  },
+};
+
+export enum PipeLineRunWithVulnerabilitiesNames {
+  ScanOutput = 'scan-output',
+  MyScanOutput = 'my-scan-output',
+  InvalidScanOutput = 'invalid-scan-output',
+  MultipleScanOutput = 'multiple-scan-output',
+}
+
+export enum PipelineRunwithSBOMType {
+  ExternalLink = 'external-link',
+  InternalLink = 'internal-link',
+}
+
+export const PipelineRunWithSBOM: PipelineRunKind = {
+  apiVersion: 'tekton.dev/v1',
+  kind: 'PipelineRun',
+  metadata: {
+    name: 'pipelinerun-with-sbom-task',
+    namespace: 'test-ns',
+  },
+  spec: {
+    pipelineSpec: {
+      results: [
+        {
+          description: 'Contains the SBOM link',
+          name: 'IMAGE_URL',
+          value: '$(tasks.sbom-task.results.IMAGE_URL)',
+        },
+      ],
+      tasks: [
+        {
+          name: 'sbom-task',
+          taskRef: {
+            kind: 'Task',
+            name: 'sbom-task',
+          },
+        },
+      ],
+    },
+  },
+  status: {
+    pipelineSpec: {
+      results: [
+        {
+          description: 'Contains the SBOM link',
+          name: 'IMAGE_URL',
+          value: '$(tasks.sbom-task.results.IMAGE_URL)',
+        },
+      ],
+      tasks: [
+        {
+          name: 'sbom-task',
+          taskRef: {
+            kind: 'Task',
+            name: 'sbom-task',
+          },
+        },
+      ],
+    },
+    results: [
+      {
+        name: 'IMAGE_URL',
+        value:
+          'quay.io/redhat-user-workloads/karthik-jk-tenant/node-express-hello/node-express-hello:build-8e536-1692702836',
+      },
+    ],
+  },
+};
+
+export const PipeLineRunWithVulnerabilitiesData: Record<string, PipelineRunKind> = {
+  [PipeLineRunWithVulnerabilitiesNames.ScanOutput]: {
+    kind: 'PipelineRun',
+    apiVersion: 'tekton.dev/v1',
+    metadata: {
+      annotations: {
+        'chains.tekton.dev/signed': 'true',
+        'results.tekton.dev/log':
+          'jeff-project/results/2e22062d-6a05-4f62-b348-12da06fadbab/logs/3826b8ee-d80e-34ba-828d-7b8ab32e37f0',
+        'results.tekton.dev/record':
+          'jeff-project/results/2e22062d-6a05-4f62-b348-12da06fadbab/records/2e22062d-6a05-4f62-b348-12da06fadbab',
+        'results.tekton.dev/result': 'jeff-project/results/2e22062d-6a05-4f62-b348-12da06fadbab',
+      },
+      resourceVersion: '317768',
+      name: 'pipelinerun-with-scan-task',
+      uid: '2e22062d-6a05-4f62-b348-12da06fadbab',
+      creationTimestamp: '2023-11-13T12:32:19Z',
+      generation: 1,
+      namespace: 'jeff-project',
+      finalizers: ['chains.tekton.dev/pipelinerun'],
+      labels: {
+        'tekton.dev/pipeline': 'pipelinerun-with-scan-task',
+      },
+    },
+    spec: {
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'SCAN_OUTPUT',
+            value: '$(tasks.scan-task.results.SCAN_OUTPUT)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      taskRunTemplate: {
+        serviceAccountName: 'pipeline',
+      },
+    },
+    status: {
+      completionTime: '2023-11-13T12:32:26Z',
+      conditions: [
+        {
+          lastTransitionTime: '2023-11-13T12:32:26Z',
+          message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0',
+          reason: 'Succeeded',
+          status: 'True',
+          type: 'Succeeded',
+        },
+      ],
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'SCAN_OUTPUT',
+            value: '$(tasks.scan-task.results.SCAN_OUTPUT)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      results: [
+        {
+          name: 'SCAN_OUTPUT',
+          value:
+            '{"vulnerabilities":{\n"critical": 13,\n"high": 29,\n"medium": 32,\n"low": 3,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+      ],
+      startTime: '2023-11-13T12:32:19Z',
+    },
+  },
+  [PipeLineRunWithVulnerabilitiesNames.MyScanOutput]: {
+    kind: 'PipelineRun',
+    apiVersion: 'tekton.dev/v1',
+    metadata: {
+      annotations: {
+        'chains.tekton.dev/signed': 'true',
+        'results.tekton.dev/log':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/logs/cd4f186e-5c5c-331c-a7ff-6c990bb5b47b',
+        'results.tekton.dev/record':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/records/8c5a7c3f-3590-40b4-869b-5258d1450726',
+        'results.tekton.dev/result': 'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726',
+      },
+      resourceVersion: '317738',
+      name: 'pipelinerun-with-my-scan-task',
+      uid: '8c5a7c3f-3590-40b4-869b-5258d1450726',
+      creationTimestamp: '2023-11-13T12:32:20Z',
+      generation: 1,
+      namespace: 'jeff-project',
+      finalizers: ['chains.tekton.dev/pipelinerun'],
+      labels: {
+        'tekton.dev/pipeline': 'pipelinerun-with-scan-task-1',
+      },
+    },
+    spec: {
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'MY_SCAN_OUTPUT',
+            value: '$(tasks.scan-task.results.MY_SCAN_OUTPUT)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      taskRunTemplate: {
+        serviceAccountName: 'pipeline',
+      },
+    },
+    status: {
+      completionTime: '2023-11-13T12:32:25Z',
+      conditions: [
+        {
+          lastTransitionTime: '2023-11-13T12:32:25Z',
+          message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0',
+          reason: 'Succeeded',
+          status: 'True',
+          type: 'Succeeded',
+        },
+      ],
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'MY_SCAN_OUTPUT',
+            value: '$(tasks.scan-task.results.MY_SCAN_OUTPUT)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      results: [
+        {
+          name: 'MY_SCAN_OUTPUT',
+          value:
+            '{"vulnerabilities":{\n"critical": 0,\n"high": 9,\n"medium": 2,\n"low": 13,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+      ],
+      startTime: '2023-11-13T12:32:20Z',
+    },
+  },
+  [PipeLineRunWithVulnerabilitiesNames.InvalidScanOutput]: {
+    kind: 'PipelineRun',
+    apiVersion: 'tekton.dev/v1',
+    metadata: {
+      annotations: {
+        'chains.tekton.dev/signed': 'true',
+        'results.tekton.dev/log':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/logs/cd4f186e-5c5c-331c-a7ff-6c990bb5b47b',
+        'results.tekton.dev/record':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/records/8c5a7c3f-3590-40b4-869b-5258d1450726',
+        'results.tekton.dev/result': 'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726',
+      },
+      resourceVersion: '317738',
+      name: 'pipelinerun-with-invalid-scan-task',
+      uid: '8c5a7c3f-3590-40b4-869b-5258d1450729',
+      creationTimestamp: '2023-11-13T12:32:20Z',
+      generation: 1,
+      namespace: 'jeff-project',
+      finalizers: ['chains.tekton.dev/pipelinerun'],
+      labels: {
+        'tekton.dev/pipeline': 'pipelinerun-with-scan-task-1',
+      },
+    },
+    spec: {
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'INVALID_SCAN_OUTPUTS',
+            value: '$(tasks.scan-task.results.INVALID_SCAN_OUTPUTS)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      taskRunTemplate: {
+        serviceAccountName: 'pipeline',
+      },
+    },
+    status: {
+      completionTime: '2023-11-13T12:32:25Z',
+      conditions: [
+        {
+          lastTransitionTime: '2023-11-13T12:32:25Z',
+          message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0',
+          reason: 'Succeeded',
+          status: 'True',
+          type: 'Succeeded',
+        },
+      ],
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'INVALID_SCAN_OUTPUTS',
+            value: '$(tasks.scan-task.results.INVALID_SCAN_OUTPUTS)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      results: [
+        {
+          name: 'INVALID_SCAN_OUTPUTS',
+          value:
+            '{"vulnerabilities":{\n"critical": 0,\n"high": 9,\n"medium": 2,\n"low": 13,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+      ],
+      startTime: '2023-11-13T12:32:20Z',
+    },
+  },
+  [PipeLineRunWithVulnerabilitiesNames.MultipleScanOutput]: {
+    kind: 'PipelineRun',
+    apiVersion: 'tekton.dev/v1',
+    metadata: {
+      annotations: {
+        'chains.tekton.dev/signed': 'true',
+        'results.tekton.dev/log':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/logs/cd4f186e-5c5c-331c-a7ff-6c990bb5b47b',
+        'results.tekton.dev/record':
+          'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726/records/8c5a7c3f-3590-40b4-869b-5258d1450726',
+        'results.tekton.dev/result': 'jeff-project/results/8c5a7c3f-3590-40b4-869b-5258d1450726',
+      },
+      resourceVersion: '317738',
+      name: 'pipelinerun-with-invalid-scan-task',
+      uid: '8c5a7c3f-3590-40b4-869b-5258d1450729',
+      creationTimestamp: '2023-11-13T12:32:20Z',
+      generation: 1,
+      namespace: 'jeff-project',
+      finalizers: ['chains.tekton.dev/pipelinerun'],
+      labels: {
+        'tekton.dev/pipeline': 'pipelinerun-with-scan-task-1',
+      },
+    },
+    spec: {
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'INVALID_SCAN_OUTPUTS',
+            value: '$(tasks.scan-task.results.INVALID_SCAN_OUTPUTS)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      taskRunTemplate: {
+        serviceAccountName: 'pipeline',
+      },
+    },
+    status: {
+      completionTime: '2023-11-13T12:32:25Z',
+      conditions: [
+        {
+          lastTransitionTime: '2023-11-13T12:32:25Z',
+          message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0',
+          reason: 'Succeeded',
+          status: 'True',
+          type: 'Succeeded',
+        },
+      ],
+      pipelineSpec: {
+        results: [
+          {
+            description: 'The common vulnerabilities and exposures (CVE) result',
+            name: 'INVALID_SCAN_OUTPUTS',
+            value: '$(tasks.scan-task.results.INVALID_SCAN_OUTPUTS)',
+          },
+        ],
+        tasks: [
+          {
+            name: 'scan-task',
+            taskRef: {
+              kind: 'Task',
+              name: 'scan-task',
+            },
+          },
+        ],
+      },
+      results: [
+        {
+          name: 'SCAN_OUTPUT',
+          value:
+            '{"vulnerabilities":{\n"critical": 13,\n"high": 29,\n"medium": 32,\n"low": 3,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+        {
+          name: 'MY_SCAN_OUTPUT',
+          value:
+            '{"vulnerabilities":{\n"critical": 0,\n"high": 9,\n"medium": 2,\n"low": 13,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+        {
+          name: 'INVALID_SCAN_OUTPUTS',
+          value:
+            '{"vulnerabilities":{\n"critical": 0,\n"high": 9,\n"medium": 2,\n"low": 13,\n"unknown": 0},\n"unpatched_vulnerabilities": {\n"critical": 0,\n"high": 1,\n"medium": 0,\n"low":1}\n}\n',
+        },
+      ],
+      startTime: '2023-11-13T12:32:20Z',
+    },
   },
 };
 

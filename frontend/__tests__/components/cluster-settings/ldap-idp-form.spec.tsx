@@ -1,20 +1,25 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper } from 'enzyme';
+import { mount } from 'enzyme';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom-v5-compat';
+import store from '@console/internal/redux';
 
 import { ListInput } from '../../../public/components/utils';
 import { IDPNameInput } from '../../../public/components/cluster-settings/idp-name-input';
 import { IDPCAFileInput } from '../../../public/components/cluster-settings/idp-cafile-input';
-import {
-  AddLDAPPage,
-  AddLDAPPageState,
-} from '../../../public/components/cluster-settings/ldap-idp-form';
+import { AddLDAPPage } from '../../../public/components/cluster-settings/ldap-idp-form';
 import { controlButtonTest } from './basicauth-idp-form.spec';
 
 describe('Add Identity Provider: LDAP', () => {
-  let wrapper: ShallowWrapper<{}, AddLDAPPageState>;
-
+  let wrapper;
   beforeEach(() => {
-    wrapper = shallow(<AddLDAPPage />).dive();
+    wrapper = mount(
+      <Provider store={store}>
+        <BrowserRouter>
+          <AddLDAPPage />
+        </BrowserRouter>
+      </Provider>,
+    );
   });
 
   it('should render AddLDAPPage component', () => {
@@ -39,7 +44,7 @@ describe('Add Identity Provider: LDAP', () => {
   });
 
   it('should prefill ldap in name field by default', () => {
-    expect(wrapper.find(IDPNameInput).props().value).toEqual(wrapper.state().name);
+    expect(wrapper.find(IDPNameInput).props().value).toEqual('ldap');
   });
 
   it('should prefill ldap attribute list input default values', () => {

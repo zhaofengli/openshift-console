@@ -1,4 +1,4 @@
-@knative-eventing
+@knative-eventing @knative
 Feature: Knative Eventing Channel Support
     User should be able to experience the Knative Eventing Channel and associated features
 
@@ -17,7 +17,7 @@ Feature: Knative Eventing Channel Support
              When user navigates to Add page
               And user clicks on the Channel card
               And user clicks on YAML view
-             Then user can see reate button enabled
+             Then user can see create button enabled
 
 
         @regression

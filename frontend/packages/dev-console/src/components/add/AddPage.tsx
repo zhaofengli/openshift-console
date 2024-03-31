@@ -1,42 +1,47 @@
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { match as RMatch } from 'react-router';
+import { useParams } from 'react-router-dom-v5-compat';
+import { FLAGS, useFlag } from '@console/shared';
 import { withStartGuide } from '../../../../../public/components/start-guide';
 import NamespacedPage, { NamespacedPageVariants } from '../NamespacedPage';
 import CreateProjectListPage, { CreateAProjectButton } from '../projects/CreateProjectListPage';
 import AddPageLayout from './AddPageLayout';
 
-export interface AddPageProps {
-  match: RMatch<{
-    ns?: string;
-  }>;
-}
-
 // Exported for testing
-export const PageContents: React.FC<AddPageProps> = ({ match }) => {
+export const PageContents: React.FC = () => {
   const { t } = useTranslation();
-  const namespace = match.params.ns;
+  const { ns: namespace } = useParams();
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
 
-  return namespace ? (
-    <AddPageLayout title={t('devconsole~Add')} />
-  ) : (
-    <CreateProjectListPage title={t('devconsole~Add')}>
-      {(openProjectModal) => (
-        <Trans t={t} ns="devconsole">
-          Select a Project to start adding to it
-          <CreateAProjectButton openProjectModal={openProjectModal} />.
-        </Trans>
-      )}
-    </CreateProjectListPage>
-  );
+  if (!namespace) {
+    return (
+      <CreateProjectListPage title={t('devconsole~Add')}>
+        {(openProjectModal) =>
+          isOpenShift ? (
+            <Trans t={t} ns="devconsole">
+              Select a Project to start adding to it
+              <CreateAProjectButton openProjectModal={openProjectModal} />.
+            </Trans>
+          ) : (
+            <Trans t={t} ns="devconsole">
+              Select a Namespace to start adding to it
+              <CreateAProjectButton openProjectModal={openProjectModal} />.
+            </Trans>
+          )
+        }
+      </CreateProjectListPage>
+    );
+  }
+
+  return <AddPageLayout title={t('devconsole~Add')} />;
 };
 
 const PageContentsWithStartGuide = withStartGuide(PageContents);
 
-const AddPage: React.FC<AddPageProps> = ({ match }) => {
+const AddPage: React.FC = () => {
   const { t } = useTranslation();
-  const namespace = match.params.ns;
+  const { ns: namespace } = useParams();
   const nsVariant = namespace ? null : NamespacedPageVariants.light;
 
   return (
@@ -45,7 +50,7 @@ const AddPage: React.FC<AddPageProps> = ({ match }) => {
         <title data-test-id="page-title">{`+${t('devconsole~Add')}`}</title>
       </Helmet>
       <NamespacedPage variant={nsVariant} hideApplications>
-        <PageContentsWithStartGuide match={match} />
+        <PageContentsWithStartGuide />
       </NamespacedPage>
     </>
   );

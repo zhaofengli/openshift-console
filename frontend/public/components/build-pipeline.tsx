@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import * as _ from 'lodash-es';
-import { BanIcon, PendingIcon, SyncAltIcon } from '@patternfly/react-icons';
+import { BanIcon } from '@patternfly/react-icons/dist/esm/icons/ban-icon';
+import { PendingIcon } from '@patternfly/react-icons/dist/esm/icons/pending-icon';
+import { SyncAltIcon } from '@patternfly/react-icons/dist/esm/icons/sync-alt-icon';
 
 import { resourcePath, ExternalLink } from './utils';
 import { fromNow } from './utils/datetime';

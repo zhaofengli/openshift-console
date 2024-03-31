@@ -1,3 +1,8 @@
+import {
+  CloudCredentialKind,
+  InfrastructureKind,
+  AuthenticationKind,
+} from '@console/internal/module/k8s';
 import { DefaultCatalogSource, DefaultCatalogSourceDisplayName } from '../../const';
 import { PackageManifestKind } from '../../types';
 
@@ -12,5 +17,29 @@ export const getCatalogSourceDisplayName = (packageManifest: PackageManifestKind
   const { catalogSource, catalogSourceDisplayName } = packageManifest.status;
   return (
     defaultCatalogSourceDisplayNameMap?.[catalogSource] || catalogSourceDisplayName || catalogSource
+  );
+};
+
+export const isAWSSTSCluster = (
+  cloudcreds: CloudCredentialKind,
+  infra: InfrastructureKind,
+  auth: AuthenticationKind,
+) => {
+  return (
+    cloudcreds?.spec?.credentialsMode === 'Manual' &&
+    infra?.status?.platform === 'AWS' &&
+    auth?.spec?.serviceAccountIssuer !== ''
+  );
+};
+
+export const isAzureWIFCluster = (
+  cloudcreds: CloudCredentialKind,
+  infra: InfrastructureKind,
+  auth: AuthenticationKind,
+) => {
+  return (
+    cloudcreds?.spec?.credentialsMode === 'Manual' &&
+    infra?.status?.platform === 'Azure' &&
+    auth?.spec?.serviceAccountIssuer !== ''
   );
 };

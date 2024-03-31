@@ -2,7 +2,7 @@ import { Breadcrumb, BreadcrumbItem } from '@patternfly/react-core';
 import classNames from 'classnames';
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Route, Switch } from 'react-router-dom';
+import { Link, Routes, Route } from 'react-router-dom-v5-compat';
 
 import { breadcrumbsForGlobalConfig } from '../../cluster-settings/global-config';
 import { AlertmanagerConfig } from './alertmanager-config';
@@ -20,10 +20,10 @@ const AlertmanagerPage: React.FC<{ match: { url: string } }> = ({ match }) => {
 
   return (
     <>
-      <div className="pf-c-page__main-breadcrumb">
+      <div className="pf-v5-c-page__main-breadcrumb">
         <Breadcrumb className="monitoring-breadcrumbs">
           <BreadcrumbItem>
-            <Link className="pf-c-breadcrumb__link" to={breadcrumbs[0].path}>
+            <Link className="pf-v5-c-breadcrumb__link" to={breadcrumbs[0].path}>
               {breadcrumbs[0].name}
             </Link>
           </BreadcrumbItem>
@@ -45,20 +45,24 @@ const AlertmanagerPage: React.FC<{ match: { url: string } }> = ({ match }) => {
             'co-m-horizontal-nav-item--active': url === configPath,
           })}
         >
-          <Link to={configPath}>{t('public~Details')}</Link>
+          <Link to={configPath} data-test="horizontal-link-details">
+            {t('public~Details')}
+          </Link>
         </li>
         <li
           className={classNames('co-m-horizontal-nav__menu-item', {
             'co-m-horizontal-nav-item--active': url === YAMLPath,
           })}
         >
-          <Link to={YAMLPath}>{t('public~YAML')}</Link>
+          <Link to={YAMLPath} data-test-id="horizontal-link-yaml">
+            {t('public~Details')}
+          </Link>
         </li>
       </ul>
-      <Switch>
-        <Route path={configPath} exact component={AlertmanagerConfig} />
-        <Route path={YAMLPath} exact component={AlertmanagerYAML} />
-      </Switch>
+      <Routes>
+        <Route path={configPath} element={<AlertmanagerConfig />} />
+        <Route path={YAMLPath} element={<AlertmanagerYAML />} />
+      </Routes>
     </>
   );
 };

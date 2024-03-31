@@ -18,12 +18,11 @@ import { menuActionsCreator } from './host-menu-actions';
 type BareMetalHostDetailsPageProps = {
   namespace: string;
   name: string;
-  match: any;
 };
 
 const BareMetalHostDetailsPage: React.FC<BareMetalHostDetailsPageProps> = (props) => {
   const { t } = useTranslation();
-  const [hasNodeMaintenanceCapability, maintenanceModel] = useMaintenanceCapability();
+  const [maintenanceModel] = useMaintenanceCapability();
   const bmoEnabled = useFlag(BMO_ENABLED_FLAG);
   const resources: FirehoseResource[] = [
     {
@@ -46,7 +45,7 @@ const BareMetalHostDetailsPage: React.FC<BareMetalHostDetailsPageProps> = (props
     },
   ];
 
-  if (hasNodeMaintenanceCapability) {
+  if (maintenanceModel) {
     resources.push({
       kind: referenceForModel(maintenanceModel),
       namespaced: false,
@@ -94,7 +93,12 @@ const BareMetalHostDetailsPage: React.FC<BareMetalHostDetailsPageProps> = (props
       kind={referenceForModel(BareMetalHostModel)}
       resources={resources}
       menuActions={menuActionsCreator}
-      customData={{ hasNodeMaintenanceCapability, maintenanceModel, bmoEnabled, t }}
+      customData={{
+        hasNodeMaintenanceCapability: !!maintenanceModel,
+        maintenanceModel,
+        bmoEnabled,
+        t,
+      }}
     />
   );
 };

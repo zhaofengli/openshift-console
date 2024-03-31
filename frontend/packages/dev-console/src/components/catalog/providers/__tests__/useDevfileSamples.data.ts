@@ -66,12 +66,13 @@ export const expectedCatalogItems: CatalogItem[] = [
     type: 'Devfile',
     name: 'Basic Node.js',
     provider: undefined,
+    secondaryLabel: 'Samples',
     description: 'A simple Hello World Node.js application',
     tags: ['NodeJS', 'Express'],
     cta: {
       label: 'Create Devfile Sample',
       href:
-        '/import/ns/test?importType=devfile&formType=sample&devfileName=nodejs-basic&gitRepo=https://github.com/nodeshift-starters/devfile-sample.git',
+        '/import/ns/test?formType=sample&importType=devfile&devfileName=nodejs-basic&git.repository=https%3A%2F%2Fgithub.com%2Fnodeshift-starters%2Fdevfile-sample.git',
     },
     icon: { url: 'trimmed' },
   },
@@ -80,12 +81,13 @@ export const expectedCatalogItems: CatalogItem[] = [
     type: 'Devfile',
     name: 'Basic Quarkus',
     provider: undefined,
+    secondaryLabel: 'Samples',
     description: 'A simple Hello World Java application using Quarkus',
     tags: ['Java', 'Quarkus'],
     cta: {
       label: 'Create Devfile Sample',
       href:
-        '/import/ns/test?importType=devfile&formType=sample&devfileName=code-with-quarkus&gitRepo=https://github.com/devfile-samples/devfile-sample-code-with-quarkus.git',
+        '/import/ns/test?formType=sample&importType=devfile&devfileName=code-with-quarkus&git.repository=https%3A%2F%2Fgithub.com%2Fdevfile-samples%2Fdevfile-sample-code-with-quarkus.git',
     },
     icon: { url: 'trimmed' },
   },
@@ -94,12 +96,13 @@ export const expectedCatalogItems: CatalogItem[] = [
     type: 'Devfile',
     name: 'Basic Spring Boot',
     provider: undefined,
+    secondaryLabel: 'Samples',
     description: 'A simple Hello World Java Spring Boot application using Maven',
     tags: ['Java', 'Spring'],
     cta: {
       label: 'Create Devfile Sample',
       href:
-        '/import/ns/test?importType=devfile&formType=sample&devfileName=java-springboot-basic&gitRepo=https://github.com/devfile-samples/devfile-sample-java-springboot-basic.git',
+        '/import/ns/test?formType=sample&importType=devfile&devfileName=java-springboot-basic&git.repository=https%3A%2F%2Fgithub.com%2Fdevfile-samples%2Fdevfile-sample-java-springboot-basic.git',
     },
     icon: { url: 'trimmed' },
   },
@@ -108,12 +111,13 @@ export const expectedCatalogItems: CatalogItem[] = [
     type: 'Devfile',
     name: 'Basic Python',
     provider: undefined,
+    secondaryLabel: 'Samples',
     description: 'A simple Hello World application using Python',
     tags: ['Python'],
     cta: {
       label: 'Create Devfile Sample',
       href:
-        '/import/ns/test?importType=devfile&formType=sample&devfileName=python-basic&gitRepo=https://github.com/devfile-samples/devfile-sample-python-basic.git',
+        '/import/ns/test?formType=sample&importType=devfile&devfileName=python-basic&git.repository=https%3A%2F%2Fgithub.com%2Fdevfile-samples%2Fdevfile-sample-python-basic.git',
     },
     icon: { url: 'trimmed' },
   },

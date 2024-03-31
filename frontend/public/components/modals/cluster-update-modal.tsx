@@ -11,7 +11,13 @@ import {
 import { DropdownWithSwitch } from '@console/shared/src/components/dropdown';
 
 import { ClusterVersionModel, MachineConfigPoolModel, NodeModel } from '../../models';
-import { FieldLevelHelp, HandlePromiseProps, LinkifyExternal, withHandlePromise } from '../utils';
+import {
+  FieldLevelHelp,
+  HandlePromiseProps,
+  LinkifyExternal,
+  isManaged,
+  withHandlePromise,
+} from '../utils';
 import {
   ClusterVersionKind,
   getConditionUpgradeableFalse,
@@ -86,7 +92,7 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
   const handleUpgradeTypeChange = (value: typeof upgradeType) => {
     setUpgradeType(value);
   };
-  const handleMCPSelectionChange = (checked: boolean, event: React.FormEvent<HTMLInputElement>) => {
+  const handleMCPSelectionChange = (event: React.FormEvent<HTMLInputElement>, checked: boolean) => {
     const checkedItems = [...machineConfigPoolsToPause];
     checked
       ? checkedItems.push(event.currentTarget.id)
@@ -182,13 +188,13 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
     options.unshift({
       items: notRecommendedOptions,
       key: 'notRecommended',
-      label: t('public~Supported but not recommended'),
+      label: t('public~Have known issues'),
     });
   }
   const helpURL = getDocumentationURL(documentationURLs.updateUsingCustomMachineConfigPools);
 
   return (
-    <form onSubmit={submit} name="form" className="modal-content">
+    <form onSubmit={submit} name="form" className="modal-content" data-test="update-cluster-modal">
       <ModalTitle>{t('public~Update cluster')}</ModalTitle>
       <ModalBody>
         {clusterUpgradeableFalse && <ClusterNotUpgradeableAlert onCancel={cancel} cv={cv} />}
@@ -207,10 +213,10 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
             switchIsDisabled={notRecommendedOptions.length === 0}
             switchLabel={
               <>
-                {t('public~Include supported but not recommended versions')}
+                {t('public~Include versions with known issues')}
                 <FieldLevelHelp>
                   {t(
-                    'public~These versions are supported, but not recommended. Review the known risks before updating.',
+                    'public~These versions are supported, but include known issues. Review the known issues before updating.',
                   )}
                 </FieldLevelHelp>
               </>
@@ -222,14 +228,14 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
           />
           {desiredNotRecommendedUpdate && desiredNotRecommendedUpdateConditions?.message && (
             <Alert
-              className="pf-u-mt-sm"
-              isExpandable
+              className="pf-v5-u-mt-sm"
               isInline
               title={t(
-                'public~Updating this cluster to {{desiredVersion}} is supported, but not recommended as it might not be optimized for some components in this cluster.',
+                'public~Updating this cluster to {{desiredVersion}} is supported, but includes known issues.  Review the known issues before updating.',
                 { desiredVersion: desiredNotRecommendedUpdate.release.version },
               )}
               variant="info"
+              data-test="update-cluster-modal-not-recommended-alert"
             >
               <TextContent>
                 <Text component={TextVariants.p}>
@@ -270,7 +276,7 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
                 resource: NodeModel.labelPlural,
               },
             )}
-            className="pf-u-mb-sm"
+            className="pf-v5-u-mb-sm"
             body={
               machineConfigPoolsLoaded &&
               pausedMCPs.length > 0 &&
@@ -283,9 +289,11 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
                     'public~Paused {{worker}} or custom pool {{resource}} updates will be resumed. If you want to update only the control plane, select "Partial cluster update" below.',
                     { worker: NodeTypeNames.Worker, resource: NodeModel.label },
                   )}
+                  data-test="update-cluster-modal-paused-nodes-warning"
                 />
               )
             }
+            data-test="update-cluster-modal-full-update-radio"
           />
           <Radio
             isChecked={upgradeType === upgradeTypes.Partial}
@@ -298,7 +306,7 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
               'public~Pause {{worker}} or custom pool {{resource}} updates to accommodate your maintenance schedule.',
               { worker: NodeTypeNames.Worker, resource: NodeModel.label },
             )}
-            className="pf-u-mb-md"
+            className="pf-v5-u-mb-md"
             body={
               upgradeType === upgradeTypes.Partial && (
                 <>
@@ -312,13 +320,16 @@ const ClusterUpdateModal = withHandlePromise((props: ClusterUpdateModalProps) =>
                     isInline
                     isPlain
                     title={t('public~You must resume updates within 60 days to avoid failures.')}
-                    className="pf-u-mb-md"
+                    className="pf-v5-u-mb-md"
                   >
-                    <ExternalLink href={helpURL}>{t('public~Learn more')}</ExternalLink>
+                    {!isManaged() && (
+                      <ExternalLink href={helpURL}>{t('public~Learn more')}</ExternalLink>
+                    )}
                   </Alert>
                 </>
               )
             }
+            data-test="update-cluster-modal-partial-update-radio"
           />
         </div>
       </ModalBody>

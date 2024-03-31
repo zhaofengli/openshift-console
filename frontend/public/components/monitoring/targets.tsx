@@ -29,7 +29,7 @@ import { find, includes, isEmpty } from 'lodash-es';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { Link, Route, Switch, useRouteMatch } from 'react-router-dom';
+import { Routes, Route, useParams, Link } from 'react-router-dom-v5-compat';
 
 import {
   NamespaceModel,
@@ -210,13 +210,13 @@ type DetailsProps = {
 
 const Details: React.FC<DetailsProps> = ({ loaded, loadError, targets }) => {
   const { t } = useTranslation();
-  const match = useRouteMatch<{ scrapeUrl?: string }>();
+  const params = useParams();
 
   let scrapeUrl: string = '';
   let target: Target | undefined;
-  if (match?.params?.scrapeUrl) {
+  if (params.scrapeUrl) {
     try {
-      scrapeUrl = atob(match?.params?.scrapeUrl);
+      scrapeUrl = atob(params.scrapeUrl);
       target = find(targets, { scrapeUrl });
     } catch {
       // Leave scrapeUrl and target unset
@@ -235,10 +235,10 @@ const Details: React.FC<DetailsProps> = ({ loaded, loadError, targets }) => {
       <Helmet>
         <title>{t('public~Target details')}</title>
       </Helmet>
-      <div className="pf-c-page__main-breadcrumb">
+      <div className="pf-v5-c-page__main-breadcrumb">
         <Breadcrumb className="co-breadcrumb">
           <BreadcrumbItem>
-            <Link className="pf-c-breadcrumb__link" to="/monitoring/targets">
+            <Link className="pf-v5-c-breadcrumb__link" to="/monitoring/targets">
               {t('public~Targets')}
             </Link>
           </BreadcrumbItem>
@@ -323,10 +323,10 @@ const Details: React.FC<DetailsProps> = ({ loaded, loadError, targets }) => {
 };
 
 const tableClasses = [
-  'pf-u-w-25-on-md', // Endpoint
-  'pf-u-w-16-on-md', // Monitor
+  'pf-v5-u-w-25-on-md', // Endpoint
+  'pf-v5-u-w-16-on-md', // Monitor
   '', // Status
-  'pf-u-w-16-on-md', // Namespace
+  'pf-v5-u-w-16-on-md', // Namespace
   'pf-m-hidden pf-m-visible-on-md', // Last Scrape
   'pf-m-hidden pf-m-visible-on-md', // Scrape Duration
 ];
@@ -600,14 +600,16 @@ export const TargetsUI: React.FC<{}> = () => {
       <ServicesWatchContext.Provider value={servicesWatch}>
         <PodMonitorsWatchContext.Provider value={podMonitorsWatch}>
           <PodsWatchContext.Provider value={podsWatch}>
-            <Switch>
-              <Route path="/monitoring/targets" exact>
-                <ListPage loaded={loaded} loadError={loadError} targets={targets} />
-              </Route>
-              <Route path="/monitoring/targets/:scrapeUrl?" exact>
-                <Details loaded={loaded} loadError={loadError} targets={targets} />
-              </Route>
-            </Switch>
+            <Routes>
+              <Route
+                path="/monitoring/targets"
+                element={<ListPage loaded={loaded} loadError={loadError} targets={targets} />}
+              />
+              <Route
+                path="/monitoring/targets/:scrapeUrl?"
+                element={<Details loaded={loaded} loadError={loadError} targets={targets} />}
+              />
+            </Routes>
           </PodsWatchContext.Provider>
         </PodMonitorsWatchContext.Provider>
       </ServicesWatchContext.Provider>

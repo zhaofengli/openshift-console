@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
 import { useTranslation } from 'react-i18next';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
 
 import { K8sResourceKind, K8sResourceKindReference } from '../module/k8s';
 import { ImageStreamTagModel } from '../models';
@@ -186,18 +187,18 @@ export const ImageStreamTagsDetails: React.SFC<ImageStreamTagsDetailsProps> = ({
           <span className="text-muted">{t('public~No labels')}</span>
         ) : (
           <div className="co-table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('public~Name')}</th>
-                  <th>{t('public~Value')}</th>
+            <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+              <thead className="pf-v5-c-table__thead">
+                <tr className="pf-v5-c-table__tr">
+                  <th className="pf-v5-c-table__th">{t('public~Name')}</th>
+                  <th className="pf-v5-c-table__th">{t('public~Value')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="pf-v5-c-table__tbody">
                 {_.map(sortedLabels, ({ name, value }) => (
-                  <tr key={name}>
-                    <td>{name}</td>
-                    <td>{value}</td>
+                  <tr className="pf-v5-c-table__tr" key={name}>
+                    <td className="pf-v5-c-table__td">{name}</td>
+                    <td className="pf-v5-c-table__td">{value}</td>
                   </tr>
                 ))}
               </tbody>
@@ -211,20 +212,20 @@ export const ImageStreamTagsDetails: React.SFC<ImageStreamTagsDetailsProps> = ({
           <span className="text-muted">{t('public~No environment variables')}</span>
         ) : (
           <div className="co-table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('public~Name')}</th>
-                  <th>{t('public~Value')}</th>
+            <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+              <thead className="pf-v5-c-table__thead">
+                <tr className="pf-v5-c-table__tr">
+                  <th className="pf-v5-c-table__th">{t('public~Name')}</th>
+                  <th className="pf-v5-c-table__th">{t('public~Value')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="pf-v5-c-table__tbody">
                 {_.map(config.Env, (nameValueStr, i) => {
                   const pair = splitEnv(nameValueStr);
                   return (
-                    <tr key={i}>
-                      <td>{pair.name}</td>
-                      <td>{pair.value}</td>
+                    <tr className="pf-v5-c-table__tr" key={i}>
+                      <td className="pf-v5-c-table__td">{pair.name}</td>
+                      <td className="pf-v5-c-table__td">{pair.value}</td>
                     </tr>
                   );
                 })}
@@ -275,20 +276,25 @@ const pages = [
 ];
 export const ImageStreamTagsDetailsPage: React.SFC<ImageStreamTagsDetailsPageProps> = (props) => {
   const { t } = useTranslation();
+  const params = useParams();
+  const location = useLocation();
   return (
     <DetailsPage
       {...props}
       breadcrumbsFor={(obj) => {
         const { imageStreamName } = getImageStreamNameAndTag(obj);
         return [
-          { name: t('public~ImageStreams'), path: getBreadcrumbPath(props.match, 'imagestreams') },
+          {
+            name: t('public~ImageStreams'),
+            path: getBreadcrumbPath(params, 'imagestreams'),
+          },
           {
             name: imageStreamName,
-            path: `${getBreadcrumbPath(props.match, 'imagestreams')}/${imageStreamName}`,
+            path: `${getBreadcrumbPath(params, 'imagestreams')}/${imageStreamName}`,
           },
           {
             name: t('public~ImageStreamTag details'),
-            path: props.match.url,
+            path: location.pathname,
           },
         ];
       }}
@@ -320,7 +326,6 @@ export type ImageStreamTagsDetailsProps = {
 };
 
 export type ImageStreamTagsDetailsPageProps = {
-  match: any;
   namespace: string;
   name: string;
 };

@@ -44,7 +44,7 @@ Feature: Pipeline Runs
               And user is at pipelines page
              When user clicks Last Run value of "<pipeline_name>"
              Then user will be redirected to Pipeline Run Details page
-              And user is able to see Details, YAML, TaskRuns, Parameters, Logs and Events tabs
+              And user is able to see Details, YAML, TaskRuns, Parameters, Logs, Events and Output tabs
               And Details tab is displayed with field names Name, Namespace, Labels, Annotations, Created At, Owner, Status, Pipeline and Triggered by
               And Actions dropdown display on the top right corner of the page
 
@@ -343,7 +343,7 @@ Feature: Pipeline Runs
               And user is at pipelines page
              When user clicks Last Run value of "pipeline-run-no-parameters"
              Then user will be redirected to Pipeline Run Details page
-              And user is able to see Details, YAML, TaskRuns, Parameters, Logs and Events tabs
+              And user is able to see Details, YAML, TaskRuns, Parameters, Logs, Events and Output tabs
               And user navigates to pipelineRun parameters tab
               And user is able to see No parameters are associated with this PipelineRun
 
@@ -374,3 +374,31 @@ Feature: Pipeline Runs
              When user starts the pipeline "pipeline-stop" in Pipeline Details page
               And user selects option "Stop" from Actions menu drop down
              Then status displays as "Cancelled" in pipeline run details page
+        
+        @regression @odc-7420
+        Scenario: SBOM information on the pipelineRun detail page: P-07-TC36
+            Given user has created a pipelineRun with sbom task "pipelinerun-with-sbom-link"
+             When user navigates to PipelineRun Details page "pipelinerun-with-sbom-link"
+             Then user can see Download SBOM and View SBOM section in PipelineRun details page
+
+
+        @regression @odc-7423
+        Scenario: Output of the pipelinerun: P-07-TC37
+            Given user has created a pipelineRun with sbom task "pipelinerun-with-sbom-link"
+             When user navigates to output tab of pipelineRun details page "pipelinerun-with-sbom-link"
+             Then user can see the results in the output tab
+        
+        @regression @odc-7421
+        Scenario: CVE information in the pipelinerun list and details page: P-07-TC38
+            Given user has created a PipelineRun with scan task "pipelinerun-with-scan-task"
+             When user navigates to PipelineRun list page
+             Then user can see the vulnerabilities in the list page "pipelinerun-with-scan-task"
+              And user navigates to PipelineRun details page "pipelinerun-with-scan-task"
+              And user can see the vulnerabilities section in the details page "pipelinerun-with-scan-task"
+
+        
+        @regression @odc-7421
+        Scenario: View SBOM link in the pipelinerun list kebab action: P-07-TC38
+            Given user has created a pipelineRun with sbom task "pipelinerun-with-sbom-link"
+             When user navigates to PipelineRun list page
+             Then user can see View SBOM link in the kebab menu of PipelineRun "pipelinerun-with-sbom-link" 

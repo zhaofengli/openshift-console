@@ -2,31 +2,23 @@ import * as React from 'react';
 import * as _ from 'lodash';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { useDispatch } from 'react-redux';
-import { match as RMatch } from 'react-router';
-import { alertingLoaded, alertingSetRules } from '@console/internal/actions/observe';
-import { usePrometheusRulesPoll } from '@console/internal/components/graphs/prometheus-rules-hook';
+import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
+import {
+  useResolvedExtensions,
+  AlertingRulesSourceExtension,
+  isAlertingRulesSource,
+} from '@console/dynamic-plugin-sdk';
 import {
   AlertsDetailsPage,
   AlertRulesDetailsPage,
 } from '@console/internal/components/monitoring/alerting';
-import {
-  alertingRuleStateOrder,
-  getAlertsAndRules,
-} from '@console/internal/components/monitoring/utils';
 import { history, StatusBox, LoadingBox } from '@console/internal/components/utils';
+import { RootState } from '@console/internal/redux';
 import { ALL_NAMESPACES_KEY } from '@console/shared';
 import NamespacedPage, { NamespacedPageVariants } from '../../NamespacedPage';
-
-interface MonitoringAlertsDetailsPageProps {
-  match: RMatch<{
-    ns?: string;
-    name?: string;
-  }>;
-}
-
-const ALERT_DETAILS_PATH = '/dev-monitoring/ns/:ns/alerts/:ruleID';
-const RULE_DETAILS_PATH = '/dev-monitoring/ns/:ns/rules/:id';
+import { useAlertManagerSilencesDispatch } from './monitoring-alerts-utils';
+import { useRulesAlertsPoller } from './useRuleAlertsPoller';
 
 const handleNamespaceChange = (newNamespace: string): void => {
   if (newNamespace === ALL_NAMESPACES_KEY) {
@@ -36,28 +28,32 @@ const handleNamespaceChange = (newNamespace: string): void => {
   }
 };
 
-const MonitoringAlertsDetailsPage: React.FC<MonitoringAlertsDetailsPageProps> = ({ match }) => {
-  const namespace = match.params.ns;
-  const { path } = match;
+const MonitoringAlertsDetailsPage: React.FC = () => {
+  const { ns: namespace } = useParams();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const [response, loadError, loading] = usePrometheusRulesPoll({ namespace });
-  const thanosAlertsAndRules = React.useMemo(
-    () => (!loading && !loadError ? getAlertsAndRules(response?.data) : { rules: [], alerts: [] }),
-    [response, loadError, loading],
+  const alerts = useSelector(({ observe }: RootState) => observe.get('devAlerts'));
+  const [customExtensions] = useResolvedExtensions<AlertingRulesSourceExtension>(
+    isAlertingRulesSource,
+  );
+  const alertsSource = React.useMemo(
+    () =>
+      customExtensions
+        // 'dev-observe-alerting' is the id that plugin extensions can use to contribute alerting rules to this component
+        .filter((extension) => extension.properties.contextId === 'dev-observe-alerting')
+        .map((extension) => extension.properties),
+    [customExtensions],
   );
 
-  React.useEffect(() => {
-    const sortThanosRules = _.sortBy(thanosAlertsAndRules.rules, alertingRuleStateOrder);
-    dispatch(alertingSetRules('devRules', sortThanosRules, 'dev'));
-    dispatch(alertingLoaded('devAlerts', thanosAlertsAndRules.alerts, 'dev'));
-  }, [dispatch, thanosAlertsAndRules]);
+  useAlertManagerSilencesDispatch({ namespace });
+  useRulesAlertsPoller(namespace, dispatch, alertsSource);
 
-  if (loading && _.isEmpty(loadError)) {
+  if (!alerts?.loaded && _.isEmpty(alerts?.loadError)) {
     return <LoadingBox />;
   }
 
-  if (!_.isEmpty(loadError)) {
-    return <StatusBox loaded={!loading} loadError={loadError} />;
+  if (!_.isEmpty(alerts?.loadError)) {
+    return <StatusBox loaded={alerts?.loaded} loadError={alerts?.loadError} />;
   }
 
   return (
@@ -66,8 +62,8 @@ const MonitoringAlertsDetailsPage: React.FC<MonitoringAlertsDetailsPageProps> = 
       hideApplications
       onNamespaceChange={handleNamespaceChange}
     >
-      {path === ALERT_DETAILS_PATH && <AlertsDetailsPage match={match} />}
-      {path === RULE_DETAILS_PATH && <AlertRulesDetailsPage match={match} />}
+      {location.pathname.includes('alerts') && <AlertsDetailsPage />}
+      {location.pathname.includes('rules') && <AlertRulesDetailsPage />}
     </NamespacedPage>
   );
 };

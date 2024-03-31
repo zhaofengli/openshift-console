@@ -2,6 +2,7 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
 import { Trans, useTranslation } from 'react-i18next';
+import { useParams, useLocation } from 'react-router-dom-v5-compat';
 import { CodeBlock, CodeBlockCode, Divider } from '@patternfly/react-core';
 import { Status } from '@console/shared';
 import {
@@ -17,7 +18,12 @@ import {
   VolumeMount,
 } from '../module/k8s';
 import * as k8sProbe from '../module/k8s/probe';
-import { getContainerState, getContainerStatus, getPullPolicyLabel } from '../module/k8s/container';
+import {
+  getContainerRestartCount,
+  getContainerState,
+  getContainerStatus,
+  getPullPolicyLabel,
+} from '../module/k8s/container';
 import {
   Firehose,
   HorizontalNav,
@@ -34,6 +40,7 @@ import {
 import { getBreadcrumbPath } from '@console/internal/components/utils/breadcrumbs';
 import i18n from 'i18next';
 import { ErrorPage404 } from './error';
+import { ContainerLastState } from './pod';
 
 const formatComputeResources = (resources: ResourceList) =>
   _.map(resources, (v, k) => `${k}: ${v}`).join(', ');
@@ -113,18 +120,18 @@ const Ports: React.FC<PortsProps> = ({ ports }) => {
   }
 
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>{t('public~Name')}</th>
-          <th>{t('public~Container')}</th>
+    <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+      <thead className="pf-v5-c-table__thead">
+        <tr className="pf-v5-c-table__tr">
+          <th className="pf-v5-c-table__th">{t('public~Name')}</th>
+          <th className="pf-v5-c-table__th">{t('public~Container')}</th>
         </tr>
       </thead>
       <tbody>
         {ports.map((p: ContainerPort, i: number) => (
-          <tr key={i}>
-            <td>{p.name || '-'}</td>
-            <td>{p.containerPort}</td>
+          <tr className="pf-v5-c-table__tr" key={i}>
+            <td className="pf-v5-c-table__td">{p.name || '-'}</td>
+            <td className="pf-v5-c-table__td">{p.containerPort}</td>
           </tr>
         ))}
       </tbody>
@@ -145,20 +152,22 @@ const VolumeMounts: React.FC<VolumeMountProps> = ({ volumeMounts }) => {
   }
 
   return (
-    <table className="table table--layout-fixed">
-      <thead>
-        <tr>
-          <th>{t('public~Access')}</th>
-          <th>{t('public~Location')}</th>
-          <th>{t('public~Mount path')}</th>
+    <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+      <thead className="pf-v5-c-table__thead">
+        <tr className="pf-v5-c-table__tr">
+          <th className="pf-v5-c-table__th">{t('public~Access')}</th>
+          <th className="pf-v5-c-table__th">{t('public~Location')}</th>
+          <th className="pf-v5-c-table__th">{t('public~Mount path')}</th>
         </tr>
       </thead>
       <tbody>
         {volumeMounts.map((v: VolumeMount) => (
-          <tr key={v.name}>
-            <td>{v.readOnly === true ? t('public~Read only') : t('public~Read/write')}</td>
-            <td className="co-break-all co-select-to-copy">{v.name}</td>
-            <td>
+          <tr className="pf-v5-c-table__tr" key={v.name}>
+            <td className="pf-v5-c-table__td">
+              {v.readOnly === true ? t('public~Read only') : t('public~Read/write')}
+            </td>
+            <td className="pf-v5-c-table__td pf-m-break-word co-select-to-copy">{v.name}</td>
+            <td className="pf-v5-c-table__td">
               {v.mountPath ? (
                 <div className="co-break-all co-select-to-copy">{v.mountPath}</div>
               ) : (
@@ -200,18 +209,18 @@ const Env: React.FC<EnvProps> = ({ env }) => {
   };
 
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>{t('public~Name')}</th>
-          <th>{t('public~Value')}</th>
+    <table className="pf-v5-c-table pf-m-compact pf-m-border-rows">
+      <thead className="pf-v5-c-table__thead">
+        <tr className="pf-v5-c-table__tr">
+          <th className="pf-v5-c-table__th">{t('public~Name')}</th>
+          <th className="pf-v5-c-table__th">{t('public~Value')}</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="pf-v5-c-table__tbody">
         {env.map((e: EnvVar, i: number) => (
-          <tr key={i}>
-            <td>{e.name}</td>
-            <td>{value(e)}</td>
+          <tr className="pf-v5-c-table__tr" key={i}>
+            <td className="pf-v5-c-table__td">{e.name}</td>
+            <td className="pf-v5-c-table__td">{value(e)}</td>
           </tr>
         ))}
       </tbody>
@@ -254,8 +263,9 @@ const getContainerStateValue = (state: any) => {
 
 export const ContainerDetailsList: React.FC<ContainerDetailsListProps> = (props) => {
   const { t } = useTranslation();
+  const params = useParams();
   const pod = props.obj;
-  const container = getContainer(pod, props.match.params.name);
+  const container = getContainer(pod, params.name);
 
   if (!container) {
     return <ErrorPage404 />;
@@ -278,16 +288,20 @@ export const ContainerDetailsList: React.FC<ContainerDetailsListProps> = (props)
             <dd>
               <Status status={stateValue} />
             </dd>
+            <dt>{t('public~Last State')}</dt>
+            <dd>
+              <ContainerLastState containerLastState={status?.lastState} />
+            </dd>
             <dt>{t('public~ID')}</dt>
             <dd>
-              {status.containerID ? (
+              {status?.containerID ? (
                 <div className="co-break-all co-select-to-copy">{status.containerID}</div>
               ) : (
                 '-'
               )}
             </dd>
             <dt>{t('public~Restarts')}</dt>
-            <dd>{status.restartCount}</dd>
+            <dd>{getContainerRestartCount(status)}</dd>
             <dt>{t('public~Resource requests')}</dt>
             <dd>{getResourceRequestsValue(container) || '-'}</dd>
             <dt>{t('public~Resource limits')}</dt>
@@ -314,11 +328,7 @@ export const ContainerDetailsList: React.FC<ContainerDetailsListProps> = (props)
             </dd>
             <dt>{t('public~Pod')}</dt>
             <dd>
-              <ResourceLink
-                kind="Pod"
-                name={props.match.params.podName}
-                namespace={props.match.params.ns}
-              />
+              <ResourceLink kind="Pod" name={params.podName} namespace={params.ns} />
             </dd>
           </dl>
         </div>
@@ -399,13 +409,14 @@ export const ContainerDetailsList: React.FC<ContainerDetailsListProps> = (props)
 };
 ContainerDetailsList.displayName = 'ContainerDetailsList';
 
-export const ContainersDetailsPage: React.FC<ContainerDetailsProps> = (props) => {
+export const ContainersDetailsPage: React.FC = (props) => {
+  const params = useParams();
   return (
     <Firehose
       resources={[
         {
-          name: props.match.params.podName,
-          namespace: props.match.params.ns,
+          name: params.podName,
+          namespace: params.ns,
           kind: 'Pod',
           isList: false,
           prop: 'obj',
@@ -427,13 +438,15 @@ const getContainerStatusStateValue = (pod: PodKind, containerName: string) => {
 
 export const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
   const { t } = useTranslation();
+  const params = useParams();
+  const location = useLocation();
 
   if (!props.loaded) {
     return <LoadingBox />;
   }
 
   const pod = props.obj.data;
-  const container = getContainer(pod, props.match.params.name);
+  const container = getContainer(pod, params.name);
 
   if (!container) {
     return <ErrorPage404 />;
@@ -445,23 +458,22 @@ export const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
     <>
       <PageHeading
         detail={true}
-        title={props.match.params.name}
+        title={params.name}
         kind="Container"
         getResourceStatus={() => containerStateValue}
         breadcrumbsFor={() => [
-          { name: t('public~Pods'), path: getBreadcrumbPath(props.match, 'pods') },
+          { name: t('public~Pods'), path: getBreadcrumbPath(params, 'pods') },
           {
-            name: props.match.params.podName,
-            path: resourcePath('Pod', props.match.params.podName, props.match.params.ns),
+            name: params.podName,
+            path: resourcePath('Pod', params.podName, params.ns),
           },
-          { name: t('public~Container details'), path: props.match.url },
+          { name: t('public~Container details'), path: location.pathname },
         ]}
         obj={props.obj}
       />
       <HorizontalNav
         hideNav={true}
         pages={[{ name: 'container', href: '', component: ContainerDetailsList }]}
-        match={props.match}
         obj={props.obj}
       />
     </>
@@ -491,12 +503,10 @@ type EnvProps = {
 };
 
 export type ContainerDetailsListProps = {
-  match: any;
   obj: PodKind;
 };
 
 export type ContainerDetailsProps = {
-  match: any;
   obj?: any;
   loaded?: boolean;
 };

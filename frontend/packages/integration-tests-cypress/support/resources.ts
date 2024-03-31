@@ -9,7 +9,7 @@ declare global {
         namespace: string,
         resource: K8sResourceKindReference | string,
         name: string,
-      ): Chainable<Element>;
+      ): Chainable<Cypress.Exec>;
     }
   }
 }
@@ -30,7 +30,7 @@ const toCLIType = (type: K8sResourceKindReference | string): string => {
 
 Cypress.Commands.add(
   'resourceShouldBeDeleted',
-  (namespace: string, resource: K8sResourceKindReference | string, name: string) =>
+  (namespace: string, resource: K8sResourceKindReference | string, name: string): any =>
     cy
       .exec(
         `oc get -n ${namespace} ${toCLIType(

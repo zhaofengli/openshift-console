@@ -1,9 +1,23 @@
 import * as React from 'react';
-import { ActionGroup, Alert, Button, Form, FormGroup, TextInput } from '@patternfly/react-core';
+import {
+  ActionGroup,
+  Alert,
+  Button,
+  Form,
+  FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+  Popover,
+  PopoverPosition,
+  TextInput,
+} from '@patternfly/react-core';
+import { HelpIcon } from '@patternfly/react-icons/dist/esm/icons/help-icon';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
+import { adjectives, animals, uniqueNamesGenerator } from 'unique-names-generator';
 import {
   ButtonBar,
   Dropdown,
@@ -19,13 +33,19 @@ import {
   referenceForGroupVersionKind,
   referenceForModel,
 } from '@console/internal/module/k8s';
-import { validateDNS1123SubdomainValue, ValidationErrorType } from '@console/shared';
+import {
+  RedExclamationCircleIcon,
+  validateDNS1123SubdomainValue,
+  ValidationErrorType,
+} from '@console/shared';
 import { NetworkAttachmentDefinitionModel, SriovNetworkNodePolicyModel } from '../..';
 import {
+  NET_ATTACH_DEF_HEADER_LABEL,
   cnvBridgeNetworkType,
   networkTypeParams,
   networkTypes,
   ovnKubernetesNetworkType,
+  ovnKubernetesSecondaryLocalnet,
 } from '../../constants';
 import {
   NetworkAttachmentDefinitionAnnotations,
@@ -58,20 +78,37 @@ const buildConfig = (
     config.vlan = parseInt(typeParamsData?.vlanTagNum?.value, 10) || undefined;
     config.macspoofchk = _.get(typeParamsData, 'macspoofchk.value', true);
     config.ipam = ipam;
+    config.preserveDefaultVlan = false;
   } else if (networkType === 'sriov') {
     config.ipam = ipam;
   } else if (networkType === ovnKubernetesNetworkType) {
     config.topology = 'layer2';
-    config.netAttachDefName = `${name}/${namespace}`;
+    config.netAttachDefName = `${namespace}/${name}`;
+  } else if (networkType === ovnKubernetesSecondaryLocalnet) {
+    config.cniVersion = '0.4.0';
+    config.name = _.get(typeParamsData, 'bridgeMapping.value', '');
+    config.type = ovnKubernetesNetworkType;
+    config.topology = 'localnet';
+    config.vlanID = parseInt(typeParamsData?.vlanID?.value, 10) || undefined;
+    config.mtu = parseInt(typeParamsData?.mtu?.value, 10) || undefined;
+    config.netAttachDefName = `${namespace}/${name}`;
   }
-
   return config;
 };
 
 const getResourceName = (networkType, typeParamsData): string => {
+  if (_.isEmpty(typeParamsData)) return null;
+
   return networkType === cnvBridgeNetworkType
     ? `bridge.network.kubevirt.io/${_.get(typeParamsData, 'bridge.value', '')}`
     : `openshift.io/${_.get(typeParamsData, 'resourceName.value', '')}`;
+};
+
+const generateNADName = (): string => {
+  return `network-${uniqueNamesGenerator({
+    dictionaries: [adjectives, animals],
+    separator: '-',
+  })}`;
 };
 
 const createNetAttachDef = (
@@ -90,11 +127,12 @@ const createNetAttachDef = (
   setError(null);
 
   const config = JSON.stringify(buildConfig(name, networkType, typeParamsData, namespace));
-
+  const resourceName = getResourceName(networkType, typeParamsData);
   const annotations: NetworkAttachmentDefinitionAnnotations = {
-    'k8s.v1.cni.cncf.io/resourceName': getResourceName(networkType, typeParamsData),
+    ...(resourceName && { 'k8s.v1.cni.cncf.io/resourceName': resourceName }),
   };
-  if (description !== '') {
+
+  if (!_.isEmpty(description)) {
     annotations.description = description;
   }
 
@@ -104,10 +142,7 @@ const createNetAttachDef = (
     metadata: {
       name,
       namespace,
-      annotations: {
-        'k8s.v1.cni.cncf.io/resourceName': getResourceName(networkType, typeParamsData),
-        description: _.isEmpty(description) ? undefined : description,
-      },
+      annotations,
     },
     spec: {
       config,
@@ -126,7 +161,7 @@ const createNetAttachDef = (
     });
 };
 
-const handleNameChange = (enteredName, fieldErrors, setName, setFieldErrors) => {
+const handleNameChange = (enteredName, namespace, fieldErrors, setName, setFieldErrors) => {
   const fieldErrorsUpdate = { ...fieldErrors };
   delete fieldErrorsUpdate.nameValidationMsg;
 
@@ -167,6 +202,7 @@ const getNetworkTypes = (hasSriovNetNodePolicyCRD, hasHyperConvergedCRD, hasOVNK
 
   if (!hasOVNK8sNetwork) {
     delete types[ovnKubernetesNetworkType];
+    delete types[ovnKubernetesSecondaryLocalnet];
   }
 
   return types;
@@ -204,13 +240,16 @@ const validateForm = (fieldErrors, name, networkType, typeParamsData, setError) 
 };
 
 const NetworkAttachmentDefinitionFormBase = (props) => {
+  // t('kubevirt-plugin~Network Type')
+  // t('kubevirt-plugin~Edit YAML')
+  // t('kubevirt-plugin~Networks are not project-bound. Using the same name creates a shared NAD.')
   const { loaded, match, resources, hasSriovNetNodePolicyCRD, hasHyperConvergedCRD } = props;
   const namespace = _.get(match, 'params.ns', 'default');
   const sriovNetNodePoliciesData = _.get(resources, 'sriovnetworknodepolicies.data', []);
 
   const { t } = useTranslation();
   const [loading, setLoading] = React.useState(hasSriovNetNodePolicyCRD && !loaded);
-  const [name, setName] = React.useState('');
+  const [name, setName] = React.useState(generateNADName());
   const [description, setDescription] = React.useState('');
   const [networkType, setNetworkType] = React.useState(null);
   const [typeParamsData, setTypeParamsData] = React.useState<TypeParamsData>({});
@@ -240,6 +279,8 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
     hasOVNK8sNetwork,
   );
 
+  const networkTypeTitle = t('kubevirt-plugin~Network Type');
+
   React.useEffect(() => setLoading(hasSriovNetNodePolicyCRD && !loaded && !networkConfigLoaded), [
     hasSriovNetNodePolicyCRD,
     networkConfigLoaded,
@@ -247,12 +288,12 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
     loaded,
   ]);
 
+  // t('kubevirt-plugin~Create network attachment definition')
+
   return (
     <div className="co-m-pane__body co-m-pane__form">
       <h1 className="co-m-pane__heading co-m-pane__heading--baseline">
-        <div className="co-m-pane__name">
-          {t('kubevirt-plugin~Create Network Attachment Definition')}
-        </div>
+        <div className="co-m-pane__name">{NET_ATTACH_DEF_HEADER_LABEL}</div>
         <div className="co-m-pane__heading-link">
           <Link
             to={`/k8s/ns/${namespace}/${referenceForModel(NetworkAttachmentDefinitionModel)}/~new`}
@@ -266,20 +307,40 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
       <Form>
         <FormGroup
           fieldId="basic-settings-name"
-          validated={fieldErrors.nameValidationMsg ? 'error' : null}
+          isRequired
+          label={t('kubevirt-plugin~Name')}
+          labelIcon={
+            <Popover
+              aria-label={'Help'}
+              bodyContent={() =>
+                t(
+                  'kubevirt-plugin~Networks are not project-bound. Using the same name creates a shared NAD.',
+                )
+              }
+              position={PopoverPosition.right}
+            >
+              <HelpIcon className="network-type-options--help-icon" />
+            </Popover>
+          }
         >
-          <label className="control-label co-required" htmlFor="network-attachment-definition-name">
-            {t('kubevirt-plugin~Name')}
-          </label>
           <TextInput
             type="text"
             placeholder={name}
             id="network-attachment-definition-name"
-            onChange={(value) => handleNameChange(value, fieldErrors, setName, setFieldErrors)}
+            onChange={(_event, value) =>
+              handleNameChange(value, namespace, fieldErrors, setName, setFieldErrors)
+            }
             value={name}
           />
+
           {fieldErrors.nameValidationMsg && (
-            <div className="text-secondary">{t(fieldErrors.nameValidationMsg)}</div>
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem variant="error" icon={<RedExclamationCircleIcon />}>
+                  {t(fieldErrors.nameValidationMsg)}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
           )}
         </FormGroup>
 
@@ -290,14 +351,14 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
           <TextInput
             type="text"
             id="network-attachment-definition-description"
-            onChange={setDescription}
+            onChange={(_event, value) => setDescription(value)}
             value={description}
           />
         </FormGroup>
 
         <FormGroup fieldId="basic-settings-network-type">
           <label className="control-label co-required" htmlFor="network-type">
-            {t('kubevirt-plugin~Network Type')}
+            {networkTypeTitle}
           </label>
           {_.isEmpty(networkTypeDropdownItems) && (
             <Alert
@@ -315,7 +376,7 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
           )}
           <Dropdown
             id="network-type"
-            title="Network Type"
+            title={networkTypeTitle}
             items={networkTypeDropdownItems}
             dropDownClassName="dropdown--full-width"
             selectedKey={networkType}
@@ -334,7 +395,7 @@ const NetworkAttachmentDefinitionFormBase = (props) => {
         </div>
 
         <ButtonBar errorMessage={error ? error.message : ''} inProgress={loading}>
-          <ActionGroup className="pf-c-form">
+          <ActionGroup className="pf-v5-c-form">
             <Button
               id="save-changes"
               isDisabled={!formIsValid}

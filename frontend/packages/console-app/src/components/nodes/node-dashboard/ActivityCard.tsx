@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardActions } from '@patternfly/react-core';
+import { Card, CardHeader, CardTitle } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { resourcePathFromModel } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { EventModel, NodeModel } from '@console/internal/models';
@@ -37,12 +37,24 @@ const ActivityCard: React.FC = () => {
   const eventsLink = `${resourcePathFromModel(NodeModel, obj.metadata.name)}/events`;
   const { t } = useTranslation();
   return (
-    <Card data-test-id="activity-card" className="co-overview-card--gradient">
-      <CardHeader>
+    <Card
+      data-test-id="activity-card"
+      className="co-overview-card--gradient"
+      isClickable
+      isSelectable
+    >
+      <CardHeader
+        actions={{
+          actions: (
+            <>
+              <Link to={eventsLink}>{t('console-app~View events')}</Link>
+            </>
+          ),
+          hasNoOffset: false,
+          className: 'co-overview-card__actions',
+        }}
+      >
         <CardTitle>{t('console-app~Activity')}</CardTitle>
-        <CardActions className="co-overview-card__actions">
-          <Link to={eventsLink}>{t('console-app~View events')}</Link>
-        </CardActions>
       </CardHeader>
       <ActivityBody className="co-project-dashboard__activity-body">
         <OngoingActivityBody loaded />

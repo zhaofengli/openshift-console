@@ -17,7 +17,7 @@ import cx from 'classnames';
 import { TFunction } from 'i18next';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { match } from 'react-router';
+import { useParams } from 'react-router-dom-v5-compat';
 import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { dropdownUnits, initialAccessModes } from '@console/internal/components/storage/shared';
 import {
@@ -241,7 +241,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
     setPvcName(event.currentTarget.value);
   };
 
-  const handleGoldenCheckbox = (checked) => {
+  const handleGoldenCheckbox = (_event, checked) => {
     setIsGolden(checked);
     if (checked) {
       setNamespace(os?.baseImageNamespace);
@@ -256,7 +256,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
     }
   };
 
-  const handleOs = (newOs: string) => {
+  const handleOs = (_event, newOs: string) => {
     const operatingSystem = operatingSystems.find((o) => o.id === newOs);
     setOs(operatingSystem);
     setPvcName(operatingSystem?.baseImageName);
@@ -265,7 +265,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
     }
   };
 
-  const handlePvcSizeTemplate = (checked: boolean) => {
+  const handlePvcSizeTemplate = (_event, checked: boolean) => {
     setPvcSizeFromTemplate(checked);
     setRequestSizeValue(
       checked
@@ -274,13 +274,13 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
     );
   };
 
-  const handleCDROMChange = (checked: boolean) => {
+  const handleCDROMChange = (_event, checked: boolean) => {
     setMountAsCDROM(checked);
   };
 
   React.useEffect(() => {
     if (!isLoading && osParam) {
-      handleOs(osParam);
+      handleOs(null, osParam);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading]);
@@ -316,12 +316,11 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
           id="file-upload"
           value={fileValue}
           filename={fileName}
-          onChange={handleFileChange}
           hideDefaultPreview
           isRequired
           isDisabled={isLoading}
           dropzoneProps={{
-            accept: '.iso,.img,.qcow2,.gz,.xz',
+            accept: { 'text/plain': ['.iso', '.img', '.qcow2', '.gz', '.xz'] },
             onDropRejected: () => setIsFileRejected(true),
             onDropAccepted: () => setIsFileRejected(false),
           }}
@@ -430,7 +429,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
           <div className="form-group">
             <input
               disabled
-              className="pf-c-form-control"
+              className="pf-v5-c-form-control"
               type="text"
               aria-describedby="pvc-namespace-help"
               id="pvc-namespace"
@@ -449,7 +448,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
       <div className="form-group">
         <input
           disabled={isGolden || isLoading}
-          className="pf-c-form-control"
+          className="pf-v5-c-form-control"
           type="text"
           onChange={handlePvcName}
           placeholder={
@@ -555,8 +554,9 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
   );
 };
 
-export const UploadPVCPage: React.FC<UploadPVCPageProps> = (props) => {
+export const UploadPVCPage: React.FC = () => {
   const { t } = useTranslation();
+  const params = useParams();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCheckingCertificate, setCheckingCertificate] = React.useState(false);
   const [disableFormSubmit, setDisableFormSubmit] = React.useState(false);
@@ -612,7 +612,7 @@ export const UploadPVCPage: React.FC<UploadPVCPageProps> = (props) => {
       : null,
   );
 
-  const initialNamespace = props?.match?.params?.ns;
+  const initialNamespace = params?.ns;
   const namespace = getNamespace(dvObj) || initialNamespace;
   const urlParams = new URLSearchParams(window.location.search);
   const osParam = urlParams.get(CDI_UPLOAD_OS_URL_PARAM);
@@ -738,7 +738,7 @@ export const UploadPVCPage: React.FC<UploadPVCPageProps> = (props) => {
                 </p>
               </Alert>
             )}
-            <ActionGroup className="pf-c-form">
+            <ActionGroup className="pf-v5-c-form">
               <Button
                 isDisabled={disableFormSubmit || isCheckingCertificate}
                 id="save-changes"
@@ -789,8 +789,4 @@ export type UploadPVCFormProps = {
   storageClasses: StorageClassResourceKind[];
   onChange: (K8sResourceKind) => void;
   handleFileChange: (value, filename, event) => void;
-};
-
-export type UploadPVCPageProps = {
-  match: match<{ ns?: string }>;
 };

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Select } from '@patternfly/react-core';
+import { Select as SelectDeprecated } from '@patternfly/react-core/deprecated';
 import { shallow, ShallowWrapper } from 'enzyme';
 import { useExtensions } from '@console/plugin-sdk/src';
 import PerspectiveDropdown from '../PerspectiveDropdown';
@@ -12,6 +12,10 @@ jest.mock('@console/plugin-sdk/src/api/useExtensions', () => ({
 
 jest.mock('../usePreferredPerspective', () => ({
   usePreferredPerspective: jest.fn(),
+}));
+
+jest.mock('@console/shared/src/hooks/useTelemetry', () => ({
+  useTelemetry: () => {},
 }));
 
 const useExtensionsMock = useExtensions as jest.Mock;
@@ -44,7 +48,7 @@ describe('PerspectiveDropdown', () => {
     expect(
       wrapper.find('[data-test="dropdown console.preferredPerspective"]').exists(),
     ).toBeTruthy();
-    expect(wrapper.find(Select).props().selections).toBe(preferredPerspectiveLabel);
+    expect(wrapper.find(SelectDeprecated).props().selections).toBe(preferredPerspectiveLabel);
   });
 
   it('should render select with value "Last viewed" if user preferences have loaded but preferred perspective is not defined', () => {
@@ -54,6 +58,6 @@ describe('PerspectiveDropdown', () => {
     expect(
       wrapper.find('[data-test="dropdown console.preferredPerspective"]').exists(),
     ).toBeTruthy();
-    expect(wrapper.find(Select).props().selections).toEqual('Last viewed');
+    expect(wrapper.find(SelectDeprecated).props().selections).toEqual('Last viewed');
   });
 });

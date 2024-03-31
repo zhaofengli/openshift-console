@@ -3,7 +3,7 @@ import * as fs from 'fs-extra';
 import * as glob from 'glob';
 import * as _ from 'lodash';
 import * as readPkg from 'read-pkg';
-import { sharedPluginModules } from '../src/shared-modules';
+import { sharedPluginModules, getSharedModuleMetadata } from '../src/shared-modules';
 import { resolvePath } from './utils/path';
 
 type GeneratedPackage = {
@@ -11,7 +11,7 @@ type GeneratedPackage = {
   outDir: string;
   /** Package manifest. Note: `version` is updated via the publish script. */
   manifest: readPkg.PackageJson;
-  /** Additional files to copy to the package output directory. */
+  /** Additional files or directories to copy to the package output directory. */
   filesToCopy: Record<string, string>;
 };
 
@@ -33,6 +33,11 @@ const commonManifestFields: Partial<readPkg.PackageJson> = {
 const commonFiles: Record<string, string> = {
   '../../../LICENSE': 'LICENSE',
   'README.md': 'README.md',
+};
+
+const docFiles: Record<string, string> = {
+  docs: 'docs',
+  'upgrade-PatternFly.md': 'upgrade-PatternFly.md',
 };
 
 const getReferencedAssets = (outDir: string) => {
@@ -84,7 +89,9 @@ const parseSharedModuleDeps = (
 ) =>
   parseDeps(
     pkg,
-    sharedPluginModules.filter((m) => !m.startsWith('@openshift-console/')),
+    sharedPluginModules.filter(
+      (m) => !m.startsWith('@openshift-console/') && !getSharedModuleMetadata(m).allowFallback,
+    ),
     missingDepCallback,
   );
 
@@ -111,7 +118,7 @@ export const getCorePackage: GetPackageDefinition = (
   },
   filesToCopy: {
     ...commonFiles,
-    docs: 'docs',
+    ...docFiles,
     ...getReferencedAssets('dist/core'),
   },
 });
@@ -149,13 +156,20 @@ export const getWebpackPackage: GetPackageDefinition = (
     main: 'lib/lib-webpack.js',
     ...commonManifestFields,
     dependencies: {
-      ...parseDeps(sdkPackage, ['webpack'], missingDepCallback),
+      ...parseDeps(
+        sdkPackage,
+        ['@openshift/dynamic-plugin-sdk-webpack', 'webpack'],
+        missingDepCallback,
+      ),
       ...parseDeps(
         rootPackage,
-        ['ajv', 'chalk', 'comment-json', 'find-up', 'read-pkg', 'semver'],
+        ['ajv', 'chalk', 'comment-json', 'find-up', 'glob', 'read-pkg', 'semver'],
         missingDepCallback,
       ),
       ...parseDepsAs(rootPackage, { 'lodash-es': 'lodash' }, missingDepCallback),
+    },
+    peerDependencies: {
+      typescript: '>=4.5.5',
     },
   },
   filesToCopy: {

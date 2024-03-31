@@ -1,14 +1,13 @@
 import * as React from 'react';
 import * as _ from 'lodash';
-import { Link } from 'react-router-dom';
+import { Button } from '@patternfly/react-core';
+import { Link } from 'react-router-dom-v5-compat';
 import {
-  Button,
-  DropdownToggle,
-  Dropdown,
-  DropdownItem,
-  DropdownPosition,
-} from '@patternfly/react-core';
-import { CaretDownIcon } from '@patternfly/react-icons';
+  DropdownToggle as DropdownToggleDeprecated,
+  Dropdown as DropdownDeprecated,
+  DropdownItem as DropdownItemDeprecated,
+} from '@patternfly/react-core/deprecated';
+import { CaretDownIcon } from '@patternfly/react-icons/dist/esm/icons/caret-down-icon';
 import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
 import { useActiveNamespace } from '@console/shared/src/hooks/useActiveNamespace';
 import { ALL_NAMESPACES_KEY } from '@console/shared/src/constants/common';
@@ -21,6 +20,7 @@ import {
 } from '@console/dynamic-plugin-sdk';
 
 import { RequireCreatePermission } from '../../utils';
+import { transformGroupVersionKindToReference } from '@console/dynamic-plugin-sdk/src/utils/k8s';
 
 const CreateWithPermissions: React.FC<CreateWithPermissionsProps> = ({
   createAccessReview,
@@ -68,22 +68,26 @@ export const ListPageCreateDropdown: React.FC<ListPageCreateDropdownProps> = ({
   const [isOpen, setOpen] = React.useState(false);
   return (
     <CreateWithPermissions createAccessReview={createAccessReview}>
-      <Dropdown
-        position={DropdownPosition.right}
+      <DropdownDeprecated
+        position="right"
         toggle={
-          <DropdownToggle onToggle={setOpen} toggleIndicator={CaretDownIcon} isPrimary>
+          <DropdownToggleDeprecated
+            onToggle={(_event, isExpanded: boolean) => setOpen(isExpanded)}
+            toggleIndicator={CaretDownIcon}
+            toggleVariant="primary"
+          >
             {children}
-          </DropdownToggle>
+          </DropdownToggleDeprecated>
         }
         dropdownItems={Object.keys(items).map((key) => (
-          <DropdownItem
+          <DropdownItemDeprecated
             key={key}
             data-test={`list-page-create-dropdown-item-${key}`}
             component="button"
             onClick={() => onClick(key)}
           >
             {items[key]}
-          </DropdownItem>
+          </DropdownItemDeprecated>
         ))}
         isOpen={isOpen}
         data-test="item-create"
@@ -97,6 +101,8 @@ const ListPageCreate: React.FC<ListPageCreateProps> = ({
   groupVersionKind,
   children,
 }) => {
+  const reference = transformGroupVersionKindToReference(groupVersionKind);
+
   const [k8sModel] = useK8sModel(groupVersionKind);
   const [namespace] = useActiveNamespace();
   let to: string;
@@ -111,8 +117,8 @@ const ListPageCreate: React.FC<ListPageCreateProps> = ({
       : `/k8s/cluster/${k8sModel.plural}/~new`;
     if (k8sModel.crd) {
       to = usedNamespace
-        ? `/k8s/ns/${usedNamespace || 'default'}/${groupVersionKind}/~new`
-        : `/k8s/cluster/${groupVersionKind}/~new`;
+        ? `/k8s/ns/${usedNamespace || 'default'}/${reference}/~new`
+        : `/k8s/cluster/${reference}/~new`;
     }
   }
 

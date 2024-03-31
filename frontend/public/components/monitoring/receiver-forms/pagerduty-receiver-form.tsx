@@ -71,7 +71,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
             : t('public~Service key')}
         </label>
         <input
-          className="pf-c-form-control"
+          className="pf-v5-c-form-control"
           type="text"
           aria-describedby="integration-key-help"
           id="integration-key"
@@ -99,7 +99,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
         <div className="row">
           <div className="col-sm-7">
             <input
-              className="pf-c-form-control"
+              className="pf-v5-c-form-control"
               type="text"
               id="pagerduty-url"
               aria-describedby="pagerduty-url-help"
@@ -134,6 +134,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
         <ExpandCollapse
           textCollapsed={t('public~Show advanced configuration')}
           textExpanded={t('public~Hide advanced configuration')}
+          dataTest="advanced-configuration"
         >
           <div className="co-form-subsection">
             <SendResolvedAlertsCheckbox
@@ -147,7 +148,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
                 {t('public~Client')}
               </label>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 aria-describedby="client-help"
                 id="pagerduty-client"
@@ -169,7 +170,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
                 {t('public~Client URL')}
               </label>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 aria-describedby="client-url-help"
                 id="pagerduty-client-url"
@@ -192,7 +193,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
                 {t('public~Description')}
               </label>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 aria-describedby="description-help"
                 id="pagerduty-description"
@@ -214,7 +215,7 @@ export const Form: React.FC<FormProps> = ({ globals, formValues, dispatchFormCha
                 {t('public~Severity')}
               </label>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 aria-describedby="severity-help"
                 id="pagerduty-severity"

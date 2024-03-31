@@ -1,18 +1,21 @@
 import * as React from 'react';
 import { Alert, Button } from '@patternfly/react-core';
-import { PencilAltIcon } from '@patternfly/react-icons';
+import { PencilAltIcon } from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 import {
   ISortBy,
   sortable,
   SortByDirection,
-  Table,
-  TableBody,
   TableGridBreakpoint,
-  TableHeader,
   TableVariant,
 } from '@patternfly/react-table';
+import {
+  Table as TableDeprecated,
+  TableHeader as TableHeaderDeprecated,
+  TableBody as TableBodyDeprecated,
+} from '@patternfly/react-table/deprecated';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom-v5-compat';
 import { useAccessReview, WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { breadcrumbsForGlobalConfig } from '@console/internal/components/cluster-settings/global-config';
 import { DetailsForKind } from '@console/internal/components/default-resource';
@@ -78,7 +81,7 @@ const ConsolePluginStatus: React.FC<ConsolePluginStatusType> = ({ enabled, plugi
           variant="link"
         >
           {labels}
-          <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
+          <PencilAltIcon className="co-icon-space-l pf-v5-c-button-icon--plain" />
         </Button>
       ) : (
         <>{labels}</>
@@ -105,7 +108,7 @@ const ConsolePluginsList: React.FC<ConsolePluginsListType> = ({ obj }) => {
         return {
           name: plugin.metadata.name,
           version: plugin.metadata.version,
-          description: plugin.metadata?.description || placeholder,
+          description: plugin.metadata?.customProperties?.console?.description || placeholder,
           enabled: plugin.enabled,
           status: plugin.status,
         };
@@ -148,7 +151,7 @@ const ConsolePluginsList: React.FC<ConsolePluginsListType> = ({ obj }) => {
         return {
           name: plugin?.metadata?.name,
           version: loadedPluginInfo?.metadata?.version,
-          description: loadedPluginInfo?.metadata?.description,
+          description: loadedPluginInfo?.metadata?.customProperties?.console?.description,
           enabled,
           status: loadedPluginInfo?.status,
         };
@@ -252,7 +255,7 @@ const ConsolePluginsList: React.FC<ConsolePluginsListType> = ({ obj }) => {
         />
       )}
       {rows.length ? (
-        <Table
+        <TableDeprecated
           aria-label={t('console-app~Console plugins table')}
           cells={headers}
           gridBreakPoint={TableGridBreakpoint.none}
@@ -261,9 +264,9 @@ const ConsolePluginsList: React.FC<ConsolePluginsListType> = ({ obj }) => {
           sortBy={sortBy}
           variant={TableVariant.compact}
         >
-          <TableHeader />
-          <TableBody />
-        </Table>
+          <TableHeaderDeprecated />
+          <TableBodyDeprecated />
+        </TableDeprecated>
       ) : (
         <EmptyBox label={t('console-app~console plugins')} />
       )}
@@ -276,8 +279,9 @@ const ConsolePluginsList: React.FC<ConsolePluginsListType> = ({ obj }) => {
 export const ConsoleOperatorConfigDetailsPage: React.FC<React.ComponentProps<
   typeof DetailsPage
 >> = (props) => {
+  const location = useLocation();
   const pages = [
-    navFactory.details(DetailsForKind(props.kind)),
+    navFactory.details(DetailsForKind),
     navFactory.editYaml(),
     {
       href: 'console-plugins',
@@ -309,7 +313,7 @@ export const ConsoleOperatorConfigDetailsPage: React.FC<React.ComponentProps<
       pages={pages}
       menuActions={menuActions}
       breadcrumbsFor={() =>
-        breadcrumbsForGlobalConfig(ConsoleOperatorConfigModel.label, props.match.url)
+        breadcrumbsForGlobalConfig(ConsoleOperatorConfigModel.label, location.pathname)
       }
     />
   );

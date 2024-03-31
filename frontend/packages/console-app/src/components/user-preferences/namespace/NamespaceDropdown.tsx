@@ -3,18 +3,18 @@ import {
   Skeleton,
   EmptyState,
   EmptyStateIcon,
-  Title,
   EmptyStateBody,
   Divider,
   Menu,
   MenuItem,
   MenuContent,
   MenuList,
+  EmptyStateHeader,
 } from '@patternfly/react-core';
-import { ExclamationCircleIcon } from '@patternfly/react-icons';
+import { ExclamationCircleIcon } from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import fuzzysearch from 'fuzzysearch';
 import { useTranslation } from 'react-i18next';
-import { createProjectModal } from '@console/internal/components/modals';
+import { createNamespaceOrProjectModal } from '@console/internal/components/modals';
 import { useProjectOrNamespaceModel } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { ProjectModel } from '@console/internal/models';
@@ -86,30 +86,30 @@ const NamespaceDropdown: React.FC = () => {
     key: '##lastViewed##',
   };
 
-  const onCreateNamespace = React.useCallback(
-    () =>
-      createProjectModal({
-        blocking: true,
-        onSubmit: (newProject) => {
-          setPreferredNamespace(newProject.metadata.name);
-          fireTelemetryEvent('User Preference Changed', {
-            property: PREFERRED_NAMESPACE_USER_SETTING_KEY,
-            value: newProject.metadata.name,
-          });
-        },
-      }),
-    [fireTelemetryEvent, setPreferredNamespace],
-  );
+  const onCreateNamespace = React.useCallback(() => {
+    createNamespaceOrProjectModal({
+      blocking: true,
+      onSubmit: (newProject) => {
+        setPreferredNamespace(newProject.metadata.name);
+        fireTelemetryEvent('User Preference Changed', {
+          property: PREFERRED_NAMESPACE_USER_SETTING_KEY,
+          value: newProject.metadata.name,
+        });
+      },
+      isOpenShift: isProject,
+    });
+  }, [fireTelemetryEvent, setPreferredNamespace, isProject]);
 
   const loadErrorDescription: string = isProject
     ? t('console-app~Projects failed to load. Check your connection and reload the page.')
     : t('console-app~Namespaces failed to load. Check your connection and reload the page.');
   const loadErrorState: JSX.Element = optionsLoadError ? (
     <EmptyState data-test={'dropdown console.preferredNamespace error'}>
-      <EmptyStateIcon icon={ExclamationCircleIcon} />
-      <Title size="md" headingLevel="h4">
-        {t('console-app~Unable to load')}
-      </Title>
+      <EmptyStateHeader
+        titleText={<>{t('console-app~Unable to load')}</>}
+        icon={<EmptyStateIcon icon={ExclamationCircleIcon} />}
+        headingLevel="h4"
+      />
       <EmptyStateBody>{loadErrorDescription}</EmptyStateBody>
     </EmptyState>
   ) : null;
@@ -151,7 +151,6 @@ const NamespaceDropdown: React.FC = () => {
         itemId={lastViewedOption.key}
         isSelected={selected === lastViewedOption.key}
         data-test="dropdown-menu-item-lastViewed"
-        translate="no"
       >
         {lastViewedOption.title}
       </MenuItem>
@@ -168,7 +167,7 @@ const NamespaceDropdown: React.FC = () => {
       onActionClick={() => {}}
       isScrollable
     >
-      <MenuContent menuHeight="40vh" maxMenuHeight="40vh" translate="no">
+      <MenuContent menuHeight="40vh" maxMenuHeight="40vh">
         <Filter
           filterRef={filterRef}
           onFilterChange={setFilterText}
@@ -177,7 +176,12 @@ const NamespaceDropdown: React.FC = () => {
         />
         {lastNamespaceOption}
         {loadErrorState || emptyState}
-        <NamespaceGroup options={filteredOptions} selectedKey={selected} canFavorite={false} />
+        <NamespaceGroup
+          isProjects={isProject}
+          options={filteredOptions}
+          selectedKey={selected}
+          canFavorite={false}
+        />
       </MenuContent>
       <Footer
         canCreateNew={canCreate}

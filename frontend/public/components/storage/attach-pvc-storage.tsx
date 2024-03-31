@@ -2,6 +2,7 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { ActionGroup, Button } from '@patternfly/react-core';
 import { useTranslation, Trans } from 'react-i18next';
+import { useParams, useNavigate } from 'react-router-dom-v5-compat';
 import {
   ContainerSpec,
   k8sCreate,
@@ -10,7 +11,7 @@ import {
   k8sPatch,
   referenceFor,
 } from '../../module/k8s';
-import { ButtonBar, history, LoadingBox, resourceObjPath } from '../utils';
+import { ButtonBar, LoadingBox, resourceObjPath } from '../utils';
 import { Checkbox } from '../checkbox';
 import { RadioInput } from '../radio';
 import { CreatePVCForm } from './create-pvc';
@@ -40,6 +41,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
   const { kindObj, resourceName, namespace } = props;
 
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const supportedKinds = [
     'Deployment',
@@ -88,7 +90,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
     setSelectedContainers([]);
   };
 
-  const handleContainerSelectionChange = (checked, event) => {
+  const handleContainerSelectionChange = (event, checked) => {
     const checkedItems = [...selectedContainers];
     checked
       ? checkedItems.push(event.currentTarget.id)
@@ -255,7 +257,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
       (pvcName: string) => {
         return k8sPatch(kindObj, obj, getVolumePatches(pvcName)).then((resource) => {
           setInProgress(false);
-          history.push(resourceObjPath(resource, referenceFor(resource)));
+          navigate(resourceObjPath(resource, referenceFor(resource)));
         });
       },
       (err) => {
@@ -314,7 +316,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
           </label>
           <div>
             <input
-              className="pf-c-form-control"
+              className="pf-v5-c-form-control"
               type="text"
               onChange={handleDevicePathChange}
               aria-describedby="volume-device-help"
@@ -335,7 +337,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
           </label>
           <div>
             <input
-              className="pf-c-form-control"
+              className="pf-v5-c-form-control"
               type="text"
               onChange={handleMountPathChange}
               aria-describedby="mount-path-help"
@@ -361,7 +363,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
             </label>
             <div>
               <input
-                className="pf-c-form-control"
+                className="pf-v5-c-form-control"
                 type="text"
                 onChange={handleSubPathChange}
                 aria-describedby="subpath-help"
@@ -407,11 +409,16 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
         </div>
       )}
       <ButtonBar errorMessage={error} inProgress={inProgress}>
-        <ActionGroup className="pf-c-form">
-          <Button type="submit" variant="primary" id="save-changes">
+        <ActionGroup className="pf-v5-c-form">
+          <Button
+            type="submit"
+            variant="primary"
+            id="save-changes"
+            isDisabled={showCreatePVC === 'existing' && !claimName}
+          >
             {t('public~Save')}
           </Button>
-          <Button type="button" variant="secondary" onClick={history.goBack}>
+          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
             {t('public~Cancel')}
           </Button>
         </ActionGroup>
@@ -420,7 +427,8 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
   );
 };
 
-export const AttachStorage = ({ kindObj, kindsInFlight, match: { params } }) => {
+export const AttachStorage = ({ kindObj, kindsInFlight }) => {
+  const params = useParams();
   if (!kindObj && kindsInFlight) {
     return <LoadingBox />;
   }

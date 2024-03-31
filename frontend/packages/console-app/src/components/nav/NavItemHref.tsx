@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { NavItem } from '@patternfly/react-core';
 import { HrefNavItem } from '@console/dynamic-plugin-sdk';
-import { useActiveNamespace } from '@console/dynamic-plugin-sdk/src/lib-internal';
 import { formatNamespacedRouteForHref, formatNamespacedRouteForResource } from '@console/shared';
+import { useActiveNamespace } from '@console/shared/src/hooks/useActiveNamespace';
 import { useLocation } from '@console/shared/src/hooks/useLocation';
 import { NavLinkProps, NavLink } from './NavLink';
 import { navItemHrefIsActive, stripScopeFromPath } from './utils';
@@ -34,7 +34,7 @@ export const NavItemHref: React.FC<NavItemHrefProps> = ({
   }, [activeNamespace, href, namespaced, prefixNamespaced]);
   return (
     <NavItem isActive={isActive}>
-      <NavLink {...navLinkProps} {...dataAttributes} to={to}>
+      <NavLink {...navLinkProps} {...dataAttributes} to={to()}>
         {children}
       </NavLink>
     </NavItem>

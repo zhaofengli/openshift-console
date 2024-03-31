@@ -6,7 +6,7 @@ import {
   TextList,
   TextListItem,
 } from '@patternfly/react-core';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { Trans, useTranslation } from 'react-i18next';
 import { useClusterVersion, BlueArrowCircleUpIcon, useCanClusterUpgrade } from '@console/shared';
 import { isLoadedDynamicPluginInfo } from '@console/plugin-sdk/src';
@@ -167,7 +167,8 @@ export const AboutModal: React.FC<AboutModalProps> = (props) => {
       productName=""
       brandImageSrc={details.logoImg}
       brandImageAlt={details.productName}
-      noAboutModalBoxContentContainer={true}
+      hasNoContentContainer
+      aria-label="About modal"
     >
       {!customBranding && (
         <p>

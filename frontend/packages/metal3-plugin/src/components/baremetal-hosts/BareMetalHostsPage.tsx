@@ -36,15 +36,12 @@ const flattenResources = (resources: Resources) => {
   const loaded = _.every(resources, (resource) =>
     resource.optional ? resource.loaded || !_.isEmpty(resource.loadError) : resource.loaded,
   );
-  const {
-    hosts: { data: hostsData },
-    machines: { data: machinesData },
-    machineSets,
-    nodes,
-    nodeMaintenances,
-  } = resources;
 
   if (loaded) {
+    const { hosts, machines, machineSets, nodes, nodeMaintenances } = resources;
+    const hostsData = hosts?.data || [];
+    const machinesData = machines?.data || [];
+
     const maintenancesByNodeName = createLookup(nodeMaintenances, getNodeMaintenanceNodeName);
     const nodesByMachineName = createLookup(nodes, getNodeMachineName);
     const machineSetByUID = createLookup(machineSets);
@@ -105,7 +102,7 @@ const getCreateProps = ({ namespace, t }: { namespace: string; t: TFunction }) =
 
 const BareMetalHostsPage: React.FC<BareMetalHostsPageProps> = (props) => {
   const { t } = useTranslation();
-  const [hasNodeMaintenanceCapability, model] = useMaintenanceCapability();
+  const [model] = useMaintenanceCapability();
   const { namespace } = props;
   const resources: FirehoseResource[] = [
     {
@@ -131,7 +128,7 @@ const BareMetalHostsPage: React.FC<BareMetalHostsPageProps> = (props) => {
     },
   ];
 
-  if (hasNodeMaintenanceCapability) {
+  if (model) {
     resources.push({
       kind: referenceForModel(model),
       namespaced: false,

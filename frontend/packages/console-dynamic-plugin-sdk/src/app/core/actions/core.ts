@@ -1,5 +1,5 @@
 import { action, ActionType as Action } from 'typesafe-actions';
-import { UserKind } from '../../redux-types';
+import { UserInfo } from '../../../extensions';
 
 export enum ActionType {
   SetUser = 'setUser',
@@ -8,19 +8,15 @@ export enum ActionType {
   SetActiveCluster = 'setActiveCluster',
 }
 
-export const setUser = (user: UserKind) => action(ActionType.SetUser, { user });
+export const setUser = (userInfo: UserInfo) => action(ActionType.SetUser, { userInfo });
 export const beginImpersonate = (kind: string, name: string, subprotocols: string[]) =>
   action(ActionType.BeginImpersonate, { kind, name, subprotocols });
 export const endImpersonate = () => action(ActionType.EndImpersonate);
-
-// TODO remove multicluster
-export const setActiveCluster = (cluster) => action(ActionType.SetActiveCluster, { cluster });
 
 const coreActions = {
   setUser,
   beginImpersonate,
   endImpersonate,
-  setActiveCluster,
 };
 
 export type CoreAction = Action<typeof coreActions>;

@@ -12,6 +12,7 @@ export const devNavigationMenuPO = {
   secret: '#Secret',
   dropdownButton: '[data-test-id="dropdown-button"]',
   environments: '[data-test-id="environments-header"]',
+  functions: '[data-test-id="functions-details-header"]',
 };
 
 export const adminNavigationMenuPO = {
@@ -47,7 +48,7 @@ export const formPO = {
   successAlert: '[aria-label="Success Alert"]',
   confirm: '[data-test="confirm-action"]',
 };
-export const alert = '.pf-c-alert';
+export const alert = '.pf-v5-c-alert';
 export const pagePO = {
   create: '[data-test="item-create"]',
   breadcrumb: '[aria-label="Breadcrumb"]',

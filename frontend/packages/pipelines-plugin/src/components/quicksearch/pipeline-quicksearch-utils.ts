@@ -5,8 +5,9 @@ import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import { coFetch } from '@console/internal/co-fetch';
 import { k8sCreate, k8sUpdate } from '@console/internal/module/k8s';
 import { ClusterTaskModel, TaskModel } from '../../models';
-import { TektonTaskAnnotation, TektonTaskProviders } from '../pipelines/const';
-import { CTALabel, TEKTONHUB } from './const';
+import { returnValidTaskModel } from '../../utils/pipeline-utils';
+import { TektonTaskAnnotation, TaskProviders } from '../pipelines/const';
+import { ARTIFACTHUB, CTALabel, TEKTONHUB } from './const';
 
 export const isSelectedVersionInstalled = (item: CatalogItem, selectedVersion: string): boolean => {
   return item.attributes?.installed === selectedVersion;
@@ -15,11 +16,20 @@ export const isSelectedVersionInstalled = (item: CatalogItem, selectedVersion: s
 export const isTaskVersionInstalled = (item: CatalogItem): boolean => !!item.attributes?.installed;
 
 export const isOneVersionInstalled = (item: CatalogItem): boolean => {
-  return !!item.attributes?.versions?.find((v) => v.version === item.attributes?.installed);
+  return !!(
+    item.attributes?.installed &&
+    item.attributes?.versions?.some(
+      (v) => v.version?.toString() === item.attributes?.installed?.toString(),
+    )
+  );
 };
 
 export const isTektonHubTaskWithoutVersions = (item: CatalogItem): boolean => {
-  return item.provider === TektonTaskProviders.community && item?.attributes?.versions.length === 0;
+  return item.provider === TaskProviders.tektonHub && item?.attributes?.versions?.length === 0;
+};
+
+export const isArtifactHubTask = (item: CatalogItem): boolean => {
+  return item.data.source === ARTIFACTHUB && item.provider === TaskProviders.artifactHub;
 };
 
 export const isSelectedVersionUpgradable = (
@@ -74,7 +84,9 @@ export const getSelectedVersionUrl = (item: CatalogItem, version: string): strin
   if (!item?.attributes?.versions) {
     return null;
   }
-  return item.attributes.versions.find((v) => v.version === version)?.rawURL;
+  return isArtifactHubTask(item)
+    ? item.attributes.selectedVersionContentUrl
+    : item.attributes.versions.find((v) => v.version === version)?.rawURL;
 };
 
 export const findInstalledTask = (items: CatalogItem[], item: CatalogItem): CatalogItem => {
@@ -84,7 +96,8 @@ export const findInstalledTask = (items: CatalogItem[], item: CatalogItem): Cata
       i.name === item.name &&
       item.data.kind !== ClusterTaskModel.kind &&
       i.data.kind === TaskModel.kind &&
-      i.data.metadata?.annotations?.[TektonTaskAnnotation.installedFrom] === TEKTONHUB,
+      (i.data.metadata?.annotations?.[TektonTaskAnnotation.installedFrom] === TEKTONHUB ||
+        i.data.metadata?.annotations?.[TektonTaskAnnotation.installedFrom] === ARTIFACTHUB),
   );
 };
 
@@ -104,7 +117,8 @@ export const updateTask = async (
         ...getInstalledFromAnnotation(),
       };
       task.metadata = _.merge({}, taskData.data.metadata, task.metadata);
-      return k8sUpdate(TaskModel, task, namespace, name);
+      const taskModel = returnValidTaskModel(task);
+      return k8sUpdate(taskModel, task, namespace, name);
     })
     .catch((err) => {
       // eslint-disable-next-line no-console
@@ -123,7 +137,8 @@ export const createTask = (url: string, namespace: string) => {
         ...task.metadata.annotations,
         [TektonTaskAnnotation.installedFrom]: TEKTONHUB,
       };
-      await k8sCreate(TaskModel, task);
+      const taskModel = returnValidTaskModel(task);
+      return k8sCreate(taskModel, task);
     })
     .catch((err) => {
       // eslint-disable-next-line no-console

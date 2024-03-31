@@ -9,7 +9,7 @@ declare global {
   namespace Cypress {
     interface Chainable {
       alertTitleShouldContain(title: string): Chainable<Element>;
-      clickNavLink(path: [string, string]): Chainable<Element>;
+      clickNavLink(path: string[]): Chainable<Element>;
       selectByDropDownText(selector: string, dropdownText: string): Chainable<Element>;
       selectByAutoCompleteDropDownText(selector: string, dropdownText: string): Chainable<Element>;
       verifyDropdownselected(selector: string): Chainable<Element>;
@@ -22,7 +22,7 @@ declare global {
       dropdownSwitchTo(dropdownMenuOption: string): Chainable<Element>;
       isDropdownVisible(): Chainable<Element>;
       checkErrors(): Chainable<Element>;
-      waitUntilEnabled(selector: string): Chainable<Element>;
+      waitUntilEnabled(selector: string): void;
     }
   }
 }
@@ -31,7 +31,7 @@ Cypress.Commands.add('alertTitleShouldContain', (alertTitle: string) => {
   cy.byLegacyTestID('modal-title').should('contain.text', alertTitle);
 });
 
-Cypress.Commands.add('clickNavLink', (path: [string, string]) => {
+Cypress.Commands.add('clickNavLink', (path: string[]) => {
   cy.get(`[data-component="pf-nav-expandable"]`) // this assumes all top level menu items are expandable
     .contains(path[0])
     .click(); // open top, expandable menu
@@ -54,7 +54,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add('verifyDropdownselected', (selector: string) => {
   cy.get(selector).should('be.visible');
-  cy.get(selector).click().get('.pf-c-dropdown__menu').should('be.visible');
+  cy.get(selector).click().get('.pf-v5-c-dropdown__menu').should('be.visible');
 });
 
 Cypress.Commands.add('mouseHover', (selector: string) => {
@@ -79,7 +79,7 @@ Cypress.Commands.add('selectActionsMenuOption', (actionsMenuOption: string) => {
 Cypress.Commands.add('dropdownSwitchTo', (dropdownMenuOption: string) => {
   cy.byLegacyTestID('dropdown-button')
     .click()
-    .get('.pf-c-dropdown__menu')
+    .get('.pf-v5-c-dropdown__menu')
     .contains(dropdownMenuOption)
     .click();
 });
@@ -88,7 +88,7 @@ Cypress.Commands.add('isDropdownVisible', () => {
   cy.byLegacyTestID('dropdown-button')
     .should('be.visible')
     .click()
-    .get('.pf-c-dropdown__menu')
+    .get('.pf-v5-c-dropdown__menu')
     .should('be.visible');
 });
 
@@ -134,7 +134,7 @@ Cypress.Commands.add('checkErrors', () => {
   });
 });
 
-Cypress.Commands.add('waitUntilEnabled', (selector, timeout = 20000) => {
+Cypress.Commands.add('waitUntilEnabled', (selector: string, timeout: number = 20000): any => {
   const start = new Date().getTime();
 
   return cy.get(selector).then(($el) => {

@@ -25,6 +25,7 @@ export const MachineConfigPoolsSelector: React.FC<MachineConfigPoolsSelectorProp
           id={mcp.metadata.name}
           isChecked={selected.includes(mcp.metadata.name)}
           onChange={onChange}
+          data-test={`pause-mcp-checkbox-${mcp.metadata.name}`}
         />
       ))}
     </div>
@@ -33,6 +34,6 @@ export const MachineConfigPoolsSelector: React.FC<MachineConfigPoolsSelectorProp
 
 export type MachineConfigPoolsSelectorProps = {
   machineConfigPools: MachineConfigPoolKind[];
-  onChange: (checked: boolean, event: React.FormEvent<HTMLInputElement>) => void;
+  onChange: (event: React.FormEvent<HTMLInputElement>, checked: boolean) => void;
   selected: string[];
 };

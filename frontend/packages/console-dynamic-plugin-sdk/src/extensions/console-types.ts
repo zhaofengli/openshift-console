@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { ButtonProps } from '@patternfly/react-core';
 import { ICell, OnSelect, SortByDirection, TableGridBreakpoint } from '@patternfly/react-table';
+import { LocationDescriptor } from 'history';
 import MonacoEditor from 'react-monaco-editor/lib/editor';
-import { RouteComponentProps } from 'react-router';
 import {
   ExtensionK8sGroupKindModel,
   K8sModel,
+  MatchLabels,
   PrometheusEndpoint,
   PrometheusLabels,
   PrometheusValue,
@@ -59,6 +60,15 @@ export type K8sResourceCommon = {
   metadata?: ObjectMetadata;
 };
 
+export type K8sResourceKind = K8sResourceCommon & {
+  spec?: {
+    selector?: Selector | MatchLabels;
+    [key: string]: any;
+  };
+  status?: { [key: string]: any };
+  data?: { [key: string]: any };
+};
+
 export type K8sVerb =
   | 'create'
   | 'get'
@@ -67,7 +77,8 @@ export type K8sVerb =
   | 'patch'
   | 'delete'
   | 'deletecollection'
-  | 'watch';
+  | 'watch'
+  | 'impersonate';
 
 export type AccessReviewResourceAttributes = {
   group?: string;
@@ -91,7 +102,7 @@ export type GroupVersionKind = string;
  * The canonical, unique identifier for a Kubernetes resource type.
  * Maintains backwards-compatibility with references using the `kind` string field.
  */
-export type K8sResourceKindReference = GroupVersionKind | string;
+export type K8sResourceKindReference = string;
 
 export type K8sGroupVersionKind = { group?: string; version: string; kind: string };
 
@@ -185,7 +196,6 @@ export type WatchK8sResource = {
   fieldSelector?: string;
   optional?: boolean;
   partialMetadata?: boolean;
-  cluster?: string; // TODO remove multicluster
 };
 
 export type ResourcesObject = { [key: string]: K8sResourceCommon | K8sResourceCommon[] };
@@ -256,7 +266,7 @@ export type ConsoleFetch = (
   url: string,
   options?: RequestInit,
   timeout?: number,
-  cluster?: string, // TODO remove multicluster
+  isEntireResponse?: boolean,
 ) => Promise<Response>;
 
 export type ConsoleFetchJSON<T = any> = {
@@ -265,46 +275,40 @@ export type ConsoleFetchJSON<T = any> = {
     method?: string,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string, // TODO remove multicluster
+    isEntireResponse?: boolean,
   ): Promise<T>;
-  delete(
-    url: string,
-    json?: any,
-    options?: RequestInit,
-    timeout?: number,
-    cluster?: string, // TODO remove multicluster
-  ): Promise<T>;
+  delete(url: string, json?: any, options?: RequestInit, timeout?: number): Promise<T>;
   post(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string, // TODO remove multicluster
+    isEntireResponse?: boolean,
   ): Promise<T>;
   put(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string, // TODO remove multicluster
+    isEntireResponse?: boolean,
   ): Promise<T>;
   patch(
     url: string,
     json: any,
     options?: RequestInit,
     timeout?: number,
-    cluster?: string, // TODO remove multicluster
+    isEntireResponse?: boolean,
   ): Promise<T>;
 };
 
-export type ConsoleFetchText = (...args: Parameters<ConsoleFetch>) => Promise<string>;
+export type ConsoleFetchText<T = any> = (...args: Parameters<ConsoleFetch>) => Promise<T>;
 
 /* Horizontal Nav Types */
 export type NavPage = {
   href?: string;
   path?: string;
   name: string;
-  component: React.ComponentType<RouteComponentProps>;
+  component: React.ComponentType;
 };
 
 export type HorizontalNavProps = {
@@ -325,7 +329,7 @@ export type RowProps<D, R extends any = {}> = {
   activeColumnIDs: Set<string>;
 };
 
-type VirtualizedTableProps<D, R extends any = {}> = {
+export type VirtualizedTableProps<D, R extends any = {}> = {
   data: D[];
   unfilteredData: D[];
   loaded: boolean;
@@ -340,6 +344,7 @@ type VirtualizedTableProps<D, R extends any = {}> = {
   'aria-label'?: string;
   gridBreakPoint?: TableGridBreakpoint;
   rowData?: R;
+  mock?: boolean;
 };
 
 export type VirtualizedTableFC = <D, R extends any = {}>(
@@ -370,13 +375,13 @@ export type ListPageHeaderProps = {
 
 export type CreateWithPermissionsProps = {
   createAccessReview?: {
-    groupVersionKind: GroupVersionKind;
+    groupVersionKind: K8sResourceKindReference | K8sGroupVersionKind;
     namespace?: string;
   };
 };
 
 export type ListPageCreateProps = CreateWithPermissionsProps & {
-  groupVersionKind: GroupVersionKind;
+  groupVersionKind: K8sResourceKindReference | K8sGroupVersionKind;
 };
 
 export type ListPageCreateLinkProps = CreateWithPermissionsProps & {
@@ -421,6 +426,12 @@ export type RowReducerFilter<R = any> = RowFilterBase<R> & {
 
 export type RowFilter<R = any> = RowMatchFilter<R> | RowReducerFilter<R>;
 
+export type RowSearchFilter<R = any> = Omit<RowFilterBase<R>, 'items' | 'defaultSelected'> & {
+  placeholder?: string;
+};
+
+export type AnyRowFilter<R = any> = RowFilter<R> | RowSearchFilter<R>;
+
 export type ColumnLayout = {
   id: string;
   columns: ManagedColumn[];
@@ -440,7 +451,7 @@ export type OnFilterChange = (type: string, value: FilterValue) => void;
 export type ListPageFilterProps<D = any> = {
   data: D;
   loaded: boolean;
-  rowFilters?: RowFilter[];
+  rowFilters?: RowFilter<D>[];
   labelFilter?: string;
   labelPath?: string;
   nameFilterTitle?: string;
@@ -452,11 +463,12 @@ export type ListPageFilterProps<D = any> = {
   onFilterChange: OnFilterChange;
   hideColumnManagement?: boolean;
   nameFilter?: string;
+  rowSearchFilters?: RowSearchFilter<D>[];
 };
 
 export type UseListPageFilter = <D, R>(
   data: D[],
-  rowFilters?: RowFilter<R>[],
+  rowFilters?: AnyRowFilter<R>[],
   staticFilters?: { [key: string]: FilterValue },
 ) => [D[], D[], OnFilterChange];
 
@@ -475,6 +487,7 @@ export type ResourceLinkProps = {
   dataTest?: string;
   onClick?: () => void;
   truncate?: boolean;
+  nameSuffix?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -626,6 +639,24 @@ export type SelfSubjectAccessReviewKind = {
   };
 };
 
+// per https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#selfsubjectreview-v1-authentication-k8s-io
+export type SelfSubjectReviewKind = {
+  apiVersion: string;
+  kind: string;
+  metadata?: ObjectMetadata;
+  status?: {
+    userInfo?: UserInfo;
+  };
+};
+
+// per https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#userinfo-v1-authentication-k8s-io
+export type UserInfo = {
+  uid?: string;
+  username?: string;
+  groups?: string[];
+  extra?: object;
+};
+
 export type CodeEditorProps = {
   value?: string;
   language?: string;
@@ -694,4 +725,99 @@ export type QueryBrowserProps = {
   showStackedControl?: boolean;
   timespan?: number;
   units?: string;
+};
+
+export type StorageClass = K8sResourceCommon & {
+  provisioner: string;
+  parameters: object;
+  reclaimPolicy?: string;
+  volumeBindingMode?: string;
+  allowVolumeExpansion?: boolean;
+};
+
+export type UseAnnotationsModal = (resource: K8sResourceCommon) => () => void;
+
+export type UseDeleteModal = (
+  resource: K8sResourceCommon,
+  redirectTo?: LocationDescriptor,
+  message?: JSX.Element,
+  btnText?: React.ReactNode,
+  deleteAllResources?: () => Promise<K8sResourceKind[]>,
+) => () => void;
+
+export type UseLabelsModal = (resource: K8sResourceCommon) => () => void;
+
+export type UseValuesForNamespaceContext = () => {
+  namespace: string;
+  setNamespace: (ns: string) => void;
+  loaded: boolean;
+};
+
+export type UseActiveNamespace = () => [string, (ns: string) => void];
+
+export type TaintEffect = '' | 'NoSchedule' | 'PreferNoSchedule' | 'NoExecute';
+
+export type Taint = {
+  key: string;
+  value: string;
+  effect: TaintEffect;
+};
+
+export enum K8sResourceConditionStatus {
+  True = 'True',
+  False = 'False',
+  Unknown = 'Unknown',
+}
+
+export type K8sResourceCondition = {
+  type: string;
+  status: keyof typeof K8sResourceConditionStatus;
+  lastTransitionTime?: string;
+  reason?: string;
+  message?: string;
+};
+
+export type NodeCondition = {
+  lastHeartbeatTime?: string;
+} & K8sResourceCondition;
+
+export type NodeKind = {
+  spec: {
+    taints?: Taint[];
+    unschedulable?: boolean;
+  };
+  status?: {
+    capacity?: {
+      [key: string]: string;
+    };
+    conditions?: NodeCondition[];
+    images?: {
+      names: string[];
+      sizeBytes?: number;
+    }[];
+    phase?: string;
+    nodeInfo?: {
+      operatingSystem: string;
+    };
+  };
+} & K8sResourceCommon;
+
+export type CertificateSigningRequestKind = {
+  spec: {
+    groups: string[];
+    request: string;
+    usages: string[];
+    username: string;
+    uid: string;
+  };
+  status?: {
+    conditions: {
+      type: string;
+      [key: string]: string;
+    }[];
+  };
+} & K8sResourceCommon;
+
+export type NodeCertificateSigningRequestKind = CertificateSigningRequestKind & {
+  metadata: K8sResourceCommon['metadata'] & { originalName: string };
 };

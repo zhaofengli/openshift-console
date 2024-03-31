@@ -1,7 +1,8 @@
 import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom-v5-compat';
+
 import { useTranslation } from 'react-i18next';
 import { ActionGroup, Button } from '@patternfly/react-core';
 import { isObjectSC } from '@console/shared/src/utils';
@@ -12,7 +13,6 @@ import {
   AsyncComponent,
   ButtonBar,
   RequestSizeInput,
-  history,
   resourceObjPath,
   PageHeading,
 } from '../utils';
@@ -20,7 +20,7 @@ import { StorageClassDropdown } from '../utils/storage-class-dropdown';
 import { Checkbox } from '../checkbox';
 import { PersistentVolumeClaimModel } from '../../models';
 import { StorageClass } from '../storage-class-form';
-import { provisionerAccessModeMapping, initialAccessModes, dropdownUnits } from './shared';
+import { getProvisionerModeMapping, initialAccessModes, dropdownUnits } from './shared';
 
 const NameValueEditorComponent = (props) => (
   <AsyncComponent
@@ -116,7 +116,7 @@ export const CreatePVCForm: React.FC<CreatePVCFormProps> = (props) => {
   const handleStorageClass = (updatedStorageClass) => {
     const provisioner: string = updatedStorageClass?.provisioner || '';
     //setting message to display for various modes when a storage class of a know provisioner is selected
-    const displayMessage = provisionerAccessModeMapping[provisioner]
+    const displayMessage = getProvisionerModeMapping(provisioner)
       ? `${t('public~Access mode is set by StorageClass and cannot be changed')}`
       : `${t('public~Permissions to the mounted drive')}`;
     setAccessModeHelp(displayMessage);
@@ -158,7 +158,7 @@ export const CreatePVCForm: React.FC<CreatePVCFormProps> = (props) => {
       </label>
       <div className="form-group">
         <input
-          className="pf-c-form-control"
+          className="pf-v5-c-form-control"
           type="text"
           onChange={handlePvcName}
           placeholder="my-storage-claim"
@@ -239,6 +239,7 @@ export const CreatePVCForm: React.FC<CreatePVCFormProps> = (props) => {
 
 export const CreatePVCPage: React.FC<CreatePVCPageProps> = (props) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [error, setError] = React.useState('');
   const [inProgress, setInProgress] = React.useState(false);
   const [pvcObj, setPvcObj] = React.useState(null);
@@ -251,7 +252,7 @@ export const CreatePVCPage: React.FC<CreatePVCPageProps> = (props) => {
     k8sCreate(PersistentVolumeClaimModel, pvcObj).then(
       (resource) => {
         setInProgress(false);
-        history.push(resourceObjPath(resource, referenceFor(resource)));
+        navigate(resourceObjPath(resource, referenceFor(resource)));
       },
       ({ message }: { message: string }) => {
         setError(message || 'Could not create persistent volume claim.');
@@ -282,11 +283,11 @@ export const CreatePVCPage: React.FC<CreatePVCPageProps> = (props) => {
         <form className="co-m-pane__body-group" onSubmit={save}>
           <CreatePVCForm onChange={setPvcObj} namespace={namespace} />
           <ButtonBar errorMessage={error} inProgress={inProgress}>
-            <ActionGroup className="pf-c-form">
+            <ActionGroup className="pf-v5-c-form">
               <Button id="save-changes" data-test="create-pvc" type="submit" variant="primary">
                 {t('public~Create')}
               </Button>
-              <Button onClick={history.goBack} type="button" variant="secondary">
+              <Button onClick={() => navigate(-1)} type="button" variant="secondary">
                 {t('public~Cancel')}
               </Button>
             </ActionGroup>
@@ -297,7 +298,8 @@ export const CreatePVCPage: React.FC<CreatePVCPageProps> = (props) => {
   );
 };
 
-export const CreatePVC = ({ match: { params } }) => {
+export const CreatePVC = () => {
+  const params = useParams();
   return <CreatePVCPage namespace={params.ns} />;
 };
 

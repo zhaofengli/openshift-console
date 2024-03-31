@@ -50,6 +50,16 @@ export abstract class BaseService {
   abstract getRepoLanguageList(): Promise<RepoLanguageList>;
 
   /**
+   * Creates a Webhook and returns the response status code.
+   */
+  abstract createRepoWebhook(
+    token: string,
+    webhookURL: string,
+    sslVerification: boolean,
+    webhookSecret: string,
+  ): Promise<boolean>;
+
+  /**
    * Returns content of the file as a string.
    */
   abstract getFileContent(path: string): Promise<string | null>;

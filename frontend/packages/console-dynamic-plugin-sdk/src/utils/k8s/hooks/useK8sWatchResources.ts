@@ -1,4 +1,3 @@
-// TODO remove multicluster
 import * as React from 'react';
 import { Map as ImmutableMap } from 'immutable';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -6,9 +5,7 @@ import { Map as ImmutableMap } from 'immutable';
 import { useSelector, useDispatch } from 'react-redux';
 import { createSelectorCreator, defaultMemoize } from 'reselect';
 import { K8sModel } from '../../../api/common-types';
-import { getActiveCluster } from '../../../app/core/reducers/coreSelectors';
 import * as k8sActions from '../../../app/k8s/actions/k8s';
-import { SDKStoreState } from '../../../app/redux-types';
 import { UseK8sWatchResources } from '../../../extensions/console-types';
 import {
   transformGroupVersionKindToReference,
@@ -23,7 +20,7 @@ import { useModelsLoaded } from './useModelsLoaded';
 import { usePrevious } from './usePrevious';
 
 /**
- * Hook that retrieves the k8s resources along with their respective status for loaded and error.
+ * Hook that retrieves the Kubernetes resources along with their respective status for loaded and error.
  * @param initResources resources need to be watched as key-value pair, wherein key will be unique to resource and value will be options needed to watch for the respective resource.
  * @returns A map where keys are as provided in initResouces and value has three properties data, loaded and error.
  * @example
@@ -39,9 +36,7 @@ import { usePrevious } from './usePrevious';
  * }
  * ```
  */
-// TODO remove multicluster
 export const useK8sWatchResources: UseK8sWatchResources = (initResources) => {
-  const cluster = useSelector((state: SDKStoreState) => getActiveCluster(state));
   const resources = useDeepCompareMemoize(initResources, true);
   const modelsLoaded = useModelsLoaded();
 
@@ -86,14 +81,15 @@ export const useK8sWatchResources: UseK8sWatchResources = (initResources) => {
             );
 
             const resourceModel =
-              k8sModels.get(modelReference) ||
-              k8sModels.get(getGroupVersionKindForReference(modelReference).kind);
+              modelReference &&
+              (k8sModels.get(modelReference) ||
+                k8sModels.get(getGroupVersionKindForReference(modelReference).kind));
             if (!resourceModel) {
               ids[key] = {
                 noModel: true,
               };
             } else {
-              const idAndDispatch = getIDAndDispatch(resources[key], resourceModel, cluster);
+              const idAndDispatch = getIDAndDispatch(resources[key], resourceModel);
               if (idAndDispatch) {
                 ids[key] = idAndDispatch;
               }
@@ -101,7 +97,7 @@ export const useK8sWatchResources: UseK8sWatchResources = (initResources) => {
             return ids;
           }, {})
         : null,
-    [k8sModels, modelsLoaded, resources, cluster],
+    [k8sModels, modelsLoaded, resources],
   );
 
   const dispatch = useDispatch();

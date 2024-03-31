@@ -28,7 +28,6 @@ import Status, {
   StatusPopupSection,
 } from '@console/shared/src/components/dashboard/status-card/StatusPopup';
 import NodeStatus from '../NodeStatus';
-import MarkAsSchedulablePopover from '../popovers/MarkAsSchedulablePopover';
 import { CONDITIONS_WARNING } from './messages';
 import { NodeDashboardContext } from './NodeDashboardContext';
 
@@ -41,7 +40,7 @@ export const HealthChecksPopup: React.FC<HealthChecksPopupProps> = ({
 }) => {
   let conditionFailing: boolean = false;
   let reboot: boolean = false;
-  const grouppedConditions = Object.values(
+  const groupedConditions = Object.values(
     _.groupBy(
       conditions.sort((a, b) => a.type.localeCompare(b.type)),
       (c) => c.type,
@@ -103,7 +102,7 @@ export const HealthChecksPopup: React.FC<HealthChecksPopupProps> = ({
             firstColumn={t('console-app~Conditions')}
             secondColumn={t('console-app~Status')}
           >
-            {grouppedConditions.map((c) => (
+            {groupedConditions.map((c) => (
               <Status {...c} key={c.title}>
                 {c.title}
               </Status>
@@ -200,28 +199,34 @@ export const getMachineHealth = (
   }
   let failingConditions: number = 0;
   const conditions = _.flatten(
-    matchingHC.map((hc) =>
-      hc.spec.unhealthyConditions.map((c) => {
-        const failing = isConditionFailing(node, c);
-        if (failing) {
-          failingConditions++;
-        }
-        return {
-          ...c,
-          failing,
-        };
-      }),
+    matchingHC.map(
+      (hc) =>
+        hc.spec?.unhealthyConditions?.map((c) => {
+          const failing = isConditionFailing(node, c);
+          if (failing) {
+            failingConditions++;
+          }
+          return {
+            ...c,
+            failing,
+          };
+        }) ?? [],
     ),
   );
 
   return {
-    state: failingConditions || matchingHC.length > 1 ? HealthState.WARNING : HealthState.OK,
+    state:
+      failingConditions || matchingHC.length > 1 || conditions.length === 0
+        ? HealthState.WARNING
+        : HealthState.OK,
     details:
       matchingHC.length > 1
         ? 'Multiple resources'
         : failingConditions
         ? `${pluralize(failingConditions, 'condition')} failing`
-        : `${pluralize(conditions.length, 'condition')} passing`,
+        : conditions.length > 0
+        ? `${pluralize(conditions.length, 'condition')} passing`
+        : i18next.t('console-app~No conditions'),
     conditions,
     matchingHC,
   };
@@ -292,11 +297,7 @@ const NodeHealth: React.FC = () => {
     <HealthBody>
       <Gallery className="co-overview-status__health" hasGutter>
         <GalleryItem>
-          {!obj.spec.unschedulable ? (
-            <NodeStatus className="co-node-health__status" node={obj} showPopovers />
-          ) : (
-            <MarkAsSchedulablePopover node={obj} />
-          )}
+          <NodeStatus className="co-node-health__status" node={obj} />
         </GalleryItem>
         <GalleryItem>
           <HealthChecksItem />

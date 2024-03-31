@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardActions } from '@patternfly/react-core';
+import { Card, CardHeader, CardTitle } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   DashboardItemProps,
   withDashboardResources,
@@ -75,20 +75,27 @@ const EventsCard: React.FC<EventsCardProps> = ({
   const hostStatus = getBareMetalHostStatus(obj);
 
   return (
-    <Card className="co-overview-card--gradient">
-      <CardHeader>
+    <Card className="co-overview-card--gradient" isClickable isSelectable>
+      <CardHeader
+        actions={{
+          actions: (
+            <>
+              <Link
+                to={`${resourcePathFromModel(
+                  BareMetalHostModel,
+                  getName(obj),
+                  getNamespace(obj),
+                )}/events`}
+              >
+                {t('metal3-plugin~View events')}
+              </Link>
+            </>
+          ),
+          hasNoOffset: false,
+          className: 'co-overview-card__actions',
+        }}
+      >
         <CardTitle>Activity</CardTitle>
-        <CardActions className="co-overview-card__actions">
-          <Link
-            to={`${resourcePathFromModel(
-              BareMetalHostModel,
-              getName(obj),
-              getNamespace(obj),
-            )}/events`}
-          >
-            {t('metal3-plugin~View events')}
-          </Link>
-        </CardActions>
       </CardHeader>
       <ActivityBody>
         <div className="co-activity-card__ongoing-title">Ongoing</div>

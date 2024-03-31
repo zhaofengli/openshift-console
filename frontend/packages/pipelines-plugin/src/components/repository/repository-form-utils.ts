@@ -11,12 +11,13 @@ import {
   k8sListResourceItems,
   k8sPatchResource,
 } from '@console/dynamic-plugin-sdk/src/utils/k8s';
-import { GitProvider } from '@console/git-service/src';
+import { getGitService, GitProvider } from '@console/git-service/src';
 import { SecretType } from '@console/internal/components/secrets/create-secret';
 import { ConfigMapModel, SecretModel } from '@console/internal/models';
 import { ConfigMapKind, SecretKind, K8sResourceKind } from '@console/internal/module/k8s';
 import { nameRegex } from '@console/shared/src';
 import { RepositoryModel } from '../../models';
+import { PipelineType } from '../import/import-types';
 import { PAC_TEMPLATE_DEFAULT } from '../pac/const';
 import { PIPELINERUN_TEMPLATE_NAMESPACE } from '../pipelines/const';
 import { RepositoryRuntimes, gitProviderTypesHosts } from './consts';
@@ -30,7 +31,7 @@ export const repositoryValidationSchema = (t: TFunction) =>
       .string()
       .matches(nameRegex, {
         message: t(
-          'pipelines-plugin~Name must consist of lower case alphanumeric characters, hyphens or dots, and must start and end with an alphanumeric character.',
+          'pipelines-plugin~Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
         ),
         excludeEmptyString: true,
       })
@@ -106,14 +107,45 @@ export const pipelinesAccessTokenValidationSchema = (t: TFunction) =>
 
 export const importFlowRepositoryValidationSchema = (t: TFunction) => {
   return yup.object().shape({
-    repository: pipelinesAccessTokenValidationSchema(t),
+    repository: yup.object().when(['pipelineType', 'pipelineEnabled'], {
+      is: (pipelineType, pipelineEnabled) => pipelineType === PipelineType.PAC && pipelineEnabled,
+      then: pipelinesAccessTokenValidationSchema(t),
+    }),
   });
+};
+
+const hasDomain = (url: string, domain: string): boolean => {
+  return (
+    url.startsWith(`https://${domain}/`) ||
+    url.startsWith(`https://www.${domain}/`) ||
+    url.includes(`@${domain}:`)
+  );
+};
+
+export const detectGitType = (url: string): GitProvider => {
+  if (!gitUrlRegex.test(url)) {
+    // Not a URL
+    return GitProvider.INVALID;
+  }
+  if (hasDomain(url, 'github.com')) {
+    return GitProvider.GITHUB;
+  }
+  if (hasDomain(url, 'bitbucket.org')) {
+    return GitProvider.BITBUCKET;
+  }
+  if (hasDomain(url, 'gitlab.com')) {
+    return GitProvider.GITLAB;
+  }
+  // Not a known URL
+  return GitProvider.UNSURE;
 };
 
 const createTokenSecret = async (
   repositoryName: string,
+  user: string,
   token: string,
   namespace: string,
+  detectedGitType: GitProvider,
   webhookSecret?: string,
   dryRun?: boolean,
 ) => {
@@ -128,6 +160,9 @@ const createTokenSecret = async (
     stringData: {
       'provider.token': token,
       ...(webhookSecret && { 'webhook.secret': webhookSecret }),
+      ...(detectedGitType === GitProvider.BITBUCKET && {
+        'webhook.auth': Base64.encode(`${user}:${token}`),
+      }),
     },
   };
 
@@ -151,9 +186,18 @@ export const createRepositoryResources = async (
     webhook: { secretObj, method, token, secret: webhookSecret, user },
   } = values;
   const encodedSecret = Base64.encode(webhookSecret);
+  const detectedGitType = detectGitType(gitUrl);
   let secret: SecretKind;
   if (token && method === 'token') {
-    secret = await createTokenSecret(name, token, namespace, webhookSecret, dryRun);
+    secret = await createTokenSecret(
+      name,
+      user,
+      token,
+      namespace,
+      detectedGitType,
+      webhookSecret,
+      dryRun,
+    );
   } else if (
     method === 'secret' &&
     secretObj &&
@@ -216,30 +260,41 @@ export const createRepositoryResources = async (
   return resource;
 };
 
-const hasDomain = (url: string, domain: string): boolean => {
-  return (
-    url.startsWith(`https://${domain}/`) ||
-    url.startsWith(`https://www.${domain}/`) ||
-    url.includes(`@${domain}:`)
-  );
-};
+export const createRemoteWebhook = async (
+  values: RepositoryFormValues,
+  pac: ConfigMapKind,
+  loaded: boolean,
+): Promise<boolean> => {
+  const {
+    gitUrl,
+    webhook: { method, token, secret: webhookSecret, url: webhookURL, secretObj, user },
+  } = values;
+  const detectedGitType = detectGitType(gitUrl);
+  const gitService = getGitService(gitUrl, detectedGitType);
 
-export const detectGitType = (url: string): GitProvider => {
-  if (!gitUrlRegex.test(url)) {
-    // Not a URL
-    return GitProvider.INVALID;
+  let sslVerification = true;
+  if (loaded && pac?.data?.['webhook-ssl-verification'] === 'false') {
+    sslVerification = false;
   }
-  if (hasDomain(url, 'github.com')) {
-    return GitProvider.GITHUB;
+
+  let authToken: string;
+  if (detectedGitType === GitProvider.BITBUCKET) {
+    authToken =
+      method === 'token'
+        ? Base64.encode(`${user}:${token}`)
+        : Base64.decode(secretObj?.data?.['webhook.auth']);
+  } else {
+    authToken = method === 'token' ? token : Base64.decode(secretObj?.data?.['provider.token']);
   }
-  if (hasDomain(url, 'bitbucket.org')) {
-    return GitProvider.BITBUCKET;
-  }
-  if (hasDomain(url, 'gitlab.com')) {
-    return GitProvider.GITLAB;
-  }
-  // Not a known URL
-  return GitProvider.UNSURE;
+
+  const webhookCreationStatus = await gitService.createRepoWebhook(
+    authToken,
+    webhookURL,
+    sslVerification,
+    webhookSecret,
+  );
+
+  return webhookCreationStatus;
 };
 
 export const createRepositoryName = (nameString: string): string => {

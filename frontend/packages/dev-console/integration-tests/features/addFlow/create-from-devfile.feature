@@ -1,4 +1,4 @@
-@add-flow
+@add-flow @dev-console
 Feature: Create Application from Devfile
               As a user, I want to deploy an application from git repo with devfile
 
@@ -30,8 +30,8 @@ Feature: Create Application from Devfile
              Then user will be redirected to Topology page
               And user is able to see workload "node-example" in topology page
 
-        
-        @regression
+
+        @regression @broken-test
         Scenario: No service is shown in the node sidebar if it is not defined in the devfile : A-04-TC03
             Given user has created workload "node-example" with resource type "Deployment"
               And user is at Topology page
@@ -40,15 +40,15 @@ Feature: Create Application from Devfile
               And user can see under Services section "No Services found for this resource."
 
 
-        @regression
+        @regression @broken-test
         Scenario: No route is shown in the node sidebar if it is not defined in the devfile : A-04-TC04
             Given user has created workload "node-example" with resource type "Deployment"
               And user is at Topology page
              When user clicks on workload "node-example"
              Then user can see sidebar opens with Resources tab selected by default
               And user can see under Routes section "No Routes found for this resource."
-             
-        
+
+
 
 
         # Below scenario to be removed after the tests are are updated

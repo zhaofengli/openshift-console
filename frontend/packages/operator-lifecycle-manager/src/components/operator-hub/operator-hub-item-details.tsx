@@ -1,15 +1,17 @@
 import * as React from 'react';
 import { PropertiesSidePanel, PropertyItem } from '@patternfly/react-catalog-view-extension';
 import {
+  Alert,
+  AlertActionCloseButton,
   DescriptionList,
   DescriptionListTerm,
   DescriptionListGroup,
   DescriptionListDescription,
 } from '@patternfly/react-core';
-import { CheckCircleIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon } from '@patternfly/react-icons/dist/esm/icons/check-circle-icon';
 import * as classNames from 'classnames';
 import { Trans, useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import {
   ExternalLink,
   HintBlock,
@@ -17,7 +19,12 @@ import {
   getQueryArgument,
 } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { referenceForModel } from '@console/internal/module/k8s';
+import {
+  CloudCredentialKind,
+  InfrastructureKind,
+  AuthenticationKind,
+  referenceForModel,
+} from '@console/internal/module/k8s';
 import { RH_OPERATOR_SUPPORT_POLICY_LINK } from '@console/shared';
 import { DefaultCatalogSource } from '../../const';
 import { ClusterServiceVersionModel } from '../../models';
@@ -25,7 +32,8 @@ import { ClusterServiceVersionKind, SubscriptionKind } from '../../types';
 import { MarkdownView } from '../clusterserviceversion';
 import { defaultChannelNameFor } from '../index';
 import { OperatorChannelSelect, OperatorVersionSelect } from './operator-channel-version-select';
-import { OperatorHubItem } from './index';
+import { isAWSSTSCluster, isAzureWIFCluster } from './operator-hub-utils';
+import { InfraFeatures, OperatorHubItem } from './index';
 
 // t('olm~Basic Install'),
 // t('olm~Seamless Upgrades'),
@@ -57,7 +65,7 @@ const CapabilityLevel: React.FC<CapabilityLevelProps> = ({ selectedChannelCapabi
           >
             {active && (
               <CheckCircleIcon
-                color="var(--pf-global--primary-color--100)"
+                color="var(--pf-v5-global--primary-color--100)"
                 className="properties-side-panel-pf-property-value__capability-level-icon"
                 title={t('olm~Checked')}
               />
@@ -222,6 +230,9 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
     support,
     validSubscription,
     version,
+    cloudCredentials,
+    infrastructure,
+    authentication,
   } = item;
 
   const installChannel = getQueryArgument('channel');
@@ -240,6 +251,7 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
     selectedChannelCreatedAt
   );
 
+  const [showWarn, setShowWarn] = React.useState(true);
   const mappedData = (data) => data?.map?.((d) => <div key={d}>{d}</div>) ?? notAvailable;
 
   const mappedInfraFeatures = mappedData(infraFeatures);
@@ -349,6 +361,40 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
               />
             </PropertiesSidePanel>
             <div className="co-catalog-page__overlay-description">
+              {isAWSSTSCluster(cloudCredentials, infrastructure, authentication) &&
+                showWarn &&
+                infraFeatures?.find((i) => i === InfraFeatures.TokenAuth) && (
+                  <Alert
+                    isInline
+                    variant="warning"
+                    title={t('olm~Cluster in STS Mode')}
+                    actionClose={<AlertActionCloseButton onClose={() => setShowWarn(false)} />}
+                    className="pf-v5-u-mb-lg"
+                  >
+                    <p>
+                      {t(
+                        'olm~This cluster is using AWS Security Token Service to reach the cloud API. In order for this operator to take the actions it requires directly with the cloud API, you will need to provide a role ARN (with an attached policy) during installation. Please see the operator description for more details.',
+                      )}
+                    </p>
+                  </Alert>
+                )}
+              {isAzureWIFCluster(cloudCredentials, infrastructure, authentication) &&
+                showWarn &&
+                infraFeatures?.find((i) => i === InfraFeatures.TokenAuth) && (
+                  <Alert
+                    isInline
+                    variant="warning"
+                    title={t('olm~Cluster in Azure Workload Identity / Federated Identity Mode')}
+                    actionClose={<AlertActionCloseButton onClose={() => setShowWarn(false)} />}
+                    className="pf-u-mb-lg"
+                  >
+                    <p>
+                      {t(
+                        'olm~This cluster is using Azure Workload Identity / Federated Identity to reach the cloud API. In order for this operator to take the actions it requires directly with the cloud API, provide the Client ID, Tenant ID, and Subscription ID during installation. See the operator description for more details.',
+                      )}
+                    </p>
+                  </Alert>
+                )}
               <OperatorHubItemDetailsHintBlock
                 installed={installed}
                 isInstalling={isInstalling}
@@ -356,6 +402,9 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
                 catalogSource={catalogSource}
                 subscription={subscription}
                 installedChannel={installedChannel}
+                cloudCredentials={cloudCredentials}
+                authentication={authentication}
+                infrastructure={infrastructure}
               />
               {longDescription ? <MarkdownView content={longDescription} /> : description}
             </div>
@@ -376,6 +425,9 @@ type OperatorHubItemDetailsHintBlockProps = {
   catalogSource: string;
   subscription: SubscriptionKind;
   installedChannel: string;
+  cloudCredentials: CloudCredentialKind;
+  authentication: AuthenticationKind;
+  infrastructure: InfrastructureKind;
 };
 
 export type OperatorHubItemDetailsProps = {

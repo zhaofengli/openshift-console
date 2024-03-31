@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as classNames from 'classnames';
 import * as _ from 'lodash-es';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useSelector } from 'react-redux';
@@ -63,7 +63,7 @@ export const BreadCrumbs: React.SFC<BreadCrumbsProps> = ({ breadcrumbs }) => (
             crumb.name
           ) : (
             <Link
-              className="pf-c-breadcrumb__link"
+              className="pf-v5-c-breadcrumb__link"
               to={crumb.path}
               data-test-id={`breadcrumb-link-${i}`}
             >
@@ -86,6 +86,7 @@ export const ActionButtons: React.SFC<ActionButtonsProps> = ({ actionButtons }) 
             variant="primary"
             onClick={actionButton.callback}
             key={i}
+            data-test={actionButton.label}
           >
             {actionButton.label}
           </Button>
@@ -139,7 +140,7 @@ export const PageHeading = connectToModel((props: PageHeadingProps) => {
   return (
     <>
       {showBreadcrumbs && (
-        <div className="pf-c-page__main-breadcrumb">
+        <div className="pf-v5-c-page__main-breadcrumb">
           <Split style={{ alignItems: 'baseline' }}>
             <SplitItem isFilled>
               <BreadCrumbs breadcrumbs={breadcrumbs || breadcrumbsFor(data)} />

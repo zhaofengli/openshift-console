@@ -5,10 +5,10 @@ import { WidgetProps } from '@rjsf/core';
 import { getSchemaType } from '@rjsf/core/dist/cjs/utils';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Selector } from '@console/dynamic-plugin-sdk/src/api/common-types';
 import { RadioGroup } from '@console/internal/components/radio';
 import { NumberSpinner, ListDropdown, Dropdown } from '@console/internal/components/utils';
 import { K8sKind, GroupVersionKind, ImagePullPolicy } from '@console/internal/module/k8s';
+import { selectorFromString } from '@console/internal/module/k8s/selector';
 import { JSON_SCHEMA_NUMBER_TYPES } from './const';
 import { DynamicFormFieldOptionsList } from './types';
 
@@ -28,7 +28,7 @@ export const TextWidget: React.FC<WidgetProps> = (props) => {
     <NumberWidget {...props} />
   ) : (
     <input
-      className="pf-c-form-control"
+      className="pf-v5-c-form-control"
       disabled={disabled}
       id={id}
       key={id}
@@ -46,7 +46,7 @@ export const NumberWidget: React.FC<WidgetProps> = ({ value, id, onChange }) => 
   const numberValue = _.toNumber(value);
   return (
     <input
-      className="pf-c-form-control"
+      className="pf-v5-c-form-control"
       id={id}
       key={id}
       onChange={({ currentTarget }) =>
@@ -61,7 +61,7 @@ export const NumberWidget: React.FC<WidgetProps> = ({ value, id, onChange }) => 
 export const PasswordWidget: React.FC<WidgetProps> = ({ value = '', id, onChange }) => {
   return (
     <input
-      className="pf-c-form-control"
+      className="pf-v5-c-form-control"
       key={id}
       id={id}
       type="password"
@@ -79,7 +79,7 @@ export const CheckboxWidget: React.FC<WidgetProps> = ({ value = false, id, label
       isChecked={value}
       data-checked-state={value}
       label={label}
-      onChange={(checked) => onChange(checked)}
+      onChange={(_event, checked) => onChange(checked)}
     />
   );
 };
@@ -92,7 +92,7 @@ export const SwitchWidget: React.FC<WidgetProps> = ({ value, id, label, onChange
       id={id || label}
       key={id || label}
       isChecked={_.isNil(value) ? false : value}
-      onChange={(v) => onChange(v)}
+      onChange={(_event, v) => onChange(v)}
       label={labelOn as string}
       labelOff={labelOff as string}
     />
@@ -124,7 +124,17 @@ export const K8sResourceWidget: React.FC<K8sResourceWidgetProps> = ({
   const { model, groupVersionKind, selector } = options;
   const { namespace } = formContext;
   const selectedKey = value ? `${value}-${groupVersionKind}` : null;
-
+  const selectorObj = React.useMemo(() => {
+    try {
+      return selectorFromString(selector);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `Invalid selector string provided to K8sResourceWidget: '${selector}'. If using OLM descriptors, please validate the provided selector.`,
+      );
+    }
+    return null;
+  }, [selector]);
   return (
     <div>
       {!_.isUndefined(model) ? (
@@ -132,7 +142,11 @@ export const K8sResourceWidget: React.FC<K8sResourceWidgetProps> = ({
           key={id}
           id={id}
           resources={[
-            { kind: groupVersionKind, selector, namespace: model.namespaced ? namespace : null },
+            {
+              kind: groupVersionKind,
+              selector: selectorObj,
+              namespace: model.namespaced ? namespace : null,
+            },
           ]}
           desc={label}
           placeholder={t('console-shared~Select {{label}}', { label: model.label })}
@@ -200,7 +214,7 @@ type K8sResourceWidgetProps = WidgetProps & {
   options: {
     model: K8sKind;
     groupVersionKind: GroupVersionKind;
-    selector: Selector;
+    selector: string;
   };
 };
 

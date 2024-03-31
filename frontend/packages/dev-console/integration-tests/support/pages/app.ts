@@ -12,6 +12,7 @@ import {
   topologyPO,
   adminNavigationMenuPO,
 } from '../pageObjects';
+import { userPreferencePO } from '../pageObjects/userPreference-po';
 
 export const app = {
   waitForDocumentLoad: () => {
@@ -33,7 +34,7 @@ export const app = {
         cy.get('.co-m-loader', { timeout }).should('not.exist');
       }
     });
-    cy.get('.pf-c-spinner', { timeout }).should('not.exist');
+    cy.get('.pf-v5-c-spinner', { timeout }).should('not.exist');
     cy.get('.skeleton-catalog--grid', { timeout }).should('not.exist');
     cy.get('.loading-skeleton--table', { timeout }).should('not.exist');
     cy.byTestID('skeleton-detail-view', { timeout }).should('not.exist');
@@ -116,7 +117,7 @@ export const navigateTo = (opt: devNavigationMenu) => {
     }
     case devNavigationMenu.Builds: {
       cy.get(devNavigationMenuPO.builds).click();
-      detailsPage.titleShouldContain(pageTitle.BuildConfigs);
+      detailsPage.titleShouldContain(pageTitle.Builds);
       cy.testA11y('Builds Page in dev perspective');
       break;
     }
@@ -214,7 +215,7 @@ export const navigateTo = (opt: devNavigationMenu) => {
     case devNavigationMenu.Consoles: {
       cy.get('body').then(($body) => {
         if ($body.text().includes('Consoles')) {
-          cy.byTestID('nav').contains('Consoles').click();
+          cy.byTestID('draggable-pinned-resource-item').contains('Consoles').click();
           cy.byTestID('cluster').should('be.visible').click();
         } else {
           cy.get(devNavigationMenuPO.search).click();
@@ -232,6 +233,12 @@ export const navigateTo = (opt: devNavigationMenu) => {
         }
       });
       cy.testA11y('cluster Page in dev perspective');
+      break;
+    }
+    case devNavigationMenu.Functions: {
+      cy.get(devNavigationMenuPO.functions).click();
+      detailsPage.titleShouldContain(pageTitle.Functions);
+      cy.testA11y('Functions Page in dev perspective');
       break;
     }
     default: {
@@ -262,16 +269,35 @@ export const projectNameSpace = {
     app.waitForLoad();
     cy.url().then((url) => {
       if (url.includes('add/all-namespaces')) {
-        cy.get('tr[data-test-rows="resource-row"]').should('have.length.at.least', 1);
+        cy.get(userPreferencePO.userMenu, {
+          timeout: 50000,
+        }).then(($ele) => {
+          if ($ele.text().includes('kube:admin')) {
+            cy.get('tr[data-test-rows="resource-row"]').should('have.length.at.least', 1);
+          } else {
+            cy.get('[data-test="empty-message"]').should('have.text', 'No Projects found');
+          }
+        });
       }
     });
     projectNameSpace.clickProjectDropdown();
-    cy.byTestID('showSystemSwitch').check(); // Ensure that all projects are showing
-    cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
+    cy.get('body').then(($body) => {
+      if ($body.find(userPreferencePO.userMenu).text().includes('kube:admin')) {
+        cy.byTestID('showSystemSwitch').check(); // Ensure that all projects are showing
+        cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
+      }
+    });
     // Bug: ODC-6164 - is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
     // cy.testA11y('Create Project modal');
+    cy.url().then(($url) => {
+      if ($url.includes('topology/all-namespaces')) {
+        cy.get('.odc-namespaced-page__content').should('be.visible');
+      } else if ($url.includes('topology/ns')) {
+        cy.byLegacyTestID('item-filter').should('be.visible');
+      }
+    });
     cy.byTestID('dropdown-text-filter').type(projectName);
-    cy.get('[data-test-id="namespace-bar-dropdown"] span.pf-c-menu-toggle__text')
+    cy.get('[data-test-id="namespace-bar-dropdown"] span.pf-v5-c-menu-toggle__text')
       .first()
       .as('projectNameSpaceDropdown');
     app.waitForDocumentLoad();

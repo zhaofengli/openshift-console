@@ -15,11 +15,6 @@
   },
   "consolePlugin": {
     "entry": "src/plugin.tsx",
-    "integrationTestSuites": {
-      "knativeplugin": [
-        "integration-tests/**/*.scenario.ts"
-      ]
-    },
     "exposedModules": {
       "actions": "src/actions/providers.ts",
       "icons": "src/utils/icons.tsx",
@@ -36,7 +31,8 @@
       "knatifyComponent": "src/components/knatify",
       "knativeTopologySidebar": "src/topology/sidebar",
       "topology": "src/topology",
-      "eventingContext": "src/topology/eventing-context.ts"
+      "eventingContext": "src/topology/eventing-context.ts",
+      "functionsComponent": "src/components/functions"
     }
   }
 }

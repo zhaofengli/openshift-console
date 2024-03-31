@@ -4,9 +4,9 @@ import * as React from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { sortable } from '@patternfly/react-table';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import * as classNames from 'classnames';
 import * as _ from 'lodash-es';
@@ -49,6 +49,7 @@ import {
   referenceForModel,
   referenceFor,
   Selector,
+  ContainerState,
 } from '../module/k8s';
 import {
   getRestartPolicyLabel,
@@ -59,7 +60,11 @@ import {
   isWindowsPod,
   isContainerCrashLoopBackOff,
 } from '../module/k8s/pods';
-import { getContainerState, getContainerStatus } from '../module/k8s/container';
+import {
+  getContainerRestartCount,
+  getContainerState,
+  getContainerStatus,
+} from '../module/k8s/container';
 import { ResourceEventStream } from './events';
 import { DetailsPage } from './factory';
 import ListPageHeader from './factory/ListPage/ListPageHeader';
@@ -187,12 +192,12 @@ const podColumnInfo = Object.freeze({
     title: 'public~Status',
   },
   ready: {
-    classes: classNames('pf-m-nowrap', 'pf-u-w-10-on-lg', 'pf-u-w-8-on-xl'),
+    classes: classNames('pf-m-nowrap', 'pf-v5-u-w-10-on-lg', 'pf-v5-u-w-8-on-xl'),
     id: 'ready',
     title: 'public~Ready',
   },
   restarts: {
-    classes: classNames('pf-m-nowrap', 'pf-u-w-8-on-2xl'),
+    classes: classNames('pf-m-nowrap', 'pf-v5-u-w-8-on-2xl'),
     id: 'restarts',
     title: 'public~Restarts',
   },
@@ -207,17 +212,17 @@ const podColumnInfo = Object.freeze({
     title: 'public~Node',
   },
   memory: {
-    classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
+    classes: classNames({ 'pf-v5-u-w-10-on-2xl': showMetrics }),
     id: 'memory',
     title: 'public~Memory',
   },
   cpu: {
-    classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
+    classes: classNames({ 'pf-v5-u-w-10-on-2xl': showMetrics }),
     id: 'cpu',
     title: 'public~CPU',
   },
   created: {
-    classes: classNames('pf-u-w-10-on-2xl'),
+    classes: classNames('pf-v5-u-w-10-on-2xl'),
     id: 'created',
     title: 'public~Created',
   },
@@ -484,6 +489,67 @@ export const ContainerLink: React.FC<ContainerLinkProps> = ({ pod, name }) => (
 );
 ContainerLink.displayName = 'ContainerLink';
 
+const ContainerRunningSince: React.FC<ContainerRunningSinceProps> = ({ startedAt }) => {
+  const { t } = useTranslation();
+  return startedAt ? (
+    <Trans t={t} ns="public">
+      since <Timestamp timestamp={startedAt} simple />
+    </Trans>
+  ) : null;
+};
+
+const ContainerTerminatedAt: React.FC<ContainerTerminatedAtProps> = ({ finishedAt }) => {
+  const { t } = useTranslation();
+  return finishedAt ? (
+    <Trans t={t} ns="public">
+      at <Timestamp timestamp={finishedAt} simple />{' '}
+    </Trans>
+  ) : null;
+};
+
+const ContainerTerminatedExitCode: React.FC<ContainerTerminatedExitCodeProps> = ({ exitCode }) => {
+  const { t } = useTranslation();
+  return exitCode ? t('public~with exit code {{exitCode}} ', { exitCode }) : null;
+};
+
+const ContainerTerminatedReason: React.FC<ContainerTerminatedReasonProps> = ({ reason }) => {
+  const { t } = useTranslation();
+  return reason ? t('public~({{reason}})', { reason }) : null;
+};
+
+export const ContainerLastState: React.FC<ContainerLastStateProps> = ({ containerLastState }) => {
+  const { t } = useTranslation();
+  if (containerLastState?.waiting) {
+    return t('public~Waiting {{reason}}', { reason: containerLastState.waiting?.reason });
+  } else if (containerLastState?.running) {
+    return (
+      <Trans t={t} ns="public">
+        Running <ContainerRunningSince startedAt={containerLastState.running?.startedAt} />
+      </Trans>
+    );
+  } else if (containerLastState?.terminated) {
+    return (
+      <Trans t={t} ns="public">
+        Terminated <ContainerTerminatedAt finishedAt={containerLastState.terminated?.finishedAt} />
+        <ContainerTerminatedExitCode exitCode={containerLastState.terminated?.exitCode} />
+        <ContainerTerminatedReason reason={containerLastState.terminated?.reason} />
+      </Trans>
+    );
+  }
+  return <>-</>;
+};
+
+const podContainerClassNames = [
+  'col-lg-2 col-md-3 col-sm-4 col-xs-5',
+  'col-lg-2 col-md-3 col-sm-5 col-xs-7 ',
+  'col-lg-2 col-md-1 col-sm-3 hidden-xs',
+  'col-lg-2 hidden-md hidden-sm hidden-xs',
+  'col-lg-1 col-md-2 hidden-sm hidden-xs',
+  'col-lg-1 col-md-2 hidden-sm hidden-xs',
+  'col-lg-1 hidden-md hidden-sm hidden-xs',
+  'col-lg-1 hidden-md hidden-sm hidden-xs',
+];
+
 export const ContainerRow: React.FC<ContainerRowProps> = ({ pod, container }) => {
   const cstatus = getContainerStatus(pod, container.name);
   const cstate = getContainerState(cstatus);
@@ -492,25 +558,26 @@ export const ContainerRow: React.FC<ContainerRowProps> = ({ pod, container }) =>
 
   return (
     <div className="row">
-      <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">
+      <div className={podContainerClassNames[0]}>
         <ContainerLink pod={pod} name={container.name} />
       </div>
-      <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7 co-truncate co-nowrap co-select-to-copy">
+      <div className={`${podContainerClassNames[1]} co-truncate co-nowrap co-select-to-copy`}>
         {container.image || '-'}
       </div>
-      <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">
+      <div className={podContainerClassNames[2]}>
         <Status status={cstate.label} />
       </div>
-      <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">
-        {_.get(cstatus, 'restartCount', '0')}
+      <div className={podContainerClassNames[3]}>
+        <ContainerLastState containerLastState={cstatus?.lastState} />
       </div>
-      <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">
+      <div className={podContainerClassNames[4]}>{getContainerRestartCount(cstatus)}</div>
+      <div className={podContainerClassNames[5]}>
         <Timestamp timestamp={startedAt} />
       </div>
-      <div className="col-lg-2 hidden-md hidden-sm hidden-xs">
+      <div className={podContainerClassNames[6]}>
         <Timestamp timestamp={finishedAt} />
       </div>
-      <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{_.get(cstate, 'exitCode', '-')}</div>
+      <div className={podContainerClassNames[7]}>{_.get(cstate, 'exitCode', '-')}</div>
     </div>
   );
 };
@@ -527,13 +594,14 @@ export const PodContainerTable: React.FC<PodContainerTableProps> = ({
       <SectionHeading text={heading} />
       <div className="co-m-table-grid co-m-table-grid--bordered">
         <div className="row co-m-table-grid__head">
-          <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">{t('public~Name')}</div>
-          <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7">{t('public~Image')}</div>
-          <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">{t('public~State')}</div>
-          <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">{t('public~Restarts')}</div>
-          <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">{t('public~Started')}</div>
-          <div className="col-lg-2 hidden-md hidden-sm hidden-xs">{t('public~Finished')}</div>
-          <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{t('public~Exit code')}</div>
+          <div className={podContainerClassNames[0]}>{t('public~Name')}</div>
+          <div className={podContainerClassNames[1]}>{t('public~Image')}</div>
+          <div className={podContainerClassNames[2]}>{t('public~State')}</div>
+          <div className={podContainerClassNames[3]}>{t('public~Last State')}</div>
+          <div className={podContainerClassNames[4]}>{t('public~Restarts')}</div>
+          <div className={podContainerClassNames[5]}>{t('public~Started')}</div>
+          <div className={podContainerClassNames[6]}>{t('public~Finished')}</div>
+          <div className={podContainerClassNames[7]}>{t('public~Exit code')}</div>
         </div>
         <div className="co-m-table-grid__body">
           {containers.map((c: any, i: number) => (
@@ -616,7 +684,7 @@ const PodMetrics: React.FC<PodMetricsProps> = ({ obj }) => {
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeDecimalBytesPerSec}
                 namespace={obj.metadata.namespace}
-                query={`(sum(irate(container_network_receive_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
+                query={`(sum(irate(container_network_receive_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) (pod_network_name_info)`}
                 description={getNetworkName}
               />
             </CardBody>
@@ -632,7 +700,7 @@ const PodMetrics: React.FC<PodMetricsProps> = ({ obj }) => {
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeDecimalBytesPerSec}
                 namespace={obj.metadata.namespace}
-                query={`(sum(irate(container_network_transmit_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
+                query={`(sum(irate(container_network_transmit_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) (pod_network_name_info)`}
                 description={getNetworkName}
               />
             </CardBody>
@@ -1000,6 +1068,7 @@ export const PodsPage: React.FC<PodPageProps> = ({
   hideColumnManagement,
   nameFilter,
   showNamespaceOverride,
+  mock = false,
 }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -1090,6 +1159,7 @@ export const PodsPage: React.FC<PodPageProps> = ({
             showNamespaceOverride={showNamespaceOverride}
             showNodes={showNodes}
             namespace={namespace}
+            mock={mock}
           />
         </ListPageBody>
       </>
@@ -1100,6 +1170,26 @@ export const PodsPage: React.FC<PodPageProps> = ({
 type ContainerLinkProps = {
   pod: PodKind;
   name: string;
+};
+
+type ContainerRunningSinceProps = {
+  startedAt?: string | number | Date;
+};
+
+type ContainerTerminatedAtProps = {
+  finishedAt?: string | number | Date;
+};
+
+type ContainerTerminatedExitCodeProps = {
+  exitCode?: string;
+};
+
+type ContainerTerminatedReasonProps = {
+  reason?: string;
+};
+
+type ContainerLastStateProps = {
+  containerLastState?: ContainerState;
 };
 
 type ContainerRowProps = {
@@ -1159,6 +1249,7 @@ type PodListProps = {
   showNodes?: boolean;
   showNamespaceOverride?: boolean;
   namespace?: string;
+  mock?: boolean;
 };
 
 type PodPageProps = {
@@ -1173,9 +1264,9 @@ type PodPageProps = {
   hideColumnManagement?: boolean;
   nameFilter?: string;
   showNamespaceOverride?: boolean;
+  mock?: boolean;
 };
 
 type PodDetailsPageProps = {
   kind: K8sResourceKindReference;
-  match: any;
 };

@@ -4,45 +4,57 @@ import * as React from 'react';
 // @ts-ignore
 import { useSelector } from 'react-redux';
 import { Base64 } from 'js-base64';
+import * as _ from 'lodash-es';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Alert,
   AlertActionLink,
   Button,
   Checkbox,
   Divider,
-  Select,
-  SelectOption,
-  SelectVariant,
+  Dropdown,
+  DropdownItem,
+  DropdownGroup,
   Tooltip,
+  MenuToggleElement,
+  MenuToggle,
+  DropdownList,
 } from '@patternfly/react-core';
+import {
+  Select as SelectDeprecated,
+  SelectOption as SelectOptionDeprecated,
+  SelectVariant as SelectVariantDeprecated,
+} from '@patternfly/react-core/deprecated';
 import { LogViewer, LogViewerSearch } from '@patternfly/react-log-viewer';
-
-import * as _ from 'lodash-es';
-import { Trans, useTranslation } from 'react-i18next';
 import {
   CompressIcon,
+  EllipsisVIcon,
   ExpandIcon,
   DownloadIcon,
   OutlinedWindowRestoreIcon,
   OutlinedPlayCircleIcon,
 } from '@patternfly/react-icons';
 import * as classNames from 'classnames';
-import { FLAGS, LOG_WRAP_LINES_USERSETTINGS_KEY } from '@console/shared/src/constants';
+import {
+  FLAGS,
+  LOG_WRAP_LINES_USERSETTINGS_KEY,
+  SHOW_FULL_LOG_USERSETTINGS_KEY,
+} from '@console/shared/src/constants';
 import { useUserSettings } from '@console/shared';
 import { LoadingInline, TogglePlay, ExternalLink } from './';
 import { modelFor, resourceURL } from '../../module/k8s';
 import { WSFactory } from '../../module/ws-factory';
-import { LineBuffer } from './line-buffer';
 import * as screenfull from 'screenfull';
+import { RootState } from '@console/internal/redux';
 import { k8sGet, k8sList, K8sResourceKind, PodKind } from '@console/internal/module/k8s';
 import { ConsoleExternalLogLinkModel, ProjectModel } from '@console/internal/models';
-import { RootState } from '../../redux';
-import { useFlag } from '@console/shared/src/hooks/flag';
+import { useFlag, useIsMobile } from '@console/shared/src/hooks';
 import { usePrevious } from '@console/shared/src/hooks/previous';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import { resourcePath } from './resource-link';
 import { isWindowsPod } from '../../module/k8s/pods';
-import { getActiveCluster } from '@console/dynamic-plugin-sdk'; // TODO remove multicluster
+import { getImpersonate } from '@console/dynamic-plugin-sdk';
+import useToggleLineBuffer from './useToggleLineBuffer';
 
 export const STREAM_EOF = 'eof';
 export const STREAM_LOADING = 'loading';
@@ -56,6 +68,8 @@ export const LOG_SOURCE_WAITING = 'waiting';
 
 const LOG_TYPE_CURRENT = 'current';
 const LOG_TYPE_PREVIOUS = 'previous';
+
+const DEFAULT_BUFFER_SIZE = 1000;
 
 // Messages to display for corresponding log status
 const streamStatusMessages = {
@@ -84,7 +98,6 @@ const replaceVariables = (template: string, values: any): string => {
 
 // Build a log API url for a given resource
 const getResourceLogURL = (
-  cluster: string, // TODO remove multicluster
   resource: K8sResourceKind,
   containerName?: string,
   tailLines?: number,
@@ -97,7 +110,6 @@ const getResourceLogURL = (
     ns: resource.metadata.namespace,
     path: 'log',
     queryParams: {
-      cluster, // TODO remove multicluster
       container: containerName || '',
       ...(tailLines && { tailLines: `${tailLines}` }),
       ...(follow && { follow: `${follow}` }),
@@ -170,9 +182,21 @@ export const LogControls: React.FC<LogControlsProps> = ({
   hasPreviousLog,
   logType,
   showLogTypeSelect,
+  isShowFullLog,
+  toggleShowFullLog,
 }) => {
   const { t } = useTranslation();
   const [isLogTypeOpen, setLogTypeOpen] = React.useState(false);
+  const isMobile = useIsMobile();
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+
+  const onDropdownToggleClick = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const onDropdownSelect = () => {
+    setIsDropdownOpen(false);
+  };
 
   const logTypes: Array<LogType> = [
     { type: LOG_TYPE_CURRENT, text: t('public~Current log') },
@@ -181,9 +205,9 @@ export const LogControls: React.FC<LogControlsProps> = ({
 
   const logOption = (log: LogType) => {
     return (
-      <SelectOption key={log.type} value={log.type}>
+      <SelectOptionDeprecated key={log.type} value={log.type}>
         {log.text}
-      </SelectOption>
+      </SelectOptionDeprecated>
     );
   };
 
@@ -217,9 +241,9 @@ export const LogControls: React.FC<LogControlsProps> = ({
         <span id="logTypeSelect" hidden>
           Log type
         </span>
-        <Select
-          variant={SelectVariant.single}
-          onToggle={(isOpen: boolean) => {
+        <SelectDeprecated
+          variant={SelectVariantDeprecated.single}
+          onToggle={(_event, isOpen: boolean) => {
             setLogTypeOpen(isOpen);
           }}
           onSelect={(event: React.MouseEvent | React.ChangeEvent, value: LogTypeStatus) => {
@@ -232,7 +256,7 @@ export const LogControls: React.FC<LogControlsProps> = ({
           aria-labelledby="logTypeSelect"
         >
           {logTypes.map((log) => logOption(log))}
-        </Select>
+        </SelectDeprecated>
       </span>
     );
     return hasPreviousLog ? (
@@ -243,10 +267,114 @@ export const LogControls: React.FC<LogControlsProps> = ({
       </Tooltip>
     );
   };
+
+  const renderPodLogLinks = () =>
+    _.map(_.sortBy(podLogLinks, 'metadata.name'), (link) => {
+      const namespace = resource.metadata.namespace;
+      const namespaceFilter = link.spec.namespaceFilter;
+      if (namespaceFilter) {
+        try {
+          const namespaceRegExp = new RegExp(namespaceFilter, 'g');
+          if (namespace.search(namespaceRegExp)) {
+            return null;
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('invalid log link regex', namespaceFilter, e);
+          return null;
+        }
+      }
+      const url = replaceVariables(link.spec.hrefTemplate, {
+        resourceName: resource.metadata.name,
+        resourceUID: resource.metadata.uid,
+        containerName,
+        resourceNamespace: namespace,
+        resourceNamespaceUID: namespaceUID,
+        podLabels: JSON.stringify(resource.metadata.labels),
+      });
+
+      return isMobile ? (
+        <DropdownItem to={url} isExternalLink key={link.metadata.uid}>
+          {link.spec.text}
+        </DropdownItem>
+      ) : (
+        <React.Fragment key={link.metadata.uid}>
+          <ExternalLink href={url} text={link.spec.text} dataTestID={link.metadata.name} />
+          <Divider
+            orientation={{
+              default: 'vertical',
+            }}
+          />
+        </React.Fragment>
+      );
+    });
+
   const label = t('public~Debug container');
+
+  const fullLog = (
+    <div>
+      <Tooltip
+        content={t('public~Select to view the entire log. Default view is the last 1,000 lines.')}
+      >
+        <Checkbox
+          label={t('public~Show full log')}
+          id="showFullLog"
+          data-test="show-full-log"
+          isChecked={isShowFullLog}
+          data-checked-state={isShowFullLog}
+          onChange={(_event, checked: boolean) => {
+            toggleShowFullLog(checked);
+          }}
+        />
+      </Tooltip>
+    </div>
+  );
+
+  const wrapLines = (
+    <Checkbox
+      label={t('public~Wrap lines')}
+      id="wrapLogLines"
+      isChecked={isWrapLines}
+      data-checked-state={isWrapLines}
+      onChange={(_event, checked: boolean) => {
+        toggleWrapLines(checked);
+      }}
+    />
+  );
+
+  const raw = (
+    <>
+      <OutlinedWindowRestoreIcon className="co-icon-space-r" />
+      {t('public~Raw')}
+    </>
+  );
+
+  const download = (
+    <>
+      <DownloadIcon className="co-icon-space-r" />
+      {t('public~Download')}
+    </>
+  );
+
+  const fullscreen = isFullscreen ? (
+    <>
+      <CompressIcon className="co-icon-space-r" />
+      {t('public~Collapse')}
+    </>
+  ) : (
+    <>
+      <ExpandIcon className="co-icon-space-r" />
+      {t('public~Expand')}
+    </>
+  );
+
   return (
     <div className="co-toolbar">
-      <div className="co-toolbar__group co-toolbar__group--left">
+      <div
+        className={classNames('co-toolbar__group co-toolbar__group--left', {
+          'co-toolbar__group--alongside-kebab': isMobile,
+        })}
+      >
         <div className="co-toolbar__item">{showStatus()}</div>
         {dropdown && <div className="co-toolbar__item">{dropdown}</div>}
         <div className="co-toolbar__item">{logTypeSelect(!hasPreviousLog)}</div>
@@ -284,95 +412,109 @@ export const LogControls: React.FC<LogControlsProps> = ({
         )}
       </div>
       <div
-        className="co-toolbar__group co-toolbar__group--right co-toolbar__group--right"
+        className={classNames(
+          'co-toolbar__group',
+          isMobile ? 'co-toolbar__group--kebab' : 'co-toolbar__group--right',
+        )}
         data-test="log-links"
       >
-        <div className="pf-l-flex">
-          {!_.isEmpty(podLogLinks) &&
-            _.map(_.sortBy(podLogLinks, 'metadata.name'), (link) => {
-              const namespace = resource.metadata.namespace;
-              const namespaceFilter = link.spec.namespaceFilter;
-              if (namespaceFilter) {
-                try {
-                  const namespaceRegExp = new RegExp(namespaceFilter, 'g');
-                  if (namespace.search(namespaceRegExp)) {
-                    return null;
-                  }
-                } catch (e) {
-                  // eslint-disable-next-line no-console
-                  console.warn('invalid log link regex', namespaceFilter, e);
-                  return null;
-                }
-              }
-              const url = replaceVariables(link.spec.hrefTemplate, {
-                resourceName: resource.metadata.name,
-                resourceUID: resource.metadata.uid,
-                containerName,
-                resourceNamespace: namespace,
-                resourceNamespaceUID: namespaceUID,
-                podLabels: JSON.stringify(resource.metadata.labels),
-              });
-              return (
-                <React.Fragment key={link.metadata.uid}>
-                  <ExternalLink href={url} text={link.spec.text} dataTestID={link.metadata.name} />
-                  <Divider
-                    orientation={{
-                      default: 'vertical',
-                    }}
-                  />
-                </React.Fragment>
-              );
-            })}
-          <Checkbox
-            label={t('public~Wrap lines')}
-            id="wrapLogLines"
-            isChecked={isWrapLines}
-            data-checked-state={isWrapLines}
-            onChange={(checked: boolean) => {
-              toggleWrapLines(checked);
+        {isMobile ? (
+          <Dropdown
+            isOpen={isDropdownOpen}
+            onSelect={onDropdownSelect}
+            onOpenChange={(isOpen: boolean) => setIsDropdownOpen(isOpen)}
+            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+              <MenuToggle
+                ref={toggleRef}
+                onClick={onDropdownToggleClick}
+                isExpanded={isDropdownOpen}
+                variant="plain"
+                className="pf-v5-u-mt-xs"
+                aria-label={t('public~Dropdown toggle')}
+              >
+                <EllipsisVIcon />
+              </MenuToggle>
+            )}
+            shouldFocusToggleOnSelect
+            popperProps={{
+              position: 'right',
             }}
-          />
-          <Divider
-            orientation={{
-              default: 'vertical',
-            }}
-          />
-          <a href={currentLogURL} target="_blank" rel="noopener noreferrer">
-            <OutlinedWindowRestoreIcon className="co-icon-space-r" />
-            {t('public~Raw')}
-          </a>
-          <Divider
-            orientation={{
-              default: 'vertical',
-            }}
-          />
-          <a href={currentLogURL} download={`${resource.metadata.name}-${containerName}.log`}>
-            <DownloadIcon className="co-icon-space-r" />
-            {t('public~Download')}
-          </a>
-          {screenfull.enabled && (
-            <>
-              <Divider
-                orientation={{
-                  default: 'vertical',
-                }}
-              />
-              <Button variant="link" isInline onClick={toggleFullscreen}>
-                {isFullscreen ? (
-                  <>
-                    <CompressIcon className="co-icon-space-r" />
-                    {t('public~Collapse')}
-                  </>
-                ) : (
-                  <>
-                    <ExpandIcon className="co-icon-space-r" />
-                    {t('public~Expand')}
-                  </>
+          >
+            <DropdownGroup label={t('public~Log actions')}>
+              <DropdownList>
+                {!_.isEmpty(podLogLinks) && renderPodLogLinks()}
+                <DropdownItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleShowFullLog(!isShowFullLog);
+                  }}
+                >
+                  {fullLog}
+                </DropdownItem>
+                <DropdownItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleWrapLines(!isWrapLines);
+                  }}
+                >
+                  {wrapLines}
+                </DropdownItem>
+                <DropdownItem to={currentLogURL} isExternalLink>
+                  {raw}
+                </DropdownItem>
+                <DropdownItem
+                  to={currentLogURL}
+                  isExternalLink
+                  download={`${resource.metadata.name}-${containerName}.log`}
+                >
+                  {download}
+                </DropdownItem>
+                {screenfull.enabled && (
+                  <DropdownItem onClick={toggleFullscreen}>{fullscreen}</DropdownItem>
                 )}
-              </Button>
-            </>
-          )}
-        </div>
+              </DropdownList>
+            </DropdownGroup>
+          </Dropdown>
+        ) : (
+          <div className="pf-v5-l-flex">
+            {!_.isEmpty(podLogLinks) && renderPodLogLinks()}
+            <div>{fullLog}</div>
+            <Divider
+              orientation={{
+                default: 'vertical',
+              }}
+            />
+            {wrapLines}
+            <Divider
+              orientation={{
+                default: 'vertical',
+              }}
+            />
+            <a href={currentLogURL} target="_blank" rel="noopener noreferrer">
+              {raw}
+            </a>
+            <Divider
+              orientation={{
+                default: 'vertical',
+              }}
+            />
+            <a href={currentLogURL} download={`${resource.metadata.name}-${containerName}.log`}>
+              {download}
+            </a>
+            {screenfull.enabled && (
+              <>
+                <Divider
+                  orientation={{
+                    default: 'vertical',
+                  }}
+                />
+                <Button variant="link" isInline onClick={toggleFullscreen}>
+                  {fullscreen}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -380,14 +522,20 @@ export const LogControls: React.FC<LogControlsProps> = ({
 
 // Resource agnostic log component
 export const ResourceLog: React.FC<ResourceLogProps> = ({
+  bufferSize = DEFAULT_BUFFER_SIZE,
   containerName,
   dropdown,
   resource,
   resourceStatus,
 }) => {
   const { t } = useTranslation();
-  const cluster = useSelector((state: RootState) => getActiveCluster(state)); // TODO remove multicluster
-  const buffer = React.useRef(new LineBuffer()); // TODO Make this a hook
+  const [showFullLog, setShowFullLog] = useUserSettings<boolean>(
+    SHOW_FULL_LOG_USERSETTINGS_KEY,
+    false,
+    true,
+  );
+  const [showFullLogCheckbox, setShowFullLogCheckbox] = React.useState(showFullLog);
+  const buffer = useToggleLineBuffer(showFullLogCheckbox ? null : bufferSize);
   const ws = React.useRef<any>(); // TODO Make this a hook
   const resourceLogRef = React.useRef();
   const logViewerRef = React.useRef(null);
@@ -409,8 +557,12 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
 
   const previousResourceStatus = usePrevious(resourceStatus);
   const previousTotalLineCount = usePrevious(totalLineCount);
-  const linkURL = getResourceLogURL(cluster, resource, containerName, null, false, logType); // TODO remove multicluster
-  const watchURL = getResourceLogURL(cluster, resource, containerName, null, true, logType); // TODO remove multicluster
+  const linkURL = getResourceLogURL(resource, containerName, null, false, logType);
+  const watchURL = getResourceLogURL(resource, containerName, null, true, logType);
+  const imp = useSelector((state: RootState) => getImpersonate(state));
+  const subprotocols = React.useMemo(() => ['base64.binary.k8s.io', ...(imp?.subprotocols ?? [])], [
+    imp,
+  ]);
   const [wrapLines, setWrapLines] = useUserSettings<boolean>(
     LOG_WRAP_LINES_USERSETTINGS_KEY,
     false,
@@ -421,14 +573,17 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
 
   const [wrapLinesCheckbox, setWrapLinesCheckbox] = React.useState(wrapLines || hasWrapAnnotation);
   const firstRender = React.useRef(true);
+  const handleShowFullLogCheckbox = () => setShowFullLogCheckbox(!showFullLogCheckbox);
 
   React.useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
+
     setWrapLines(wrapLinesCheckbox);
-  }, [wrapLinesCheckbox, setWrapLines]);
+    setShowFullLog(showFullLogCheckbox);
+  }, [wrapLinesCheckbox, showFullLogCheckbox, setWrapLines, setShowFullLog]);
 
   const timeoutIdRef = React.useRef(null);
   const countRef = React.useRef(0);
@@ -521,13 +676,13 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
     ws.current = new WSFactory(watchURL, {
       host: 'auto',
       path: watchURL,
-      subprotocols: ['base64.binary.k8s.io'],
+      subprotocols,
     })
       .onclose(onClose)
       .onerror(onError)
       .onmessage(onMessage)
       .onopen(onOpen);
-  }, [watchURL]);
+  }, [watchURL, subprotocols, buffer]);
   // Restart websocket if startWebSocket function changes
   React.useEffect(() => {
     if (
@@ -538,7 +693,7 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
       startWebSocket();
     }
     return () => ws.current?.destroy();
-  }, [error, resourceStatus, stale, startWebSocket]);
+  }, [error, resourceStatus, stale, startWebSocket, showFullLogCheckbox]);
 
   // Toggle currently displayed log content to/from fullscreen
   const toggleFullscreen = () => {
@@ -619,10 +774,12 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
       namespaceUID={namespaceUID}
       toggleWrapLines={setWrapLinesCheckbox}
       isWrapLines={wrapLinesCheckbox}
+      isShowFullLog={showFullLogCheckbox}
       hasPreviousLog={hasPreviousLogs}
       changeLogType={setLogType}
       logType={logType}
       showLogTypeSelect={resource.kind === 'Pod'}
+      toggleShowFullLog={handleShowFullLogCheckbox}
     />
   );
 
@@ -682,7 +839,7 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
         <div className={classNames('resource-log__log-viewer-wrapper')}>
           <LogViewer
             header={
-              <div className="log-window__header">
+              <div className="log-window__header" data-test="no-log-lines">
                 <HeaderBanner lines={lines} />
               </div>
             }
@@ -727,6 +884,8 @@ type LogControlsProps = {
   hasPreviousLog?: boolean;
   logType: LogTypeStatus;
   showLogTypeSelect: boolean;
+  toggleShowFullLog: (showFullLogCheckbox: boolean) => void;
+  isShowFullLog: boolean;
 };
 
 type ResourceLogProps = {
@@ -734,6 +893,7 @@ type ResourceLogProps = {
   dropdown?: React.ReactNode;
   resource: any;
   resourceStatus: string;
+  bufferSize?: number;
 };
 
 type LogTypeStatus = typeof LOG_TYPE_CURRENT | typeof LOG_TYPE_PREVIOUS;

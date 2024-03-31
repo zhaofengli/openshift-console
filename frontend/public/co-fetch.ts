@@ -1,8 +1,6 @@
 import * as _ from 'lodash';
 import { HttpError, RetryError } from '@console/dynamic-plugin-sdk/src/utils/error/http-error';
 import { authSvc } from './module/auth';
-import { getActiveCluster } from '@console/dynamic-plugin-sdk/src'; // TODO remove multicluster
-import storeHandler from '@console/dynamic-plugin-sdk/src/app/storeHandler';
 import { getCSRFToken } from '@console/dynamic-plugin-sdk/src/utils/fetch/console-fetch-utils';
 
 export const applyConsoleHeaders = (url, options) => {
@@ -56,7 +54,8 @@ export const validateStatus = async (
   }
 
   if (response.status === 401 && shouldLogout(url)) {
-    authSvc.logout(window.location.pathname, getActiveCluster(storeHandler.getStore()?.getState())); // TODO remove multicluster
+    const next = window.location.pathname + window.location.search + window.location.hash;
+    authSvc.logout(next);
   }
 
   const contentType = response.headers.get('content-type');

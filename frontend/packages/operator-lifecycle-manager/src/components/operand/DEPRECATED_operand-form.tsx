@@ -12,12 +12,14 @@ import {
   AccordionToggle,
   AccordionContent,
 } from '@patternfly/react-core';
-import { MinusCircleIcon, PlusCircleIcon } from '@patternfly/react-icons';
+import { MinusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/minus-circle-icon';
+import { PlusCircleIcon } from '@patternfly/react-icons/dist/esm/icons/plus-circle-icon';
 import * as classNames from 'classnames';
 import * as Immutable from 'immutable';
 import { JSONSchema6, JSONSchema6TypeName } from 'json-schema';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom-v5-compat';
 import { SyncMarkdownView } from '@console/internal/components/markdown-view';
 import { ConfigureUpdateStrategy } from '@console/internal/components/modals/configure-update-strategy-modal';
 import { RadioGroup } from '@console/internal/components/radio';
@@ -505,11 +507,11 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
   model,
   onChange,
   providedAPI,
-  match,
   next,
 }) => {
   const postFormCallback = usePostFormSubmitAction<K8sResourceKind>();
   const { t } = useTranslation();
+  const params = useParams();
   const immutableFormData = Immutable.fromJS(formData);
   const handleFormDataUpdate = (path: string, value: any): void => {
     const { regexMatch, index, pathBeforeIndex, pathAfterIndex } = parseArrayPath(path);
@@ -673,7 +675,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
     k8sCreate(
       model,
       model.namespaced
-        ? immutableFormData.setIn(['metadata', 'namespace'], match.params.ns).toJS()
+        ? immutableFormData.setIn(['metadata', 'namespace'], params.ns).toJS()
         : immutableFormData.toJS(),
     )
       .then((res) => postFormCallback(res))
@@ -772,7 +774,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
       return (
         <div>
           <input
-            className="pf-c-form-control"
+            className="pf-v5-c-form-control"
             id={id}
             type="password"
             onChange={({ currentTarget: { value } }) => handleFormDataUpdate(path, value)}
@@ -797,7 +799,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
           resources={[
             {
               kind: groupVersionKind,
-              namespace: k8sModel.namespaced ? match?.params?.ns : null,
+              namespace: k8sModel.namespaced ? params?.ns : null,
             },
           ]}
           desc={displayName}
@@ -816,7 +818,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
           data-checked-state={(_.isNil(currentValue) ? false : currentValue) as boolean}
           label={displayName}
           required={required}
-          onChange={(value) => handleFormDataUpdate(path, value)}
+          onChange={(_event, value) => handleFormDataUpdate(path, value)}
         />
       );
     }
@@ -826,7 +828,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
           key={id}
           id={id}
           isChecked={(_.isNil(currentValue) ? false : currentValue) as boolean}
-          onChange={(value) => handleFormDataUpdate(path, value)}
+          onChange={(_event, value) => handleFormDataUpdate(path, value)}
           label={t('public~True')}
           labelOff={t('public~False')}
         />
@@ -868,7 +870,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
         <div>
           <input
             key={id}
-            className="pf-c-form-control"
+            className="pf-v5-c-form-control"
             id={id}
             type="text"
             onChange={({ currentTarget: { value } }) => handleFormDataUpdate(path, value)}
@@ -882,7 +884,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
         <div>
           <input
             key={path}
-            className="pf-c-form-control"
+            className="pf-v5-c-form-control"
             id={id}
             type="number"
             onChange={({ currentTarget: { value } }) =>
@@ -1115,7 +1117,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
                   {t('public~Name')}
                 </label>
                 <input
-                  className="pf-c-form-control"
+                  className="pf-v5-c-form-control"
                   type="text"
                   onChange={({ target: { value } }) => handleFormDataUpdate('metadata.name', value)}
                   value={immutableFormData.getIn(['metadata', 'name']) || 'example'}
@@ -1157,7 +1159,7 @@ export const DEPRECATED_CreateOperandForm: React.FC<OperandFormProps> = ({
               </Alert>
             )}
             <div style={{ paddingBottom: '30px' }}>
-              <ActionGroup className="pf-c-form">
+              <ActionGroup className="pf-v5-c-form">
                 <Button onClick={submit} type="submit" variant="primary">
                   {t('public~Create')}
                 </Button>

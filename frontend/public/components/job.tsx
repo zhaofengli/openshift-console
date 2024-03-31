@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom-v5-compat';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
@@ -63,9 +63,9 @@ export const menuActions: KebabAction[] = [
 const kind = 'Job';
 
 const tableColumnClasses = [
-  'pf-u-w-25-on-2xl',
-  'pf-u-w-25-on-2xl',
-  'pf-m-hidden pf-m-visible-on-md pf-u-w-25-on-2xl',
+  'pf-v5-u-w-25-on-2xl',
+  'pf-v5-u-w-25-on-2xl',
+  'pf-m-hidden pf-m-visible-on-md pf-v5-u-w-25-on-2xl',
   'pf-m-hidden pf-m-visible-on-lg',
   'pf-m-hidden pf-m-visible-on-xl',
   Kebab.columnClass,
@@ -185,7 +185,7 @@ export const JobDetails: React.FC<JobsDetailsProps> = ({ obj: job }) => {
 const JobPods: React.FC<JobPodsProps> = (props) => <PodsComponent {...props} showNodes />;
 
 const { details, pods, editYaml, events } = navFactory;
-const JobsDetailsPage: React.FC<JobsDetailsPageProps> = (props) => {
+const JobsDetailsPage: React.FC = (props) => {
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
     const context = { [resourceKind]: obj };
@@ -279,8 +279,4 @@ type JobsPageProps = {
 
 type JobPodsProps = {
   obj: K8sResourceKind;
-};
-
-type JobsDetailsPageProps = {
-  match: any;
 };

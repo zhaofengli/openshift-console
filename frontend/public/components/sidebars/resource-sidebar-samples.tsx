@@ -2,12 +2,10 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Button, Level, LevelItem } from '@patternfly/react-core';
 import MonacoEditor from 'react-monaco-editor';
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  DownloadIcon,
-  PasteIcon,
-} from '@patternfly/react-icons';
+import { ChevronDownIcon } from '@patternfly/react-icons/dist/esm/icons/chevron-down-icon';
+import { ChevronRightIcon } from '@patternfly/react-icons/dist/esm/icons/chevron-right-icon';
+import { DownloadIcon } from '@patternfly/react-icons/dist/esm/icons/download-icon';
+import { PasteIcon } from '@patternfly/react-icons/dist/esm/icons/paste-icon';
 import { Sample } from '@console/shared';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +32,7 @@ const ResourceSidebarSample: React.FC<ResourceSidebarSampleProps> = ({
           <Button
             type="button"
             variant="link"
+            data-test="load-sample"
             isInline
             onClick={() => loadSampleYaml(id, yaml, reference)}
           >
@@ -45,6 +44,7 @@ const ResourceSidebarSample: React.FC<ResourceSidebarSampleProps> = ({
           <Button
             type="button"
             variant="link"
+            data-test="download-sample"
             isInline
             onClick={() => downloadSampleYaml(id, yaml, reference)}
           >
@@ -180,7 +180,7 @@ export const ResourceSidebarSamples: React.FC<ResourceSidebarSamplesProps> = ({
   downloadSampleYaml,
 }) => {
   return (
-    <ol className="co-resource-sidebar-list">
+    <ol className="co-resource-sidebar-list" data-test="resource-samples-list">
       {_.map(_.sortBy(samples, 'title'), (sample) => (
         <ResourceSidebarSample
           key={sample.id}

@@ -54,8 +54,8 @@ const tableColumnClasses = [
   '',
   'pf-m-hidden pf-m-visible-on-md',
   'pf-m-hidden pf-m-visible-on-md',
-  'pf-m-hidden pf-m-visible-on-lg pf-u-w-25-on-xl',
-  'pf-m-hidden pf-m-visible-on-xl pf-u-w-25-on-xl',
+  'pf-m-hidden pf-m-visible-on-lg pf-v5-u-w-25-on-xl',
+  'pf-m-hidden pf-m-visible-on-xl pf-v5-u-w-25-on-xl',
   Kebab.columnClass,
 ];
 
@@ -313,7 +313,7 @@ export const CronJobsPage: React.FC<CronJobsPageProps> = (props) => (
   <ListPage {...props} ListComponent={CronJobsList} kind={kind} canCreate={true} />
 );
 
-export const CronJobsDetailsPage: React.FC<CronJobsDetailsPageProps> = (props) => {
+export const CronJobsDetailsPage: React.FC = (props) => {
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
     const context = { [resourceKind]: obj };
@@ -351,8 +351,4 @@ type CronJobsPageProps = {
   showTitle?: boolean;
   namespace?: string;
   selector?: any;
-};
-
-type CronJobsDetailsPageProps = {
-  match: any;
 };

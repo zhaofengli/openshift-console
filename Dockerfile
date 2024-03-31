@@ -1,7 +1,7 @@
 ##################################################
 #
 # go backend build
-FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.19-openshift-4.14 AS gobuilder
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.21-openshift-4.16 AS gobuilder
 RUN mkdir -p /go/src/github.com/openshift/console/
 ADD . /go/src/github.com/openshift/console/
 WORKDIR /go/src/github.com/openshift/console/
@@ -11,7 +11,7 @@ RUN ./build-backend.sh
 ##################################################
 #
 # nodejs frontend build
-FROM registry.ci.openshift.org/ocp/builder:rhel-8-base-nodejs-openshift-4.14 AS nodebuilder
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-nodejs-openshift-4.16 AS nodebuilder
 
 ADD . .
 
@@ -41,10 +41,8 @@ RUN test -d ${REMOTE_SOURCES}/cachito-gomod-with-deps || exit 0; \
     cp -f $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app/registry-ca.pem . \
  && cp -f $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app/frontend/{.npmrc,.yarnrc,yarn.lock} frontend/
 
-# prevent download of chromedriver, geckodriver, and the cypress binary as part of module installs
-ENV CHROMEDRIVER_SKIP_DOWNLOAD=true \
-    GECKODRIVER_SKIP_DOWNLOAD=true \
-    CYPRESS_INSTALL_BINARY=0
+# prevent download of cypress binary as part of module installs
+ENV CYPRESS_INSTALL_BINARY=0
 
 # run the build
 RUN container-entrypoint ./build-frontend.sh
@@ -53,7 +51,7 @@ RUN container-entrypoint ./build-frontend.sh
 ##################################################
 #
 # actual base image for final product
-FROM registry.ci.openshift.org/ocp/4.14:base
+FROM registry.ci.openshift.org/ocp/4.16:base-rhel9
 RUN mkdir -p /opt/bridge/bin
 COPY --from=gobuilder /go/src/github.com/openshift/console/bin/bridge /opt/bridge/bin
 COPY --from=nodebuilder /opt/app-root/src/frontend/public/dist /opt/bridge/static

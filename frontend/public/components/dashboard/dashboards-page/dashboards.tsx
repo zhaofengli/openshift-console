@@ -1,15 +1,14 @@
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
+import { useLocation } from 'react-router-dom-v5-compat';
 import { connect } from 'react-redux';
 import { Map as ImmutableMap } from 'immutable';
-import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 
 import { ClusterDashboard } from './cluster-dashboard/cluster-dashboard';
 import { HorizontalNav, PageHeading, LoadingBox, Page, AsyncComponent } from '../../utils';
 import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
 import DashboardGrid from '@console/shared/src/components/dashboard/DashboardGrid';
-import { RestoreGettingStartedButton } from '@console/shared/src/components/getting-started';
+import { PageTitleContext } from '@console/shared/src/components/pagetitle/PageTitleContext';
 import {
   useExtensions,
   DashboardsCard,
@@ -26,7 +25,6 @@ import {
   OverviewGridCard,
 } from '@console/dynamic-plugin-sdk';
 import { RootState } from '../../../redux';
-import { USER_SETTINGS_KEY } from './cluster-dashboard/getting-started/constants';
 
 export const getCardsOnPosition = (
   cards: DashboardsCard[],
@@ -73,13 +71,15 @@ export const getPluginTabPages = (
   });
 };
 
-const DashboardsPage_: React.FC<DashboardsPageProps> = ({ match, kindsInFlight, k8sModels }) => {
+const DashboardsPage_: React.FC<DashboardsPageProps> = ({ kindsInFlight, k8sModels }) => {
   const { t } = useTranslation();
   const title = t('public~Overview');
   const tabExtensions = useExtensions<DashboardsTab>(isDashboardsTab);
   const cardExtensions = useExtensions<DashboardsCard>(isDashboardsCard);
   const dynamicTabExtensions = useExtensions<DynamicDashboardsTab>(isDynamicDashboardsTab);
   const dynamicCardExtensions = useExtensions<DynamicDashboardsCard>(isDynamicDashboardsCard);
+
+  const location = useLocation();
 
   const pluginPages = React.useMemo(
     () =>
@@ -97,29 +97,32 @@ const DashboardsPage_: React.FC<DashboardsPageProps> = ({ match, kindsInFlight, 
     () => [
       {
         href: '',
-        name: t('public~Cluster'),
+        // t('public~Cluster')
+        nameKey: 'public~Cluster',
         component: ClusterDashboard,
-        badge: <RestoreGettingStartedButton userSettingsKey={USER_SETTINGS_KEY} />,
       },
       ...pluginPages,
     ],
-    [pluginPages, t],
+    [pluginPages],
   );
 
   const badge = React.useMemo(
-    () => allPages.find((page) => `/dashboards${page.href}` === match.path)?.badge,
-    [allPages, match],
+    () => allPages.find((page) => `/dashboards${page.href}` === location.pathname)?.badge,
+    [allPages, location.pathname],
   );
+  const titleProviderValues = {
+    telemetryPrefix: 'Overview',
+    titlePrefix: title,
+  };
 
   return kindsInFlight && k8sModels.size === 0 ? (
     <LoadingBox />
   ) : (
     <>
-      <Helmet>
-        <title>{title}</title>
-      </Helmet>
-      <PageHeading title={title} detail={true} badge={badge} />
-      <HorizontalNav match={match} pages={allPages} noStatusBox />
+      <PageTitleContext.Provider value={titleProviderValues}>
+        <PageHeading title={title} detail={true} badge={badge} />
+        <HorizontalNav pages={allPages} noStatusBox />
+      </PageTitleContext.Provider>
     </>
   );
 };
@@ -131,7 +134,7 @@ export const mapStateToProps = (state: RootState) => ({
 
 export const DashboardsPage = connect(mapStateToProps)(DashboardsPage_);
 
-export type DashboardsPageProps = RouteComponentProps & {
+export type DashboardsPageProps = {
   kindsInFlight: boolean;
   k8sModels: ImmutableMap<string, any>;
 };

@@ -1,16 +1,17 @@
 import * as React from 'react';
 import * as _ from 'lodash';
+import { TableGridBreakpoint, SortByDirection } from '@patternfly/react-table';
 import {
   Table as PfTable,
-  TableHeader,
-  TableGridBreakpoint,
-  SortByDirection,
-} from '@patternfly/react-table';
+  TableHeader as TableHeaderDeprecated,
+} from '@patternfly/react-table/deprecated';
+import * as classNames from 'classnames';
 import { AutoSizer, WindowScroller } from '@patternfly/react-virtualized-extension';
+import { useNavigate } from 'react-router-dom-v5-compat';
 import { VirtualizedTableFC, TableColumn, TableDataProps } from '@console/dynamic-plugin-sdk';
 
 import VirtualizedTableBody from './VirtualizedTableBody';
-import { history, StatusBox, WithScrollContainer } from '../../utils';
+import { StatusBox, WithScrollContainer, EmptyBox } from '../../utils';
 import { sortResourceByValue } from './sort';
 
 const BREAKPOINT_SM = 576;
@@ -53,7 +54,7 @@ const isColumnVisible = <D extends any>(
 
 export const TableData: React.FC<TableDataProps> = ({ className, id, activeColumnIDs, children }) =>
   (activeColumnIDs.has(id) || id === '') && (
-    <td id={id} className={className} role="gridcell">
+    <td id={id} className={classNames('pf-v5-c-table__td', className)} role="gridcell">
       {children}
     </td>
   );
@@ -74,7 +75,9 @@ const VirtualizedTable: VirtualizedTableFC = ({
   Row,
   rowData,
   unfilteredData,
+  mock = false,
 }) => {
+  const navigate = useNavigate();
   const columnShift = onSelect ? 1 : 0; //shift indexes by 1 if select provided
   const [sortBy, setSortBy] = React.useState<{
     index: number;
@@ -97,14 +100,14 @@ const VirtualizedTable: VirtualizedTableFC = ({
       if (sortColumn) {
         sp.set('orderBy', direction);
         sp.set('sortBy', sortColumn.title);
-        history.replace(`${url.pathname}?${sp.toString()}${url.hash}`);
+        navigate(`${url.pathname}?${sp.toString()}${url.hash}`, { replace: true });
         setSortBy({
           index,
           direction,
         });
       }
     },
-    [columnShift, columns],
+    [columnShift, columns, navigate],
   );
 
   data = React.useMemo(() => {
@@ -178,41 +181,45 @@ const VirtualizedTable: VirtualizedTableFC = ({
 
   return (
     <div className="co-m-table-grid co-m-table-grid--bordered">
-      <StatusBox
-        skeleton={<div className="loading-skeleton--table" />}
-        data={data}
-        loaded={loaded}
-        loadError={loadError}
-        unfilteredData={unfilteredData}
-        label={label}
-        NoDataEmptyMsg={NoDataEmptyMsg}
-        EmptyMsg={EmptyMsg}
-      >
-        <div
-          className="co-virtualized-table"
-          role="grid"
-          aria-label={ariaLabel}
-          aria-rowcount={data?.length}
+      {mock ? (
+        <EmptyBox label={label} />
+      ) : (
+        <StatusBox
+          skeleton={<div className="loading-skeleton--table" />}
+          data={data}
+          loaded={loaded}
+          loadError={loadError}
+          unfilteredData={unfilteredData}
+          label={label}
+          NoDataEmptyMsg={NoDataEmptyMsg}
+          EmptyMsg={EmptyMsg}
         >
-          <PfTable
-            cells={columns}
-            rows={[]}
-            gridBreakPoint={gridBreakPoint}
-            onSort={onSort}
-            onSelect={onSelect}
-            sortBy={sortBy}
-            className="pf-m-compact pf-m-border-rows"
-            role="presentation"
+          <div
+            className="co-virtualized-table"
+            role="grid"
+            aria-label={ariaLabel}
+            aria-rowcount={data?.length}
           >
-            <TableHeader />
-          </PfTable>
-          {scrollNode ? (
-            renderVirtualizedTable(scrollNode)
-          ) : (
-            <WithScrollContainer>{renderVirtualizedTable}</WithScrollContainer>
-          )}
-        </div>
-      </StatusBox>
+            <PfTable
+              cells={columns}
+              rows={[]}
+              gridBreakPoint={gridBreakPoint}
+              onSort={onSort}
+              onSelect={onSelect}
+              sortBy={sortBy}
+              className="pf-m-compact pf-m-border-rows"
+              role="presentation"
+            >
+              <TableHeaderDeprecated />
+            </PfTable>
+            {scrollNode ? (
+              renderVirtualizedTable(scrollNode)
+            ) : (
+              <WithScrollContainer>{renderVirtualizedTable}</WithScrollContainer>
+            )}
+          </div>
+        </StatusBox>
+      )}
     </div>
   );
 };

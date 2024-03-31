@@ -180,8 +180,6 @@ export type Options = {
   cluster?: string;
 };
 
-export type UseActiveNamespace = () => [string, (ns: string) => void];
-
 export type UseLastNamespace = () => [
   string,
   React.Dispatch<React.SetStateAction<string>>,
@@ -231,7 +229,6 @@ export type LazyActionMenuProps = {
   variant?: ActionMenuVariant;
   label?: string;
   isDisabled?: boolean;
-  extra?: any;
 };
 
 export type ActionContext = {

@@ -5,7 +5,7 @@ import i18n from 'i18next';
 import { act } from 'react-dom/test-utils';
 import { setI18n } from 'react-i18next';
 import { Provider } from 'react-redux';
-import { BrowserRouter } from 'react-router-dom';
+import * as Router from 'react-router-dom-v5-compat';
 import { PageHeading, ButtonBar } from '@console/internal/components/utils/';
 import store from '@console/internal/redux';
 import NamespacedPage from '../../NamespacedPage';
@@ -13,8 +13,14 @@ import AdvancedSection from '../advanced/AdvancedSection';
 import AppSection from '../app/AppSection';
 import DeployImage from '../DeployImage';
 import DeployImagePage from '../DeployImagePage';
+import { DeploySection } from '../DeploySection';
 import ImageSearchSection from '../image-search/ImageSearchSection';
-import ResourceSection from '../section/ResourceSection';
+
+jest.mock('react-router-dom-v5-compat', () => ({
+  ...require.requireActual('react-router-dom-v5-compat'),
+  useParams: jest.fn(),
+  useLocation: jest.fn(),
+}));
 
 jest.mock('@console/shared/src/hooks/post-form-submit-action', () => ({
   usePostFormSubmitAction: () => () => {},
@@ -40,8 +46,6 @@ jest.mock('../section/useResourceType', () => ({
 }));
 
 describe('DeployImage Page Test', () => {
-  type DeployImagePageProps = React.ComponentProps<typeof DeployImagePage>;
-  let deployImagePageProps: DeployImagePageProps;
   let deployImagePageWrapper: ReactWrapper;
   beforeEach(() => {
     i18n.services.interpolator = {
@@ -53,24 +57,17 @@ describe('DeployImage Page Test', () => {
     };
     setI18n(i18n);
 
-    deployImagePageProps = {
-      history: null,
-      location: {
-        pathname: 'deploy-image/ns/openshift?preselected-ns=openshift',
-        search: 'deploy-image/ns/openshift?preselected-ns=openshift',
-        state: null,
-        hash: null,
-      },
-      match: {
-        isExact: true,
-        path: 'deploy-image/ns/openshift?preselected-ns=openshift',
-        url: 'deploy-image/ns/openshift?preselected-ns=openshift',
-        params: {
-          ns: 'openshift',
-        },
-      },
-    };
-    deployImagePageWrapper = mount(<DeployImagePage {...deployImagePageProps} />, {
+    jest.spyOn(Router, 'useParams').mockReturnValue({
+      ns: 'openshift',
+    });
+    jest.spyOn(Router, 'useLocation').mockReturnValue({
+      pathname: 'deploy-image/ns/openshift?preselected-ns=openshift',
+      search: 'deploy-image/ns/openshift?preselected-ns=openshift',
+      state: null,
+      hash: null,
+    });
+
+    deployImagePageWrapper = mount(<DeployImagePage />, {
       wrappingComponent: ({ children }) => <Provider store={store}>{children}</Provider>,
     });
   });
@@ -105,9 +102,9 @@ describe('Deploy Image Test', () => {
       namespace: 'my-project',
     };
     deployImageWrapper = mount(
-      <BrowserRouter>
+      <Router.BrowserRouter>
         <DeployImage {...deployImageProps} />
-      </BrowserRouter>,
+      </Router.BrowserRouter>,
       {
         wrappingComponent: ({ children }) => <Provider store={store}>{children}</Provider>,
       },
@@ -135,8 +132,8 @@ describe('Deploy Image Test', () => {
   it('should load  correct app section', () => {
     expect(deployImageWrapper.find(AppSection).exists()).toBe(true);
   });
-  it('should load  correct resource section', () => {
-    expect(deployImageWrapper.find(ResourceSection).exists()).toBe(true);
+  it('should load  correct Deploy section', () => {
+    expect(deployImageWrapper.find(DeploySection).exists()).toBe(true);
   });
   it('should load  correct advanced section', () => {
     expect(deployImageWrapper.find(AdvancedSection).exists()).toBe(true);

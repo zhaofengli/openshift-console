@@ -39,6 +39,9 @@ export const pipelinesPage = {
       case pipelineTabs.Pipelines:
         cy.byLegacyTestID('horizontal-link-Pipelines').click();
         break;
+      case pipelineTabs.PipelineRuns:
+        cy.byLegacyTestID('horizontal-link-PipelineRuns').click();
+        break;
       case pipelineTabs.Repositories:
         cy.byLegacyTestID('horizontal-link-Repositories').click();
         break;
@@ -216,7 +219,7 @@ export const pipelinesPage = {
   },
 
   verifyOptionInKebabMenu: (option: string) => {
-    cy.get('ul.pf-c-dropdown__menu li button').each(($el) => {
+    cy.get('ul.pf-v5-c-dropdown__menu li button').each(($el) => {
       if ($el.text().includes(option)) {
         expect($el.text()).toMatch(option);
       }
